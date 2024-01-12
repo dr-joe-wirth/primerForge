@@ -3,6 +3,9 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+# define a few global constants
+PLUS_STRAND = "+"
+MINUS_STRAND = "-"
 
 def parseArgs() -> tuple[str,str,str,int,int,float,float,float,float,int,int,float,int,bool]:
     """parses command line arguments
@@ -365,20 +368,23 @@ def kmpSearch(text:str, pattern:str) -> bool:
     return False
 
 
-def getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int) -> dict[Seq, tuple[str,int,int]]:
-    """gets a collection of kmers that are:
+def getUniqueKmers(name:str, seqs:list[SeqRecord], minLen:int, maxLen:int, sharedDict) -> None:
+    """designed to run in parallel. gets a collection of kmers that are:
         * not repeated anywhere in the genome
         * at least one end is a G or C
 
     Args:
-        seqs (list[SeqRecord]): a list of contigs as SeqRecords
-        minLen (int): the minimum primer length
-        maxLen (int): the maximum primer length
-
+        name (str): the name of the sequence
+        seqs (list[SeqRecord]): a list of contigs as SeqRecord objects
+        minLen (int): the minimum kmer length
+        maxLen (int): the maximum kmer length
+        sharedDict (DictProxy): a shared dictionary for parallel processing
+    
     Returns:
-        dict: key = kmer sequence as a Seq object; val = tuple[contig, start, kmer length]
+        does not return; saves result in the shared dictionary
     """
     # helper functions to clarify boolean expressions
+    
     def isOneEndGc(seq:Seq) -> bool:
         """ evaluates if one end of a sequence is a GC
         """
@@ -387,33 +393,45 @@ def getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int) -> dict[Seq, tu
         
         return seq[-1] in GC or seq[0] in GC
 
-    # initialize variables for looping
-    seqsD = dict()
+    # initialize variables
+    kmers = dict()
+    kmers[PLUS_STRAND] = dict()
+    kmers[MINUS_STRAND] = dict()
     bad = set()
-    rec:SeqRecord
     
     # go through each contig
-    for rec in seqs:
-        # go through each primer length
+    for contig in seqs:
+        fwdSeq:Seq = contig.seq
+        revSeq:Seq = fwdSeq.reverse_complement()
+        
+        # go through each kmer length
         for primerLen in range(minLen, maxLen+1):
-            # get every possible primer start position
-            for start in range(len(rec)- (primerLen - 1)):
-                # extract the primer sequence
-                seq:Seq = rec.seq[start:start+primerLen]
+            # get every possible kmer start position
+            for start in range(len(contig)- (primerLen - 1)):
+                # extract the kmer sequence
+                fwdKmer = fwdSeq[start:start+primerLen]
+                revKmer = revSeq[-(start+primerLen):-start]
                 
                 # mark duplicate primers for removal
-                if seq in seqsD.keys() or seq.reverse_complement() in seqsD.keys():
-                    bad.add(seq)
+                if fwdKmer in kmers[PLUS_STRAND].keys() or fwdKmer in kmers[MINUS_STRAND].keys():
+                    bad.add(fwdKmer)
+                if revKmer in kmers[PLUS_STRAND].keys() or revKmer in kmers[MINUS_STRAND].keys():
+                    bad.add(revKmer)
                 
                 # only save primers that have GC at one end, no long repeats, and no complements
-                if isOneEndGc(seq):
-                    seqsD[seq] = (rec.id, start, primerLen)
+                if isOneEndGc(fwdSeq):
+                    kmers[PLUS_STRAND][fwdKmer] = (contig.id, start, primerLen)
+                    kmers[MINUS_STRAND][revKmer] = (contig.id, start, primerLen)
 
     # discard any sequences that were duplicated
     for seq in bad:
-        seqsD.pop(seq)
+        try: kmers[PLUS_STRAND].pop(seq)
+        except KeyError: pass
+        
+        try: kmers[MINUS_STRAND].pop(seq)
+        except KeyError: pass
     
-    return seqsD
+    sharedDict[name] = kmers
 
 
 def getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> set[Seq]:
@@ -435,6 +453,8 @@ def getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> set[Seq]:
         # get every possible primer start position
         for start in range(len(contig)- (primerLen - 1)):
             # extract the primer sequence and save it
-            out.add(contig.seq[start:start+primerLen])
+            seq:Seq = contig.seq[start:start+primerLen]
+            out.add(seq)
+            out.add(seq.reverse_complement())
 
     return out
