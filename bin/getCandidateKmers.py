@@ -3,37 +3,58 @@ from Bio.Seq import Seq
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from multiprocessing.managers import ListProxy
-from bin.utilities import getAllKmers, getUniqueKmers, kmpSearch
+from bin.utilities import getAllKmers, getUniqueKmers, kmpSearch, PLUS_STRAND, MINUS_STRAND
 
 
-def __getSharedKmers(seqs:dict[str, list[SeqRecord]], minLen:int, maxLen:int) -> dict[str, dict[Seq, tuple[str,int,int]]]:
+def __getSharedKmers(seqs:dict[str, list[SeqRecord]], minLen:int, maxLen:int, numThreads:int) -> dict[str, dict[Seq, tuple[str,int,int]]]:
     """retrieves all the kmers that are shared between the input genomes
 
     Args:
-        seqs (dict[str, list[SeqRecord]]): key = genome name; val = list of contigs as SeqRecord
-        minLen (int): the minimum primer length
-        maxLen (int): the maximum primer length
+        seqs (dict[str, list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
+        minLen (int): the minimum kmer length
+        maxLen (int): the maximum kmer length
 
     Returns:
-        dict[str, dict[Seq, tuple[str,int,int]]]: key = genome name; val = dict: key = kmer sequence; val = contig, start, length
+        dict[str, dict[Seq, tuple[str,int,int]]]: key=genome name; val=dict: key=kmer sequence; val=(contig, start, length)
     """
     # intialize variables
     sharedKmers = set()
     kmers = dict()
+    args = list()
+    kmers = multiprocessing.Manager().dict()
+    
+    # get unique kmers for each genome in parallel
+    for name in seqs.keys():
+        args.append((name, seqs[name], minLen, maxLen, kmers))
+    
+    pool = multiprocessing.Pool(numThreads)
+    pool.starmap(getUniqueKmers, args)
+    pool.close()
+    pool.join()
+    
+    # collapse DictProxy to dict
+    kmers = dict(kmers)
     
     # for each genome
-    for name in seqs.keys():
-        # get the unique kmers
-        kmers[name] = getUniqueKmers(seqs[name], minLen, maxLen)
-        
-        # keep all the kmers if this is the first iteration
+    for name in kmers.keys():
+        # keep only the plus strand kmers if this is the first genome
         if sharedKmers == set():
-            sharedKmers.update(set(kmers[name].keys()))
+            sharedKmers.update(set(kmers[name][PLUS_STRAND].keys()))
         
         # otherwise keep only the shared kmers
         else:
-            sharedKmers.intersection_update(kmers[name].keys())
-
+            # get all the kmers for this genome (both + and - strands)
+            thisGenome = set(kmers[name][PLUS_STRAND].keys()).union(kmers[name][MINUS_STRAND].keys())
+            
+            # keep the only the shared kmers
+            sharedKmers.intersection_update(thisGenome)
+        
+        # restructure data for output (rev comp minus; ungroup by strand)
+        tmp = kmers[name][MINUS_STRAND]
+        kmers[name] = kmers[name][PLUS_STRAND]
+        for seq in set(tmp.keys()):
+            kmers[name][seq.reverse_complement()] = tmp.pop(seq)
+    
     # for each genome
     for name in kmers.keys():
         # get the set of kmers that are not shared
@@ -41,9 +62,61 @@ def __getSharedKmers(seqs:dict[str, list[SeqRecord]], minLen:int, maxLen:int) ->
         
         # remove all the unshared kmers from the dictionary
         for kmer in bad:
-            kmers[name].pop(kmer)
+            try: kmers[name].pop(kmer)
+            except KeyError: pass
     
     return kmers
+
+
+def __getOneOutgroupKmers(seq:SeqRecord, minLen:int, maxLen:int, sharedDict) -> None:
+    """designed for parallel calls. gets all the kmers in a single sequence
+
+    Args:
+        seq (SeqRecord): the sequence
+        minLen (int): the minimum kmer length
+        maxLen (int): the maximum kmer length
+        sharedDict (DictProxy): a shared dictionary for parallel calls
+    
+    Returns:
+        does not return. saves results in the shared dictionary
+    """
+    # get all the kmers for the sequence
+    kmers = getAllKmers(seq, minLen, maxLen)
+    
+    # save the result in the shared dictionary
+    for k in kmers:
+        sharedDict[k] = None
+
+
+def __getOutgroupKmers(outgroup:dict[str,list[SeqRecord]], minLen:int, maxLen:int, numThreads:int) -> set[Seq]:
+    """gets all of the kmers found in the outgroup
+
+    Args:
+        outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
+        minLen (int): the minimum kmer length
+        maxLen (int): the maximum kmer length
+        numThreads (int): the number of threads to use for parallel processing
+
+    Returns:
+        set[Seq]: a set of all the kmers found in the outgroup as Seq objects
+    """
+    # initialize variables
+    args = list()
+    sharedDict = multiprocessing.Manager().dict()
+    
+    # add each contig from each genome to the argument list
+    for name in outgroup:
+        for contig in outgroup[name]:
+            args.append((contig, minLen, maxLen, sharedDict))
+    
+    # process the outgroup in parallel
+    pool = multiprocessing.Pool(numThreads)
+    pool.starmap(__getOneOutgroupKmers, args)
+    pool.close()
+    pool.join()
+    
+    # collapse the shared dictionary to a set before returning
+    return set(sharedDict.keys())
 
 
 def __reorganizeDataByPosition(kmers:dict[str, dict[Seq, tuple[str, int, int]]]) -> dict[str, dict[str, dict[int, list[tuple[Seq, int]]]]]:
@@ -238,13 +311,10 @@ def getAllCandidatePrimers(ingroup:dict[str, list[SeqRecord]], outgroup:dict[str
         dict[str, dict[str, list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
     # get all non-duplicated kmers that are shared in the ingroup
-    ingroupKmers = __getSharedKmers(ingroup, minLen, maxLen)
+    ingroupKmers = __getSharedKmers(ingroup, minLen, maxLen, numThreads)
     
     # get all the kmers in the outgroup
-    outgroupKmers = set()
-    for name in outgroup:
-        for rec in outgroup[name]:
-            outgroupKmers.update(getAllKmers(rec, minLen, maxLen))
+    outgroupKmers = __getOutgroupKmers(outgroup, minLen, maxLen, numThreads)
 
     # remove any outgroup kmers from the ingroup kmers
     for name in ingroupKmers.keys():
