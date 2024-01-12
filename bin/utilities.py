@@ -408,17 +408,17 @@ def getUniqueKmers(name:str, seqs:list[SeqRecord], minLen:int, maxLen:int, share
         for primerLen in range(minLen, maxLen+1):
             # get every possible kmer start position
             for start in range(len(contig)- (primerLen - 1)):
-                # extract the kmer sequence
+                # extract the kmer sequences
                 fwdKmer = fwdSeq[start:start+primerLen]
                 revKmer = revSeq[-(start+primerLen):-start]
                 
-                # mark duplicate primers for removal
+                # mark duplicate kmers for removal
                 if fwdKmer in kmers[PLUS_STRAND].keys() or fwdKmer in kmers[MINUS_STRAND].keys():
                     bad.add(fwdKmer)
                 if revKmer in kmers[PLUS_STRAND].keys() or revKmer in kmers[MINUS_STRAND].keys():
                     bad.add(revKmer)
                 
-                # only save primers that have GC at one end, no long repeats, and no complements
+                # only save kmers that have GC at one end
                 if isOneEndGc(fwdSeq):
                     kmers[PLUS_STRAND][fwdKmer] = (contig.id, start, primerLen)
                     kmers[MINUS_STRAND][revKmer] = (contig.id, start, primerLen)
@@ -435,27 +435,29 @@ def getUniqueKmers(name:str, seqs:list[SeqRecord], minLen:int, maxLen:int, share
     sharedDict[name] = kmers
 
 
-def getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> set[Seq]:
-    """gets all of the kmers in a given contig
+def getAllKmers(contig:SeqRecord, minLen:int, maxLen:int, sharedDict) -> None:
+    """designed for parallel processing. gets all of the kmers in a given contig
 
     Args:
         contig (SeqRecord): the contig as a SeqRecord object
         minLen (int): the minimum kmer length
         maxLen (int): the maximum kmer length
+        sharedDict (DictProxy): a shared dictionary for parallel processing
 
     Returns:
-        set[Seq]: a set of kmers
+        does not return. saves results to the shared dictionary
     """
-    # initialize output
-    out = set()
+    # get forward and reverse sequences
+    fwdSeq:Seq = contig.seq
+    revSeq:Seq = fwdSeq.reverse_complement()
     
-    # for each allowed primer length
+    # for each allowed kmer length
     for primerLen in range(minLen, maxLen+1):
-        # get every possible primer start position
-        for start in range(len(contig)- (primerLen - 1)):
-            # extract the primer sequence and save it
-            seq:Seq = contig.seq[start:start+primerLen]
-            out.add(seq)
-            out.add(seq.reverse_complement())
-
-    return out
+        # get every possible kmer start position
+        for start in range(len(fwdSeq) - (primerLen - 1)):
+            # extract the kmer sequences and save them
+            fwdKmer = fwdSeq[start:start+primerLen]
+            revKmer = revSeq[-(start+primerLen):-start]
+            
+            sharedDict[fwdKmer] = None
+            sharedDict[revKmer] = None

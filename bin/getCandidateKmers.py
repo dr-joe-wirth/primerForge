@@ -68,26 +68,6 @@ def __getSharedKmers(seqs:dict[str, list[SeqRecord]], minLen:int, maxLen:int, nu
     return kmers
 
 
-def __getOneOutgroupKmers(seq:SeqRecord, minLen:int, maxLen:int, sharedDict) -> None:
-    """designed for parallel calls. gets all the kmers in a single sequence
-
-    Args:
-        seq (SeqRecord): the sequence
-        minLen (int): the minimum kmer length
-        maxLen (int): the maximum kmer length
-        sharedDict (DictProxy): a shared dictionary for parallel calls
-    
-    Returns:
-        does not return. saves results in the shared dictionary
-    """
-    # get all the kmers for the sequence
-    kmers = getAllKmers(seq, minLen, maxLen)
-    
-    # save the result in the shared dictionary
-    for k in kmers:
-        sharedDict[k] = None
-
-
 def __getOutgroupKmers(outgroup:dict[str,list[SeqRecord]], minLen:int, maxLen:int, numThreads:int) -> set[Seq]:
     """gets all of the kmers found in the outgroup
 
@@ -111,7 +91,7 @@ def __getOutgroupKmers(outgroup:dict[str,list[SeqRecord]], minLen:int, maxLen:in
     
     # process the outgroup in parallel
     pool = multiprocessing.Pool(numThreads)
-    pool.starmap(__getOneOutgroupKmers, args)
+    pool.starmap(getAllKmers, args)
     pool.close()
     pool.join()
     
