@@ -431,6 +431,7 @@ def getUniqueKmers(name:str, seqs:list[SeqRecord], minLen:int, maxLen:int, share
         try: kmers[MINUS_STRAND].pop(seq)
         except KeyError: pass
     
+    # save result in shared dictionary
     sharedDict[name] = kmers
 
 
