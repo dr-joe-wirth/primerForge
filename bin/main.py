@@ -320,14 +320,30 @@ def _main() -> None:
     # constant
     TEMP_DIR = os.path.join(".", "kmerwd")
 
+    totalClock = Clocker()
+    print('parsing args ... ', end='', flush=True)
+    clock = Clocker()
+
     # parse command line arguments
     ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,keep,helpRequested = __parseArgs()
     
+    clock.printTime()
+    
+    
     # only do work if help was not requested
     if not helpRequested:
+        
+        
+        print('reading sequence files into memory ... ', end='', flush=True)
+        clock.restart()
+        
         # read the ingroup and outgroup sequences into memory
         ingroupSeqs = __readSequenceData(ingroupFiles, frmt)
         outgroupSeqs = __readSequenceData(outgroupFiles, frmt)
+        
+        
+        clock.printTime()
+        
         
         # get the candidate kmers for the ingroup
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, outgroupSeqs, minPrimerLen, maxPrimerLen, minGc, maxGc, minTm, maxTm, numThreads)
@@ -342,3 +358,12 @@ def _main() -> None:
         # remove the temporary directory unless user asked to keep it
         if not keep:
             shutil.rmtree(TEMP_DIR)
+        
+        
+        print('total runtime: ', end='', flush=True)
+        totalClock.printTime()
+
+
+
+
+from bin.getCandidateKmers import Clocker
