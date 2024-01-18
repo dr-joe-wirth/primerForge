@@ -28,8 +28,8 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
         ValueError: must specify an output file
 
     Returns:
-        tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,int,bool,bool]:
-            ingroupFns,outgroupFns,outFN,format,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,keep,helpRequested
+        tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,int,bool]:
+            ingroupFns,outgroupFns,outFN,format,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,helpRequested
     """
     # constants
     ALLOWED_FORMATS = ('genbank', 'fasta')
@@ -46,7 +46,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     THREADS_FLAGS = ('-n', '--num_threads')
     PCR_LEN_FLAGS = ('-r', '--pcr_prod_len')
     TM_DIFF_FLAGS = ('-d', '--tm_diff')
-    KEEP_FLAGS = ('-k', '--keep')
     HELP_FLAGS = ('-h', '--help')
     SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                  OUT_FLAGS[0][-1] + ":" + \
@@ -58,7 +57,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                  PCR_LEN_FLAGS[0][-1] + ":" + \
                  TM_DIFF_FLAGS[0][-1] + ":" + \
                  THREADS_FLAGS[0][-1] + ":" + \
-                 KEEP_FLAGS[0][-1] +\
                  HELP_FLAGS[0][-1]
     LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
                  OUT_FLAGS[1][2:] + "=",
@@ -70,7 +68,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                  PCR_LEN_FLAGS[1][2:] + "=",
                  TM_DIFF_FLAGS[1][2:] + "=",
                  THREADS_FLAGS[1][2:] + "=",
-                 KEEP_FLAGS[1][2:],
                  HELP_FLAGS[1][2:])
 
     # default values
@@ -129,7 +126,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                    GAP + f"{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<22}{'[int(s)] a single PCR product length or a range specified as '}" + "'min,max'" + f"{DEF_OPEN + str(DEF_MIN_PCR) + SEP_3 + str(DEF_MAX_PCR) + CLOSE}" + EOL + \
                    GAP + f"{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<22}{'[float] the maximum allowable Tm difference between a pair of primers' + DEF_OPEN + str(DEF_MAX_TM_DIFF) + CLOSE}" + EOL + \
                    GAP + f"{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<22}{'[int] the number of threads for parallel processing' + DEF_OPEN + str(DEF_NUM_THREADS) + CLOSE}" + EOL + \
-                   GAP + f"{KEEP_FLAGS[0] + SEP_1 + KEEP_FLAGS[1]:<22}{'keep intermediate files' + DEF_OPEN + str(DEF_KEEP) + CLOSE}" + EOL + \
                    GAP + f"{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<22}{'print this message'}" + EOL*2
         
         print(HELP_MSG)
@@ -273,10 +269,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 except:
                     raise ValueError(ERR_MSG_13)
             
-            # determine if intermediate files should be kept
-            elif opt in KEEP_FLAGS:
-                keep = True
-            
             else:
                 print(IGNORE_MSG + opt + " " + arg)
         
@@ -375,7 +367,7 @@ def _main() -> None:
     MSG_3B = " primer pairs to file"
 
     # parse command line arguments
-    ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,keep,helpRequested = __parseArgs()
+    ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,helpRequested = __parseArgs()
     
     # start the timers
     totalClock = Clock()
