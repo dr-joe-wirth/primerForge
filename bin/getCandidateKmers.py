@@ -1,11 +1,15 @@
 import multiprocessing
 from Bio.Seq import Seq
+from bin.Clock import Clock, _printStart, _printDone
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from multiprocessing.managers import ListProxy
-from bin.constants import _MINUS_STRAND, _PLUS_STRAND
 
+# global constants
+__PLUS_STRAND = "+"
+__MINUS_STRAND = "-"
 
+# functions
 def __kmpSearch(text:str, pattern:str) -> bool:
     """implementation of the KMP string search algorithm: O(n+m)
 
@@ -113,8 +117,8 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int) -> dict[str,d
 
     # initialize variables
     kmers = dict()
-    kmers[_PLUS_STRAND] = dict()
-    kmers[_MINUS_STRAND] = dict()
+    kmers[__PLUS_STRAND] = dict()
+    kmers[__MINUS_STRAND] = dict()
     bad = set()
     
     # go through each contig
@@ -131,20 +135,20 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int) -> dict[str,d
                 revKmer = revSeq[-(start+primerLen):-start]
                 
                 # mark duplicate kmers for removal
-                if fwdKmer in kmers[_PLUS_STRAND].keys() or fwdKmer in kmers[_MINUS_STRAND].keys():
+                if fwdKmer in kmers[__PLUS_STRAND].keys() or fwdKmer in kmers[__MINUS_STRAND].keys():
                     bad.add(fwdKmer)
                 
                 # only save kmers that have GC at one end
                 if isOneEndGc(fwdSeq):
-                    kmers[_PLUS_STRAND][fwdKmer] = (contig.id, start, primerLen)
-                    kmers[_MINUS_STRAND][revKmer] = (contig.id, start, primerLen)
+                    kmers[__PLUS_STRAND][fwdKmer] = (contig.id, start, primerLen)
+                    kmers[__MINUS_STRAND][revKmer] = (contig.id, start, primerLen)
 
     # discard any sequences that were duplicated
     for seq in bad:
-        try: kmers[_PLUS_STRAND].pop(seq)
+        try: kmers[__PLUS_STRAND].pop(seq)
         except KeyError: pass
         
-        try: kmers[_MINUS_STRAND].pop(seq)
+        try: kmers[__MINUS_STRAND].pop(seq)
         except KeyError: pass
     
     return kmers
@@ -215,12 +219,12 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> 
     for name in kmers.keys():
         # keep only the (+) strand kmers if this is the first genome
         if sharedKmers == set():
-            sharedKmers.update(set(kmers[name][_PLUS_STRAND].keys()))
+            sharedKmers.update(set(kmers[name][__PLUS_STRAND].keys()))
         
         # otherwise keep the shared kmers (both + and -)
         else:
             # get all the kmers for this genome (both + and - strands)
-            thisGenome = set(kmers[name][_PLUS_STRAND].keys()).union(kmers[name][_MINUS_STRAND].keys())
+            thisGenome = set(kmers[name][__PLUS_STRAND].keys()).union(kmers[name][__MINUS_STRAND].keys())
             
             # update the shared set with the kmers found in this genome
             sharedKmers.intersection_update(thisGenome)
@@ -241,10 +245,10 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> 
     # for each genome
     for name in kmers.keys():
         # save (-) strand in temp variable
-        tmp = kmers[name][_MINUS_STRAND]
+        tmp = kmers[name][__MINUS_STRAND]
         
         # save all the (+) strand kmers under the genome name
-        kmers[name] = kmers[name][_PLUS_STRAND]
+        kmers[name] = kmers[name][__PLUS_STRAND]
         
         # save the rev-comp of the (-) strand kmers
         for seq in set(tmp.keys()):
@@ -472,58 +476,54 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], outgroup:dict[str,l
     Returns:
         dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
-    print('getting all shared ingroup kmers ... ', end='', flush=True)
-    clock = Clocker()
+    MSG_1 = "    getting shared ingroup kmers that appear once in each genome"
+    MSG_2 = "    getting all outgroup kmers"
+    MSG_3 = "    removing outgroup kmers from the ingroup kmer set"
+    MSG_4 = "    evaluating candidate ingroup kmers"
+    ERR_MSG_1 = "failed to identify a set of kmers shared between the ingroup genomes"
+    ERR_MSG_2 = "could not find ingroup kmers that are absent in the outgroup"
+    ERR_MSG_3 = "none of the ingroup kmers are suitable for use as a primer"
     
+    # start the timer
+    clock = Clock()
     
     # get all non-duplicated kmers that are shared in the ingroup
+    _printStart(clock, MSG_1)
     ingroupKmers = __getSharedKmers(ingroup, minLen, maxLen)
+    _printDone(clock)
     
-    
-    clock.printTime()
-    print('getting all outgroup kmers ... ', end='', flush=True)
-    clock.restart()
+    # make sure that ingroup kmers were identified
+    if len(ingroupKmers.values()) == 0:
+        raise RuntimeError(ERR_MSG_1)
     
     # get all the kmers in the outgroup
+    _printStart(clock, MSG_2)
     outgroupKmers = __getOutgroupKmers(outgroup, minLen, maxLen)
-
-    clock.printTime()
-    print('removing outgroup kmers ... ', end='', flush=True)
-    clock.restart()
+    _printDone(clock)
 
     # remove any outgroup kmers from the ingroup kmers
+    _printStart(clock, MSG_3)
     for seq in outgroupKmers:
         for name in ingroupKmers.keys():
             try: ingroupKmers[name].pop(seq)
             except KeyError: pass
+    _printDone(clock)
     
-    clock.printTime()
-    print('reorganizing one genome by position ... ', end='', flush=True)
-    clock.restart()
+    # make sure that there are still kmers for the ingroup
+    if len(ingroupKmers.values()) == 0:
+        raise RuntimeError(ERR_MSG_2)
     
     # reorganize data by each unique start positions for one genome
     positions = __reorganizeDataByPosition(next(iter(ingroupKmers.values())))
     
-    clock.printTime()
-    print('evaluating candidate kmers in parallel ... ', end='', flush=True)
-    clock.restart()
-    
     # get a list of the kmers that pass the evaulation
+    _printStart(clock, MSG_4)
     candidates = __evaluateAllKmers(positions, minGc, maxGc, minTm, maxTm, numThreads)
+    _printDone(clock)
     
-    clock.printTime()
-    print('building candidate kmer output ... ', end='', flush=True)
-    clock.restart()
+    # make sure there are candidate kmers
+    if candidates == []:
+        raise RuntimeError(ERR_MSG_3)
     
     # create a dictionary whose keys are contigs and values are the primers
-    out = __buildOutput(ingroupKmers, candidates)
-    
-    clock.printTime()
-
-    return out
-
-
-
-import sys
-sys.path.append("/scicomp/home-pure/uma2/software/misc")
-from Clocker import Clocker
+    return __buildOutput(ingroupKmers, candidates)

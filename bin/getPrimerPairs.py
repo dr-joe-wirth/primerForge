@@ -1,7 +1,7 @@
 from Bio.Seq import Seq
 import multiprocessing, os
 from bin.Primer import Primer
-from bin.constants import _PLUS_STRAND, _MINUS_STRAND, _EOL, _SEP
+from bin.Clock import Clock, _printDone, _printStart
 
 
 def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
@@ -106,94 +106,94 @@ def __binCandidatePrimers(candidates:dict[str,list[Primer]], minPrimerLen:int) -
     return bins
 
 
-def __saveCandidatePrimerPairs(fn:str, terminator:str, queue):
-    """saves candidate primer pairs to file; designed to run in parallel
+# def __saveCandidatePrimerPairs(fn:str, terminator:str, queue):
+#     """saves candidate primer pairs to file; designed to run in parallel
 
-    Args:
-        fn (str): the filename for writing the results
-        terminator (str): the string that will tell this process to terminiate
-        queue: a multiprocessing.Manager().Queue() object containing the results to be written
-    """
-    # open the file
-    with open(fn, 'w') as fh:
-        # keep checking the queue
-        while True:
-            # extract the value from the queue
-            val = queue.get()
+#     Args:
+#         fn (str): the filename for writing the results
+#         terminator (str): the string that will tell this process to terminiate
+#         queue: a multiprocessing.Manager().Queue() object containing the results to be written
+#     """
+#     # open the file
+#     with open(fn, 'w') as fh:
+#         # keep checking the queue
+#         while True:
+#             # extract the value from the queue
+#             val = queue.get()
             
-            # stop loooping when the terminate signal is received
-            if val == terminator:
-                break
+#             # stop loooping when the terminate signal is received
+#             if val == terminator:
+#                 break
             
-            # extract the primers and PCR product length from the queue
-            p1:Primer
-            p2:Primer
-            length:int
-            p1,p2,length = val
+#             # extract the primers and PCR product length from the queue
+#             p1:Primer
+#             p2:Primer
+#             length:int
+#             p1,p2,length = val
             
-            # build the row
-            row = [p1.contig,
-                   p1.seq,
-                   p1.start,
-                   p2.seq,
-                   p2.end,
-                   length]
+#             # build the row
+#             row = [p1.contig,
+#                    p1.seq,
+#                    p1.start,
+#                    p2.seq,
+#                    p2.end,
+#                    length]
             
-            # write the row to file
-            fh.write(_SEP.join(map(str, row)) + _EOL)
-            fh.flush()
+#             # write the row to file
+#             fh.write(__SEP.join(map(str, row)) + __EOL)
+#             fh.flush()
 
 
-def __loadCandidatePrimerPairs(fn:str) -> list[tuple[Primer,Primer,int]]:
-    """loads the candidate primer pairs written by __saveCandidatePriemrPairs
+# def __loadCandidatePrimerPairs(fn:str) -> list[tuple[Primer,Primer,int]]:
+#     """loads the candidate primer pairs written by __saveCandidatePriemrPairs
 
-    Args:
-        fn (str): the filename containing the primer pair data
+#     Args:
+#         fn (str): the filename containing the primer pair data
 
-    Returns:
-        list[tuple[Primer,Primer,int]]: list of primer pairs as tuples: fwd, rev, pcr product length
-    """
-    # row indices
-    CNTG_IDX = 0
-    FSEQ_IDX = 1
-    FSTR_IDX = 2
-    RSEQ_IDX = 3
-    REND_IDX = 4
-    PLEN_IDX = 5
+#     Returns:
+#         list[tuple[Primer,Primer,int]]: list of primer pairs as tuples: fwd, rev, pcr product length
+#     """
+#     # row indices
+#     CNTG_IDX = 0
+#     FSEQ_IDX = 1
+#     FSTR_IDX = 2
+#     RSEQ_IDX = 3
+#     REND_IDX = 4
+#     PLEN_IDX = 5
     
-    # initialize the output
-    out = list()
+#     # initialize the output
+#     out = list()
     
-    # go through each line of the file
-    with open(fn, 'r') as fh:
-        for line in fh:
-            # remove trailing newline characters
-            line = line.rstrip()
+#     # go through each line of the file
+#     with open(fn, 'r') as fh:
+#         for line in fh:
+#             # remove trailing newline characters
+#             line = line.rstrip()
             
-            # skip empty lines
-            if line != '':
-                # convert the line to a list of values
-                row = line.split(_SEP)
+#             # skip empty lines
+#             if line != '':
+#                 # convert the line to a list of values
+#                 row = line.split(__SEP)
                 
-                # extract data from the row
-                contig = row[CNTG_IDX]
-                fwdSeq = Seq(row[FSEQ_IDX])
-                fwdStart = int(row[FSTR_IDX])
-                revSeq = Seq(row[RSEQ_IDX])
-                revEnd = int(row[REND_IDX])
-                length = int(row[PLEN_IDX])
+#                 # extract data from the row
+#                 contig = row[CNTG_IDX]
+#                 fwdSeq = Seq(row[FSEQ_IDX])
+#                 fwdStart = int(row[FSTR_IDX])
+#                 revSeq = Seq(row[RSEQ_IDX])
+#                 revEnd = int(row[REND_IDX])
+#                 length = int(row[PLEN_IDX])
                 
-                # build the forward and reverse Primer objects
-                fwd = Primer(fwdSeq, contig, fwdStart, len(fwdSeq))
-                rev = Primer(revSeq.reverse_complement(), contig, revEnd, len(revSeq))
+#                 # build the forward and reverse Primer objects
+#                 fwd = Primer(fwdSeq, contig, fwdStart, len(fwdSeq))
+#                 rev = Primer(revSeq.reverse_complement(), contig, revEnd, len(revSeq))
                 
-                # save data in the list
-                out.append((fwd,rev,length))
+#                 # save data in the list
+#                 out.append((fwd,rev,length))
                 
-    return out
+#     return out
 
 
-def __evaluateOneBinPair(bin1:list[Primer], bin2:list[Primer], maxTmDiff:float, minProdLen:int, maxProdLen:int, queue) -> None:
+def __evaluateOneBinPair(bin1:list[Primer], bin2:list[Primer], maxTmDiff:float, minProdLen:int, maxProdLen:int) -> tuple[Primer, Primer, int]:
     """evaluates a pair of bins of primers to find a single suitable pair; designed to run in parallel
 
     Args:
@@ -202,7 +202,9 @@ def __evaluateOneBinPair(bin1:list[Primer], bin2:list[Primer], maxTmDiff:float, 
         maxTmDiff (float): the maximum difference in melting temps
         minProdLen (int): the minimum PCR product length
         maxProdLen (int): the maximum PCR product length
-        queue (Queue): a multiprocessing.Manager().Queue() object to store results for writing
+    
+    Returns:
+        tuple[Primer,Primer,int]: a pair of primers and their corresponding pcr product length
     """
     # constants
     FWD = 'forward'
@@ -270,12 +272,11 @@ def __evaluateOneBinPair(bin1:list[Primer], bin2:list[Primer], maxTmDiff:float, 
                         if isTmDiffWithinRange(p1, p2):
                             # only proceed if primer dimers won't form
                             if noPrimerDimer(p1, p2):
-                                # write the suitable pair; stop comparing other primers in these bins
-                                queue.put((p1,p2.reverseComplement(),productLen))
-                                return
+                                # found a suitable pair; stop comparing other primers in these bins
+                                return p1, p2.reverseComplement(), productLen
 
 
-def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int, maxTmDiff:float, fn:str, numThreads:int) -> list[tuple[Primer,Primer,int]]:
+def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int, maxTmDiff:float, numThreads:int) -> list[tuple[Primer,Primer,int]]:
     """evaluate pairs of bins to identify candidate primer pairs for a single genome
 
     Args:
@@ -284,25 +285,13 @@ def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int
         minProdLen (int): the minimum PCR product length
         maxProdLen (int): the maximum PCR product length
         maxTmDiff (float): the maximum Tm difference bewteen two primers
-        fn (str): the filename for saving intermediate results
         numThreads (int): the number of threads available for parallel processing
 
     Returns:
-        list[tuple[Primer,Primer,int]]: the list produced by __loadCandidatePrimerPairs
+        list[tuple[Primer,Primer,int]]: a list of tuples produced by __evaluateOneBinPair
     """
-    # constants
-    TERMINATOR = "STOP"
-    
     # initialize a list of arguments for __evaluateOneBinPair
     args = list()
-    
-    # make a queue so results can be written to the file in parallel
-    queue = multiprocessing.Manager().Queue()
-
-    # open the pool and start the writing process
-    pool = multiprocessing.Pool(numThreads)
-    pool.apply_async(__saveCandidatePrimerPairs, (fn, TERMINATOR, queue))
-
 
     # for each contig in the genome
     for contig in binned.keys():
@@ -331,18 +320,13 @@ def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int
                 
                 # otherwise, these two bins could produce viable PCR product lengths; compare them
                 else:
-                    args.append((bin1, bin2, maxTmDiff, minProdLen, maxProdLen, queue))
+                    args.append((bin1, bin2, maxTmDiff, minProdLen, maxProdLen))
     
     # process pairs of bins in parallel
-    pool.starmap(__evaluateOneBinPair, args)
+    with multiprocessing.Pool(numThreads) as pool:
+        out = pool.starmap(__evaluateOneBinPair, args)
     
-    # stop the writer process then close the pool
-    queue.put(TERMINATOR)
-    pool.close()
-    pool.join()
-
-    # load the results from file and return them
-    return __loadCandidatePrimerPairs(fn)
+    return out
 
 
 def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Seq,Primer]:
@@ -431,85 +415,44 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
-def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,int]]) -> None:
-    # contants
-    HEADERS = ('fwd_seq',
-               'fwd_Tm',
-               'fwd_GC',
-               'rev_seq',
-               'rev_Tm',
-               'rev_GC')
-    NUM_DEC = 1
-    
-    # get a fixed order for the genome names
-    names = list(next(iter(pairs.values())).keys())
-    
-    # add the genome names to the headers
-    headers = list(HEADERS)
-    headers.extend(names)
-    
-    # open the file
-    with open(fn, 'w') as fh:
-        # write the headers
-        fh.write(_SEP.join(headers) + _EOL)
-        fh.flush()
-        
-        # for each primer pair
-        for fwd,rev in pairs.keys():
-            # save the primer pair data
-            row = [fwd.seq,
-                   round(fwd.Tm, NUM_DEC),
-                   round(fwd.gcPer, NUM_DEC),
-                   rev.seq,
-                   round(rev.Tm, NUM_DEC),
-                   round(rev.gcPer, NUM_DEC)]
-            
-            # then save the PCR product length for each genome
-            for name in names:
-                row.append(pairs[(fwd,rev)][name])
-            
-            fh.write(_SEP.join(map(str, row)) + _EOL)
-            fh.flush()
+def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int, maxTmDiff:float, numThreads:int) -> dict[tuple[Primer,Primer],dict[str,int]]:
+    """gets pairs of primers suitable for use in all ingroup genomes
 
+    Args:
+        candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate primers
+        minPrimerLen (int): minimum primer length
+        minProdLen (int): minimum PCR product length
+        maxProdLen (int): maximum PCR product length
+        maxTmDiff (float): maximum Tm difference between a pair of primers
+        numThreads (int): the number of threads available for multiprocessing
 
-def _getPrimerPairs(candidateKmers:dict[str, dict[str, list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int, maxTmDiff:float, outFn:str, numThreads:int, tempDir:str):
-    TEMP_FN = 'candidatePairs.tsv'
+    Raises:
+        RuntimeError: unable to find any suitable primer pairs 
+        RuntimeError: unable to find suitable primer pairs shared in all ingroup genomes
+
+    Returns:
+        dict[tuple[Primer,Primer],dict[str,int]]: the dictionary produced by __getAllSharedPrimerPairs
+    """
+    # messages
+    ERR_MSG_1 = "could not identify suitable primer pairs from the candidate kmers"
+    ERR_MSG_2 = "could not identify primer pairs present in every ingroup genome"
     
-    totalClock = Clocker()
-    
-    
-    print('binning candidate kmers ... ', end='', flush=True)
-    clock = Clocker()
-    
+    # bin kmers for `firstName` only
     firstName = next(iter(candidateKmers.keys()))
     binnedCandidateKmers = __binCandidatePrimers(candidateKmers[firstName], minPrimerLen)
     
+    # evaluate the pairs of bins in parallel
+    candidatePairs = __evaluateBinPairs(binnedCandidateKmers, minPrimerLen, minProdLen, maxProdLen, maxTmDiff, numThreads)
     
-    clock.printTime()
-    print('evaluating bin pairs in parallel ... ', end='', flush=True)
-    clock.restart()
+    # make sure that some candidate pairs were identified
+    if candidatePairs == []:
+        raise RuntimeError(ERR_MSG_1)
     
-    tempFn = os.path.join(tempDir, TEMP_FN)
-    candidatePairs = __evaluateBinPairs(binnedCandidateKmers, minPrimerLen, minProdLen, maxProdLen, maxTmDiff, tempFn, numThreads)
-    
-    clock.printTime()
-    print('getting all shared primer pairs ... ', end='', flush=True)
-    clock.restart()
-    
+    # find all the pairs that are shared between every ingroup genome
     pairs = __getAllSharedPrimerPairs(firstName, candidateKmers, candidatePairs, minProdLen, maxProdLen)
     
+    # make sure that some candidate pairs still exist
+    if len(pairs) == 0:
+        raise RuntimeError(ERR_MSG_2)
     
-    clock.printTime()
-    print('writing primer pairs to file ... ', end='', flush=True)
-    clock.restart()
-    
-    __writePrimerPairs(outFn, pairs)
-
-
-    clock.printTime()
-    print('pair finding runtime: ', end='', flush=True)
-    totalClock.printTime()
-
-
-
-from bin.getCandidateKmers import Clocker
+    return pairs

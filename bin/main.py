@@ -1,7 +1,9 @@
 from Bio import SeqIO
-import getopt, os, shutil, sys
+import getopt, os, sys
+from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.getPrimerPairs import _getPrimerPairs
+from bin.Clock import Clock, _printStart, _printDone
 from bin.getCandidateKmers import _getAllCandidateKmers
 
 
@@ -120,7 +122,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                    GAP + f"{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<22}{'[file] output filename'}" + EOL*2 + \
                    "optional arguments:" + EOL + \
                    GAP + f"{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<22}{'[file(s)] outgroup filename(s); comma-separated list'}" + EOL + \
-                   GAP + f"{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<22}{'[str] file format of the ingroup and outgroup'}{{{ALLOWED_FORMATS[0] + SEP_2 + ALLOWED_FORMATS[1]}}}{DEF_OPEN + DEF_FRMT + CLOSE}" + EOL + \
+                   GAP + f"{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<22}{'[str] file format of the ingroup and outgroup '}{{{ALLOWED_FORMATS[0] + SEP_2 + ALLOWED_FORMATS[1]}}}{DEF_OPEN + DEF_FRMT + CLOSE}" + EOL + \
                    GAP + f"{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<22}{'[int(s)] a single primer length or a range specified as '}" + "'min,max'" + f"{DEF_OPEN + str(DEF_MIN_LEN) + SEP_3 + str(DEF_MAX_LEN) + CLOSE}" + EOL + \
                    GAP + f"{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<22}{'[float,float] a min and max percent GC specified as a comma separated list' + DEF_OPEN + str(DEF_MIN_GC) + SEP_3 + str(DEF_MAX_GC) + CLOSE}" + EOL + \
                    GAP + f"{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<22}{'[float,float] a min and max melting temp (Tm) specified as a comma separated list' + DEF_OPEN + str(DEF_MIN_TM) + SEP_3 + str(DEF_MAX_TM) + CLOSE}" + EOL + \
@@ -311,59 +313,95 @@ def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord
     return out
 
 
+def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,int]]) -> None:
+    """writes pairs of primers to file
+
+    Args:
+        fn (str): the filename to write
+        pairs (dict[tuple[Primer,Primer],dict[str,int]]): key=primer pair; val=dict: key=genome name; val=pcr product length
+    """
+    # contants
+    EOL = "\n"
+    SEP = "\t"
+    HEADERS = ('fwd_seq',
+               'fwd_Tm',
+               'fwd_GC',
+               'rev_seq',
+               'rev_Tm',
+               'rev_GC')
+    NUM_DEC = 1
+    
+    # get a fixed order for the genome names
+    names = list(next(iter(pairs.values())).keys())
+    
+    # add the genome names to the headers
+    headers = list(HEADERS)
+    headers.extend(names)
+    
+    # open the file
+    with open(fn, 'w') as fh:
+        # write the headers
+        fh.write(SEP.join(headers) + EOL)
+        fh.flush()
+        
+        # for each primer pair
+        for fwd,rev in pairs.keys():
+            # save the primer pair data
+            row = [fwd.seq,
+                   round(fwd.Tm, NUM_DEC),
+                   round(fwd.gcPer, NUM_DEC),
+                   rev.seq,
+                   round(rev.Tm, NUM_DEC),
+                   round(rev.gcPer, NUM_DEC)]
+            
+            # then save the PCR product length for each genome
+            for name in names:
+                row.append(pairs[(fwd,rev)][name])
+            
+            fh.write(SEP.join(map(str, row)) + EOL)
+            fh.flush()
+
+
 def _main() -> None:
     """main runner function:
         * reads ingroup and outgroup sequences into memory
         * gets candidate kmers to use to search for primer pairs
         * gets primer pairs that are present in all ingroup and excluded from all outgroup
     """
-    # constant
-    TEMP_DIR = os.path.join(".", "kmerwd")
-
-    totalClock = Clocker()
-    print('parsing args ... ', end='', flush=True)
-    clock = Clocker()
+    # messages
+    MSG_1 = "identifying kmers suitable for use as primers"
+    MSG_2 = "identifying primer pairs suitable for use in PCR"
+    MSG_3A = "writing "
+    MSG_3B = " primer pairs to file"
 
     # parse command line arguments
     ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,keep,helpRequested = __parseArgs()
     
-    clock.printTime()
-    
+    # start the timers
+    totalClock = Clock()
+    clock = Clock()
     
     # only do work if help was not requested
     if not helpRequested:
-        
-        
-        print('reading sequence files into memory ... ', end='', flush=True)
-        clock.restart()
-        
         # read the ingroup and outgroup sequences into memory
         ingroupSeqs = __readSequenceData(ingroupFiles, frmt)
         outgroupSeqs = __readSequenceData(outgroupFiles, frmt)
-        
-        
-        clock.printTime()
-        
-        
+
         # get the candidate kmers for the ingroup
+        _printStart(clock, MSG_1, '\n')
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, outgroupSeqs, minPrimerLen, maxPrimerLen, minGc, maxGc, minTm, maxTm, numThreads)
-        
-        # create the temporary directory
-        if not os.path.exists(TEMP_DIR):
-            os.mkdir(TEMP_DIR)
+        _printDone(clock)
         
         # get the suitable primer pairs for the ingroup
-        _getPrimerPairs(candidateKmers, minPrimerLen, minPcrLen, maxPcrLen, maxTmDiff, outFn, numThreads, TEMP_DIR)
-
-        # remove the temporary directory unless user asked to keep it
-        if not keep:
-            shutil.rmtree(TEMP_DIR)
+        _printStart(clock, MSG_2)
+        pairs = _getPrimerPairs(candidateKmers, minPrimerLen, minPcrLen, maxPcrLen, maxTmDiff, numThreads)
+        _printDone(clock)
         
+        # write results to file
+        _printStart(clock, f"{MSG_3A}{len(pairs)}{MSG_3B}")
+        __writePrimerPairs(outFn, pairs)
+        _printDone(clock)
         
+        # print the total runtime
         print('total runtime: ', end='', flush=True)
         totalClock.printTime()
-
-
-
-
-from bin.getCandidateKmers import Clocker
