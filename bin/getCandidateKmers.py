@@ -10,7 +10,7 @@ __PLUS_STRAND = "+"
 __MINUS_STRAND = "-"
 
 # functions
-def __kmpSearch(text:str, pattern:str) -> bool:
+def _kmpSearch(text:str, pattern:str) -> tuple[bool, int]:
     """implementation of the KMP string search algorithm: O(n+m)
 
     Args:
@@ -18,7 +18,7 @@ def __kmpSearch(text:str, pattern:str) -> bool:
         pattern (str): pattern to search for
 
     Returns:
-        bool: indicates if the pattern is found in the text
+        tuple[bool, int]: indicates if the pattern is found in the text; the start position of the match
     """
 
     # helper function
@@ -88,9 +88,9 @@ def __kmpSearch(text:str, pattern:str) -> bool:
     
         # match found if at the end of the pattern
         if jdx == patternLen:
-            return True
+            return True, (idx - patternLen)
     
-    return False
+    return False, -1
 
 
 def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int) -> dict[str,dict[Seq,tuple[str,int,int]]]:
@@ -341,7 +341,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
 
         # check for each repeat in the primer
         for repeat in REPEATS:
-            if __kmpSearch(primer.seq, repeat):
+            if _kmpSearch(primer.seq, repeat)[0]:
                 return False
         return True
 
@@ -357,7 +357,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
         
         for idx in range(len(primer)-MAX_LEN):
             # see if the reverse complement exists downstream
-            if __kmpSearch(primer.seq, revComp[idx:idx+LEN_TO_CHECK]):
+            if _kmpSearch(primer.seq, revComp[idx:idx+LEN_TO_CHECK]):
                 return False
         
         return True
@@ -496,18 +496,18 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], outgroup:dict[str,l
     if len(ingroupKmers.values()) == 0:
         raise RuntimeError(ERR_MSG_1)
     
-    # get all the kmers in the outgroup
-    _printStart(clock, MSG_2)
-    outgroupKmers = __getOutgroupKmers(outgroup, minLen, maxLen)
-    _printDone(clock)
+    # # get all the kmers in the outgroup
+    # _printStart(clock, MSG_2)
+    # outgroupKmers = __getOutgroupKmers(outgroup, minLen, maxLen)
+    # _printDone(clock)
 
-    # remove any outgroup kmers from the ingroup kmers
-    _printStart(clock, MSG_3)
-    for seq in outgroupKmers:
-        for name in ingroupKmers.keys():
-            try: ingroupKmers[name].pop(seq)
-            except KeyError: pass
-    _printDone(clock)
+    # # remove any outgroup kmers from the ingroup kmers
+    # _printStart(clock, MSG_3)
+    # for seq in outgroupKmers:
+    #     for name in ingroupKmers.keys():
+    #         try: ingroupKmers[name].pop(seq)
+    #         except KeyError: pass
+    # _printDone(clock)
     
     # make sure that there are still kmers for the ingroup
     if len(ingroupKmers.values()) == 0:
