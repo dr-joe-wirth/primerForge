@@ -326,7 +326,8 @@ def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int
     with multiprocessing.Pool(numThreads) as pool:
         out = pool.starmap(__evaluateOneBinPair, args)
     
-    return out
+    # remove failed bin pairs (None) before returning
+    return [x for x in out if x is not None]
 
 
 def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Seq,Primer]:
@@ -350,7 +351,7 @@ def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Se
     return out
 
 
-def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int]], minProdLen:int, maxProdLen:int) -> dict[tuple[Primer,Primer],dict[str,int]]:
+def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int]], minProdLen:int, maxProdLen:int) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]:
     """gets all the primer pairs that are shared in all the genomes
 
     Args:
@@ -361,7 +362,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
         maxProdLen (int): the maximum PCR product length
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,int]]: key=pair of Primers; val=dict: key=genome name; val=PCR product length
+        dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length
     """
     # initialize variables    
     out = dict()
@@ -383,29 +384,45 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     for p1,p2,length in candidatePairs:
         # store the data for the genome (firstName) that has already been evaluated
         out[(p1,p2)] = dict()
-        out[(p1,p2)][firstName] = length
+        out[(p1,p2)][firstName] = (p1.contig,length)
         
         for name in remaining:
-            # look up the corresponding primers for this genome
-            k1 = kmers[name][p1.seq]
-            k2 = kmers[name][p2.seq]
+            # get the first kmer (may be rev comp)
+            try:
+                k1 = kmers[name][p1.seq]
+                k1_rev = False
+                
+            except KeyError:
+                k1 = kmers[name][p1.seq.reverse_complement()]
+                k1_rev = True
+            
+            # get the second kmer (may be rev comp)
+            try:
+                k2 = kmers[name][p2.seq]
+                k2_rev = False
+    
+            except KeyError:
+                k2 = kmers[name][p2.seq.reverse_complement()]
+                k2_rev = True
             
             # both primers need to be on the same contig
             if k1.contig == k2.contig:
-                # save values when k1 is the foward primer and k2 is the reverse primer
-                if k1.start < k2.start:
-                    fwd = k1
-                    rev = k2
-                
-                # save values when k1 is the reverse primer and k2 is the forward primer
-                else:
-                    fwd = k2
-                    rev = k1
-                
-                # only save the pair if the length falls within the acceptable range
-                length = rev.end - fwd.start + 1
-                if length in allowedLengths:
-                    out[(p1,p2)][name] = length
+                # only proceed if on opposite strands (p2 is already rev comped)
+                if k1_rev == k2_rev:
+                    # save values when k1 is the foward primer and k2 is the reverse primer
+                    if k1.start < k2.start:
+                        fwd = k1
+                        rev = k2
+                    
+                    # save values when k1 is the reverse primer and k2 is the forward primer
+                    else:
+                        fwd = k2
+                        rev = k1
+                    
+                    # only save the pair if the length falls within the acceptable range
+                    length = rev.end - fwd.start + 1
+                    if length in allowedLengths:
+                        out[(p1,p2)][name] = (fwd.contig, length)
 
     # remove any pairs that are not universally suitable in all genomes
     for pair in set(out.keys()):
