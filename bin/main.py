@@ -82,7 +82,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     DEF_MAX_PCR = 2400
     DEF_MAX_TM_DIFF = 5.0
     DEF_NUM_THREADS = 1
-    DEF_KEEP = False
 
     # messages
     IGNORE_MSG = 'ignoring unused argument: '
@@ -145,7 +144,6 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     maxPcr = DEF_MAX_PCR
     maxTmDiff = DEF_MAX_TM_DIFF
     numThreads = DEF_NUM_THREADS
-    keep = DEF_KEEP
     helpRequested = False
     
     # give help if requested
@@ -280,7 +278,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
         if outFN is None:
             raise ValueError(ERR_MSG_15)
     
-    return ingroupFns,outgroupFns,outFN,frmt,minLen,maxLen,minGc,maxGc,minTm,maxTm,minPcr,maxPcr,maxTmDiff,numThreads,keep,helpRequested
+    return ingroupFns,outgroupFns,outFN,frmt,minLen,maxLen,minGc,maxGc,minTm,maxTm,minPcr,maxPcr,maxTmDiff,numThreads,helpRequested
 
 
 def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
@@ -315,20 +313,30 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,int]]) -
     # contants
     EOL = "\n"
     SEP = "\t"
-    HEADERS = ('fwd_seq',
-               'fwd_Tm',
-               'fwd_GC',
-               'rev_seq',
-               'rev_Tm',
-               'rev_GC')
     NUM_DEC = 1
     
-    # get a fixed order for the genome names
-    names = list(next(iter(pairs.values())).keys())
+    # helper function to create the headers
+    def getHeaders(names) -> list[str]:
+        # constants
+        HEADERS = ('fwd_seq',
+                   'fwd_Tm',
+                   'fwd_GC',
+                   'rev_seq',
+                   'rev_Tm',
+                   'rev_GC')
+        CONTIG = "_contig"
+        LENGTH = "_length"
+        
+        # each name will have a contig and a length
+        headers = list(HEADERS)
+        for name in names:
+            headers.append(name + CONTIG)
+            headers.append(name + LENGTH)
+        
+        return headers
     
-    # add the genome names to the headers
-    headers = list(HEADERS)
-    headers.extend(names)
+    names = list(next(iter(pairs.values())).keys())
+    headers = getHeaders(names)
     
     # open the file
     with open(fn, 'w') as fh:
@@ -346,9 +354,9 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,int]]) -
                    round(rev.Tm, NUM_DEC),
                    round(rev.gcPer, NUM_DEC)]
             
-            # then save the PCR product length for each genome
+            # then save the contig name and PCR product length for each genome
             for name in names:
-                row.append(pairs[(fwd,rev)][name])
+                row.extend(pairs[(fwd,rev)][name])
             
             fh.write(SEP.join(map(str, row)) + EOL)
             fh.flush()
