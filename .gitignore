@@ -161,4 +161,6 @@ cython_debug/
 
 # additional ignores for testing and debugging
 test/
-debug.py
+debug*py
+screenlog*
+proto*.py
