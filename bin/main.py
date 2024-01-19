@@ -405,13 +405,14 @@ def _main() -> None:
         * gets primer pairs that are present in all ingroup and excluded from all outgroup
     """
     # messages
-    MSG_1 = "identifying kmers suitable for use as primers"
-    MSG_2 = "identifying primer pairs suitable for use in PCR"
+    MSG_1  = "identifying kmers suitable for use as primers"
+    MSG_2  = "identifying primer pairs suitable for use in PCR"
     MSG_3A = "    identified "
     MSG_3B = " candidate primer pairs shared in all ingroup sequences"
-    MSG_4 = "removing primer pairs present in the outgroup sequences"
+    MSG_4  = "removing primer pairs present in the outgroup sequences"
     MSG_5A = "writing "
     MSG_5B = " primer pairs to file"
+    MSG_6  = '\ntotal runtime: '
 
     # parse command line arguments
     ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,disallowedLens,numThreads,helpRequested = __parseArgs()
@@ -453,5 +454,5 @@ def _main() -> None:
         _printDone(clock)
         
         # print the total runtime
-        print('total runtime: ', end='', flush=True)
+        print(MSG_6, end='', flush=True)
         totalClock.printTime()
