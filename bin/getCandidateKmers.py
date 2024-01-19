@@ -306,7 +306,7 @@ def __reorganizeDataByPosition(kmers:dict[str,dict[Seq,tuple[str,int,int]]]) -> 
     return out
 
 
-def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]], minGc:float, maxGc:float, minTm:float, maxTm:float, shared:ListProxy) -> None:
+def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
     """evaluates all the primers at a single position in the genome; designed for parallel calls
 
     Args:
@@ -317,11 +317,9 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
         maxGc (float): the maximum percent GC allowed
         minTm (float): the minimum melting temperature allowed
         maxTm (float): the maximum melting temperature allowed
-        shareL (ListProxy): a shared list for parallel calling;
     
     Returns:
-        Does not return.
-        Primer sequences passing the boolean checks are added to the shared list
+        Primer: a suitable primer at the given position
     """
     # define helper functions to make booleans below more readable
     def isGcWithinRange(primer:Primer) -> bool:
@@ -357,17 +355,16 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
         
         for idx in range(len(primer)-MAX_LEN):
             # see if the reverse complement exists downstream
-            if _kmpSearch(primer.seq, revComp[idx:idx+LEN_TO_CHECK]):
+            if _kmpSearch(primer.seq, revComp[idx:idx+LEN_TO_CHECK])[0]:
                 return False
         
         return True
     
     # initialize values for the while loop
-    found = False
     idx = 0
     
     # continue to iterate through each primer in the list until a primer is found 
-    while idx < len(posL) and not found:
+    for idx in range(len(posL)):
         # extract data from the list
         seq,length = posL[idx]
         
@@ -378,11 +375,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
         if isGcWithinRange(primer) and isTmWithinRange(primer): # O(1)
             if noLongRepeats(primer): # O(1)
                 if noIntraPrimerComplements(primer): # this runtime is the worst O(len(primer)); evaluate last
-                    shared.append(primer)
-                    found = True
-                
-        # move to the next item in the list
-        idx += 1
+                    return primer
 
 
 def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int]]]], minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> list[Primer]:
@@ -399,8 +392,7 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int]]]], minGc:flo
     Returns:
         list[Primer]: a list of suitable primers as Primer objects
     """
-    # initialize a shared list and a list of arguments
-    out = multiprocessing.Manager().list()
+    # initialize a list of arguments
     args = list()
 
     # each contig needs to be evalutated
@@ -408,16 +400,16 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int]]]], minGc:flo
         # each start position within the contig needs to be evaluated
         for start in kmers[contig].keys():
             # save arguments to pass in parallel
-            args.append((contig, start, kmers[contig][start], minGc, maxGc, minTm, maxTm, out))
+            args.append((contig, start, kmers[contig][start], minGc, maxGc, minTm, maxTm))
 
     # parallelize primer evaluations
     pool = multiprocessing.Pool(processes=numThreads)
-    pool.starmap(__evaluateKmersAtOnePosition, args)
+    results = pool.starmap(__evaluateKmersAtOnePosition, args)
     pool.close()
     pool.join()
 
-    # collapse the shared list before returning
-    return list(out)
+    # remove failed searches before returning
+    return [x for x in results if x is not None]
  
 
 def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[Primer]) -> dict[str,dict[str,list[Primer]]]:
