@@ -154,47 +154,6 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int) -> dict[str,d
     return kmers
             
 
-def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> set[Seq]:
-    """gets all of the kmers in a given contig
-
-    Args:
-        contig (SeqRecord): the contig as a SeqRecord object
-        minLen (int): the minimum kmer length
-        maxLen (int): the maximum kmer length
-
-    Returns:
-        set[Seq]: a set of kmers as Seq objects
-    """
-    # initialize variables
-    out = set()
-        
-    # get forward and reverse sequences
-    fwdSeq:Seq = contig.seq
-    revSeq:Seq = fwdSeq.reverse_complement()
-    
-    # for each position in the genome
-    for start in range(len(fwdSeq)):
-        # for each primer length
-        for primerLen in range(minLen, maxLen+1):
-            # extract the sequences from both plus/minus strands
-            fwdKmer = fwdSeq[start:start+primerLen]
-            revKmer = revSeq[-(start+primerLen):-start]
-            
-            # if the kmer length is less than the primerlen, then move to the next
-            if len(fwdKmer) < primerLen:
-                break
-        
-            # save the forward and reverse kmers
-            out.add(fwdKmer)
-            out.add(revKmer)
-        
-        # if the kmer is shorter than the min length, then done with this contig
-        if len(fwdKmer) < minLen:
-            break
-    
-    return out
-
-
 def __getSharedKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> dict[str,dict[Seq,tuple[str,int,int]]]:
     """retrieves all the kmers that are shared between the input genomes
 
@@ -255,28 +214,6 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> 
             kmers[name][seq.reverse_complement()] = tmp.pop(seq)
     
     return kmers
-
-
-def __getOutgroupKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> set[Seq]:
-    """gets all of the kmers found in the input sequences
-
-    Args:
-        seqs (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
-        minLen (int): the minimum kmer length
-        maxLen (int): the maximum kmer length
-
-    Returns:
-        set[Seq]: a set of all the kmers found in the outgroup as Seq objects
-    """
-    # initialize variables
-    out = set()
-    
-    # get all the kmers for each contig
-    for name in seqs:
-        for contig in seqs[name]:
-            out.update(__getAllKmers(contig, minLen, maxLen))
-    
-    return out
 
 
 def __reorganizeDataByPosition(kmers:dict[str,dict[Seq,tuple[str,int,int]]]) -> dict[str,dict[int,list[tuple[Seq,int]]]]:
@@ -467,10 +404,11 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:
     Returns:
         dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
-    MSG_1 = "    getting shared ingroup kmers that appear once in each genome"
-    MSG_2 = "    getting all outgroup kmers"
-    MSG_3 = "    removing outgroup kmers from the ingroup kmer set"
-    MSG_4 = "    evaluating candidate ingroup kmers"
+    GAP = " "*4
+    MSG_1 = GAP + "getting shared ingroup kmers that appear once in each genome"
+    MSG_2 = GAP + "evaluating candidate ingroup kmers"
+    MSG_3A = GAP*2 + "identified "
+    MSG_3B = " candidate kmers suitable for use as primers"
     ERR_MSG_1 = "failed to identify a set of kmers shared between the ingroup genomes"
     ERR_MSG_2 = "could not find ingroup kmers that are absent in the outgroup"
     ERR_MSG_3 = "none of the ingroup kmers are suitable for use as a primer"
@@ -487,19 +425,6 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:
     if len(ingroupKmers.values()) == 0:
         raise RuntimeError(ERR_MSG_1)
     
-    # # get all the kmers in the outgroup
-    # _printStart(clock, MSG_2)
-    # outgroupKmers = __getOutgroupKmers(outgroup, minLen, maxLen)
-    # _printDone(clock)
-
-    # # remove any outgroup kmers from the ingroup kmers
-    # _printStart(clock, MSG_3)
-    # for seq in outgroupKmers:
-    #     for name in ingroupKmers.keys():
-    #         try: ingroupKmers[name].pop(seq)
-    #         except KeyError: pass
-    # _printDone(clock)
-    
     # make sure that there are still kmers for the ingroup
     if len(ingroupKmers.values()) == 0:
         raise RuntimeError(ERR_MSG_2)
@@ -508,13 +433,16 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:
     positions = __reorganizeDataByPosition(next(iter(ingroupKmers.values())))
     
     # get a list of the kmers that pass the evaulation
-    _printStart(clock, MSG_4)
+    _printStart(clock, MSG_2)
     candidates = __evaluateAllKmers(positions, minGc, maxGc, minTm, maxTm, numThreads)
     _printDone(clock)
     
     # make sure there are candidate kmers
     if candidates == []:
         raise RuntimeError(ERR_MSG_3)
+    
+    # print number of candidate kmers found
+    print(f"{MSG_3A}{len(candidates)}{MSG_3B}")
     
     # create a dictionary whose keys are contigs and values are the primers
     return __buildOutput(ingroupKmers, candidates)
