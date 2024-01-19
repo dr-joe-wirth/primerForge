@@ -53,7 +53,7 @@ class Primer:
     # private methods
     def __importSeq(self, seq:Seq) -> None:
         # make sure that the sequence is upper-case
-        self.seq = Seq(str(seq).upper())
+        self.seq = seq.upper()
     
     def __calcPerGc(self) -> None:
         # constant
