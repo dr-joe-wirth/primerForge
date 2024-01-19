@@ -372,8 +372,9 @@ def _main() -> None:
     # messages
     MSG_1 = "identifying kmers suitable for use as primers"
     MSG_2 = "identifying primer pairs suitable for use in PCR"
-    MSG_3A = "writing "
-    MSG_3B = " primer pairs to file"
+    MSG_3 = "removing primer pairs present in the outgroup sequences"
+    MSG_4A = "writing "
+    MSG_4B = " primer pairs to file"
 
     # parse command line arguments
     ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,helpRequested = __parseArgs()
@@ -398,13 +399,13 @@ def _main() -> None:
         _printDone(clock)
         
         # remove primers that make products in the outgroup
-        _printStart(clock, MSG_)
+        _printStart(clock, MSG_3)
         outgroupSeqs = __readSequenceData(outgroupFiles, frmt)
         _removeOutgroupPrimers(outgroupSeqs, pairs, bad="?")   ######## what is that final parameter??
         _printDone(clock)
         
         # write results to file
-        _printStart(clock, f"{MSG_3A}{len(pairs)}{MSG_3B}")
+        _printStart(clock, f"{MSG_4A}{len(pairs)}{MSG_4B}")
         __writePrimerPairs(outFn, pairs)
         _printDone(clock)
         
