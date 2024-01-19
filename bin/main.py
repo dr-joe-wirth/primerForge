@@ -14,6 +14,8 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     Raises:
         ValueError: invalid ingroup file(s)
         ValueError: invalid outgroup file(s)
+        ValueError: two bad pcr lengths no specified
+        ValueError: bad pcr lengths are not integers
         ValueError: invalid file format
         ValueError: invalid primer length
         ValueError: primer lengths not integers
