@@ -20,15 +20,25 @@ def __getPcrLen(p1:Primer, p2:Primer, contig:SeqRecord) -> int:
                 return abs(start1 - start2) + len(p2)
             else:
                 return abs(start1 - start2) + len(p1)
+    
+    # return a 
+    return -1
 
 
-def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,int]], bad) -> None:
+def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,int]], disallowedLens:range) -> None:
     # for each contig
-    for contigs in outgroup.values():
-        for contig in contigs:
+    for name in outgroup.keys():
+        for contig in outgroup[name]:
             # for each pair in the dict (reevaluate each iteration)
             pairsToCheck = set(pairs.keys())
             for p1,p2 in pairsToCheck:
-                # remove the pair from the dictionar
-                if __getPcrLen(p1, p2, contig) is bad:  # maybe parallelize this function?  # what is bad??
+                # get the pcr product length
+                pcrLen = __getPcrLen(p1, p2, contig)
+                
+                # remove the pair from the dictionary if the length is bad
+                if pcrLen in disallowedLens:  # maybe parallelize this function?  # if so, have to parallelize each time I check contigs
                     pairs.pop((p1,p2))
+                
+                # otherwise save length in the dictionary
+                else:
+                    pairs[(p1,p2)][name] = (contig,pcrLen)
