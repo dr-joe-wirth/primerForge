@@ -20,7 +20,7 @@ class Primer:
         # initialize the attributes
         self.seq:Seq = None
         self.start:int = start
-        self.end:int = start + length
+        self.end:int = start + length - 1
         self.contig:str = contig
         self.Tm:float = None
         self.gcPer:float = None
