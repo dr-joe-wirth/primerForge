@@ -40,10 +40,16 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
 
     Args:
         outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
-        pairs (dict[tuple[Primer,Primer],dict[str,int]]): key=Primer pairs; val=dict: key=genome name; val=tuple: contig, PCR product length
+        pairs (dict[tuple[Primer,Primer],dict[str,int]]): key=Primer pairs; val=dict: key=genome name; val=contig, PCR product length
         disallowedLens (range): the range of pcr product lengths that are not allowed for the outgroup
         numThreads (int): the number of threads available for parallel processing
+
+    Raises:
+        RuntimeError: all input pairs form pcr products of the disallowed lengths
     """
+    # message
+    ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
+    
     # for each contig
     for name in outgroup.keys():
         for contig in outgroup[name]:
@@ -71,3 +77,6 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                 # otherwise save length in the dictionary
                 elif pcrLen > 0:
                     pairs[(p1,p2)][name] = (contig,pcrLen)
+    
+    if pairs == dict():
+        raise RuntimeError(ERR_MSG)
