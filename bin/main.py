@@ -8,7 +8,7 @@ from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 
 
-def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,int,bool]:
+def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,range,int,bool]:
     """parses command line arguments
 
     Raises:
@@ -29,8 +29,8 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
         ValueError: must specify an output file
 
     Returns:
-        tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,int,bool]:
-            ingroupFns,outgroupFns,outFN,format,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,helpRequested
+        tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,range,int,bool]:
+            ingroupFns,outgroupFns,outFN,format,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,disallowedLens,numThreads,helpRequested
     """
     # constants
     ALLOWED_FORMATS = ('genbank', 'fasta')
@@ -40,6 +40,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     INGROUP_FLAGS = ('-i', '--ingroup')
     OUT_FLAGS = ('-o', '--out')
     OUTGROUP_FLAGS = ('-u', '--outgroup')
+    DISALLOW_FLAGS = ("-b", "--bad_outgroup_pcr_len")
     FMT_FLAGS = ('-f', '--format')
     PRIMER_LEN_FLAGS = ('-p', '--primer_len')
     GC_FLAGS = ('-g', '--gc_range')
@@ -51,6 +52,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                  OUT_FLAGS[0][-1] + ":" + \
                  OUTGROUP_FLAGS[0][-1] + ":" + \
+                 DISALLOW_FLAGS[0][-1] + ":" + \
                  FMT_FLAGS[0][-1] + ":" + \
                  PRIMER_LEN_FLAGS[0][-1] + ":" + \
                  GC_FLAGS[0][-1] + ":" + \
@@ -62,6 +64,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
                  OUT_FLAGS[1][2:] + "=",
                  OUTGROUP_FLAGS[1][2:] + "=",
+                 DISALLOW_FLAGS[1][2:] + "=",
                  FMT_FLAGS[1][2:] + "=",
                  PRIMER_LEN_FLAGS[1][2:] + "=",
                  GC_FLAGS[1][2:] + "=",
@@ -88,19 +91,21 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     IGNORE_MSG = 'ignoring unused argument: '
     ERR_MSG_1  = 'invalid or missing ingroup file(s)'
     ERR_MSG_2  = 'invalid or missing outgroup file(s)'
-    ERR_MSG_3  = 'invalid format'
-    ERR_MSG_4  = 'can only specify one primer length or a range (min,max)'
-    ERR_MSG_5  = 'primer lengths are not integers'
-    ERR_MSG_6  = 'must specify a range of GC values (min,max)'
-    ERR_MSG_7  = 'gc values are not numeric'
-    ERR_MSG_8  = 'must specify a range of Tm values (min, max)'
-    ERR_MSG_9  = 'Tm values are not numeric'
-    ERR_MSG_10 = 'can only specify one PCR product length or a range (min,max)'
-    ERR_MSG_11 = 'PCR product lengths are not integers'
-    ERR_MSG_12 = 'max Tm difference is not numeric'
-    ERR_MSG_13 = 'num threads is not an integer'
-    ERR_MSG_14 = 'must specify one or more ingroup files'
-    ERR_MSG_15 = 'must specify an output file'
+    ERR_MSG_3  = 'must specify exactly two integers for bad outgroup PCR product length'
+    ERR_MSG_4  = 'bad outgroup PCR product lengths are not integers'
+    ERR_MSG_5  = 'invalid format'
+    ERR_MSG_6  = 'can only specify one primer length or a range (min,max)'
+    ERR_MSG_7  = 'primer lengths are not integers'
+    ERR_MSG_8  = 'must specify a range of GC values (min,max)'
+    ERR_MSG_9  = 'gc values are not numeric'
+    ERR_MSG_10 = 'must specify a range of Tm values (min, max)'
+    ERR_MSG_11 = 'Tm values are not numeric'
+    ERR_MSG_12 = 'can only specify one PCR product length or a range (min,max)'
+    ERR_MSG_13 = 'PCR product lengths are not integers'
+    ERR_MSG_14 = 'max Tm difference is not numeric'
+    ERR_MSG_15 = 'num threads is not an integer'
+    ERR_MSG_16 = 'must specify one or more ingroup files'
+    ERR_MSG_17 = 'must specify an output file'
 
     def printHelp():
         GAP = " "*4
@@ -115,18 +120,19 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                    "usage:" + EOL + \
                    GAP + "primerDesign.py [-iofpgtnrdh]" + EOL*2 + \
                    "required arguments:" + EOL + \
-                   GAP + f"{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<22}{'[file(s)] ingroup filename(s); comma-separated list'}" + EOL + \
-                   GAP + f"{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<22}{'[file] output filename'}" + EOL*2 + \
+                   GAP + f"{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<30}[file(s)] ingroup filename(s); comma-separated list{EOL}" + \
+                   GAP + f"{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<30}[file] output filename{EOL*2}" + \
                    "optional arguments:" + EOL + \
-                   GAP + f"{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<22}{'[file(s)] outgroup filename(s); comma-separated list'}" + EOL + \
-                   GAP + f"{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<22}{'[str] file format of the ingroup and outgroup '}{{{ALLOWED_FORMATS[0] + SEP_2 + ALLOWED_FORMATS[1]}}}{DEF_OPEN + DEF_FRMT + CLOSE}" + EOL + \
-                   GAP + f"{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<22}{'[int(s)] a single primer length or a range specified as '}" + "'min,max'" + f"{DEF_OPEN + str(DEF_MIN_LEN) + SEP_3 + str(DEF_MAX_LEN) + CLOSE}" + EOL + \
-                   GAP + f"{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<22}{'[float,float] a min and max percent GC specified as a comma separated list' + DEF_OPEN + str(DEF_MIN_GC) + SEP_3 + str(DEF_MAX_GC) + CLOSE}" + EOL + \
-                   GAP + f"{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<22}{'[float,float] a min and max melting temp (Tm) specified as a comma separated list' + DEF_OPEN + str(DEF_MIN_TM) + SEP_3 + str(DEF_MAX_TM) + CLOSE}" + EOL + \
-                   GAP + f"{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<22}{'[int(s)] a single PCR product length or a range specified as '}" + "'min,max'" + f"{DEF_OPEN + str(DEF_MIN_PCR) + SEP_3 + str(DEF_MAX_PCR) + CLOSE}" + EOL + \
-                   GAP + f"{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<22}{'[float] the maximum allowable Tm difference between a pair of primers' + DEF_OPEN + str(DEF_MAX_TM_DIFF) + CLOSE}" + EOL + \
-                   GAP + f"{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<22}{'[int] the number of threads for parallel processing' + DEF_OPEN + str(DEF_NUM_THREADS) + CLOSE}" + EOL + \
-                   GAP + f"{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<22}{'print this message'}" + EOL*2
+                   GAP + f"{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<30}[file(s)] outgroup filename(s); comma-separated list{EOL}" + \
+                   GAP + f"{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<30}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
+                   GAP + f"{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<30}[str] file format of the ingroup and outgroup {ALLOWED_FORMATS[0]}{SEP_2}{ALLOWED_FORMATS[1]}{DEF_OPEN}{DEF_FRMT}{CLOSE}{EOL}" + \
+                   GAP + f"{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<30}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_LEN}{SEP_3}{DEF_MAX_LEN}{CLOSE}{EOL}" + \
+                   GAP + f"{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<30}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{DEF_MIN_GC}{SEP_3}{DEF_MAX_GC}{CLOSE}{EOL}" + \
+                   GAP + f"{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<30}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{DEF_MIN_TM}{SEP_3}{DEF_MAX_TM}{CLOSE}{EOL}" + \
+                   GAP + f"{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<30}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_PCR}{SEP_3}{DEF_MAX_PCR}{CLOSE}{EOL}" + \
+                   GAP + f"{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<30}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
+                   GAP + f"{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<30}[int] the number of threads for parallel processing{DEF_OPEN}{DEF_NUM_THREADS}{CLOSE}{EOL}" + \
+                   GAP + f"{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<30}print this message{EOL*2}"
         
         print(HELP_MSG)
         
@@ -134,6 +140,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
     ingroupFns = None
     outFN = None
     outgroupFns = list()
+    disallowedLens = None # start as None; update at the end
     frmt = DEF_FRMT
     minLen = DEF_MIN_LEN
     maxLen = DEF_MAX_LEN
@@ -176,10 +183,28 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                         raise ValueError(ERR_MSG_2)
                 outgroupFns = arg
             
+            # get the disallowed outgroup pcr product lengths
+            elif opt in DISALLOW_FLAGS:
+                # split comma-separated list
+                disallowed = arg.split(SEP)
+                
+                # make sure exactly two values provided
+                if len(disallowed) != 2:
+                    raise ValueError(ERR_MSG_3)
+                
+                # coerce lengths to ints
+                try:
+                    disallowed = [int(x) for x in disallowed]
+                except:
+                    raise ValueError(ERR_MSG_4)
+                
+                # save the values
+                disallowedLens = range(min(disallowed), max(disallowed)+1)
+            
             # get the file format
             elif opt in FMT_FLAGS:
                 if arg not in ALLOWED_FORMATS:
-                    raise ValueError(ERR_MSG_3)
+                    raise ValueError(ERR_MSG_5)
                 frmt = arg
             
             # get the primer lengths
@@ -189,13 +214,13 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 
                 # make sure at one or two primers specified
                 if len(primerRange) not in {1,2}:
-                    raise ValueError(ERR_MSG_4)
+                    raise ValueError(ERR_MSG_6)
                 
                 # coerce to lengths to ints
                 try:
                     primerRange = [int(x) for x in primerRange]
                 except:
-                    raise ValueError(ERR_MSG_5)
+                    raise ValueError(ERR_MSG_7)
                 
                 # save values
                 minLen = min(primerRange)
@@ -206,13 +231,13 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 # expecting two values separated by a comma
                 gcRange = arg.split(SEP)
                 if len(gcRange) != 2:
-                    raise ValueError(ERR_MSG_6)
+                    raise ValueError(ERR_MSG_8)
                 
                 # make sure the values are numeric
                 try:
                     gcRange = [float(x) for x in gcRange]
                 except:
-                    raise ValueError(ERR_MSG_7)
+                    raise ValueError(ERR_MSG_9)
             
                 # save values
                 minGc = min(gcRange)
@@ -223,13 +248,13 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 # expecting two values separated by a comma
                 tmRange = arg.split(SEP)
                 if len(tmRange) != 2:
-                    raise ValueError(ERR_MSG_8)
+                    raise ValueError(ERR_MSG_10)
             
                 # make sure the values are numeric
                 try:
                     tmRange = [float(x) for x in tmRange]
                 except:
-                    raise ValueError(ERR_MSG_9)
+                    raise ValueError(ERR_MSG_11)
             
                 # save values
                 minTm = min(tmRange)
@@ -240,17 +265,21 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 # expecting one or two values
                 pcrRange = arg.split(SEP)
                 if len(pcrRange) not in {1,2}:
-                    raise ValueError(ERR_MSG_10)
+                    raise ValueError(ERR_MSG_12)
                 
                 # coerce to integers
                 try:
                     pcrRange = [int(x) for x in pcrRange]
                 except:
-                    raise ValueError(ERR_MSG_11)
+                    raise ValueError(ERR_MSG_13)
             
                 # save values
                 minPcr = min(pcrRange)
                 maxPcr = max(pcrRange)
+                
+                # see if the disallowed needs to be changed
+                if disallowed is None:
+                    disallowed = range(minPcr,maxPcr+1)
             
             # get the allowed Tm difference between primer pairs
             elif opt in TM_DIFF_FLAGS:
@@ -258,7 +287,7 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 try:
                     maxTmDiff = float(arg)
                 except:
-                    raise ValueError(ERR_MSG_12)
+                    raise ValueError(ERR_MSG_14)
             
             # get the number of threads to use
             elif opt in THREADS_FLAGS:
@@ -266,20 +295,24 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 try:
                     numThreads = int(arg)
                 except:
-                    raise ValueError(ERR_MSG_13)
+                    raise ValueError(ERR_MSG_15)
             
             else:
                 print(IGNORE_MSG + opt + " " + arg)
         
+        # update disallowed to match pcr parameters unless it was already specified
+        if disallowedLens is None:
+            disallowedLens = range(minPcr, maxPcr + 1)
+        
         # make sure an input file was specified
         if ingroupFns is None:
-            raise ValueError(ERR_MSG_14)
+            raise ValueError(ERR_MSG_16)
         
         # make sure an output file was specified
         if outFN is None:
-            raise ValueError(ERR_MSG_15)
+            raise ValueError(ERR_MSG_17)
     
-    return ingroupFns,outgroupFns,outFN,frmt,minLen,maxLen,minGc,maxGc,minTm,maxTm,minPcr,maxPcr,maxTmDiff,numThreads,helpRequested
+    return ingroupFns,outgroupFns,outFN,frmt,minLen,maxLen,minGc,maxGc,minTm,maxTm,minPcr,maxPcr,maxTmDiff,disallowedLens,numThreads,helpRequested
 
 
 def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
@@ -372,12 +405,14 @@ def _main() -> None:
     # messages
     MSG_1 = "identifying kmers suitable for use as primers"
     MSG_2 = "identifying primer pairs suitable for use in PCR"
-    MSG_3 = "removing primer pairs present in the outgroup sequences"
-    MSG_4A = "writing "
-    MSG_4B = " primer pairs to file"
+    MSG_3A = "    identified "
+    MSG_3B = " candidate primer pairs shared in all ingroup sequences"
+    MSG_4 = "removing primer pairs present in the outgroup sequences"
+    MSG_5A = "writing "
+    MSG_5B = " primer pairs to file"
 
     # parse command line arguments
-    ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,numThreads,helpRequested = __parseArgs()
+    ingroupFiles,outgroupFiles,outFn,frmt,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,disallowedLens,numThreads,helpRequested = __parseArgs()
     
     # start the timers
     totalClock = Clock()
@@ -392,20 +427,26 @@ def _main() -> None:
         _printStart(clock, MSG_1, '\n')
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, minPrimerLen, maxPrimerLen, minGc, maxGc, minTm, maxTm, numThreads)
         _printDone(clock)
+        del ingroupSeqs
         
         # get the suitable primer pairs for the ingroup
         _printStart(clock, MSG_2)
         pairs = _getPrimerPairs(candidateKmers, minPrimerLen, minPcrLen, maxPcrLen, maxTmDiff, numThreads)
         _printDone(clock)
+        del candidateKmers
+        
+        # print the number of candidate primer pairs
+        print(f"{MSG_3A}{len(pairs)}{MSG_3B}")
         
         # remove primers that make products in the outgroup
-        _printStart(clock, MSG_3)
+        _printStart(clock, MSG_4)
         outgroupSeqs = __readSequenceData(outgroupFiles, frmt)
-        _removeOutgroupPrimers(outgroupSeqs, pairs, bad="?")   ######## what is that final parameter??
+        _removeOutgroupPrimers(outgroupSeqs, pairs, disallowedLens, numThreads)   ######## what is that final parameter??
         _printDone(clock)
+        del outgroupSeqs
         
         # write results to file
-        _printStart(clock, f"{MSG_4A}{len(pairs)}{MSG_4B}")
+        _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}")
         __writePrimerPairs(outFn, pairs)
         _printDone(clock)
         
