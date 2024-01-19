@@ -280,8 +280,8 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                 maxPcr = max(pcrRange)
                 
                 # see if the disallowed needs to be changed
-                if disallowed is None:
-                    disallowed = range(minPcr,maxPcr+1)
+                if disallowedLens is None:
+                    disallowedLens = range(minPcr,maxPcr+1)
             
             # get the allowed Tm difference between primer pairs
             elif opt in TM_DIFF_FLAGS:
