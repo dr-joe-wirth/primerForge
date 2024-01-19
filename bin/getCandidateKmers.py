@@ -459,12 +459,11 @@ def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[
     return out
 
 
-def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], outgroup:dict[str,list[SeqRecord]], minLen:int, maxLen:int, minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> dict[str,dict[str,list[Primer]]]:
+def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:int, minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> dict[str,dict[str,list[Primer]]]:
     """gets all the candidate kmer sequences for a given ingroup with respect to a given outgroup
 
     Args:
         ingroup (dict[str,list[SeqRecord]]): the ingroup sequences: key=genome name; val=contigs as SeqRecords
-        outgroup (dict[str,list[SeqRecord]]): the outgroup sequences: key=genome name; val=contigs as SeqRecords
         minLen (int): minimum primer length
         maxLen (int): maximum primer length
         minGc (float): minimum primer G+C percent

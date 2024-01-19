@@ -5,6 +5,7 @@ from Bio.SeqRecord import SeqRecord
 from bin.getPrimerPairs import _getPrimerPairs
 from bin.Clock import Clock, _printStart, _printDone
 from bin.getCandidateKmers import _getAllCandidateKmers
+from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 
 
 def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,int,bool]:
@@ -385,16 +386,21 @@ def _main() -> None:
     if not helpRequested:
         # read the ingroup and outgroup sequences into memory
         ingroupSeqs = __readSequenceData(ingroupFiles, frmt)
-        outgroupSeqs = __readSequenceData(outgroupFiles, frmt)
 
         # get the candidate kmers for the ingroup
         _printStart(clock, MSG_1, '\n')
-        candidateKmers = _getAllCandidateKmers(ingroupSeqs, outgroupSeqs, minPrimerLen, maxPrimerLen, minGc, maxGc, minTm, maxTm, numThreads)
+        candidateKmers = _getAllCandidateKmers(ingroupSeqs, minPrimerLen, maxPrimerLen, minGc, maxGc, minTm, maxTm, numThreads)
         _printDone(clock)
         
         # get the suitable primer pairs for the ingroup
         _printStart(clock, MSG_2)
         pairs = _getPrimerPairs(candidateKmers, minPrimerLen, minPcrLen, maxPcrLen, maxTmDiff, numThreads)
+        _printDone(clock)
+        
+        # remove primers that make products in the outgroup
+        _printStart(clock, MSG_)
+        outgroupSeqs = __readSequenceData(outgroupFiles, frmt)
+        _removeOutgroupPrimers(outgroupSeqs, pairs, bad="?")   ######## what is that final parameter??
         _printDone(clock)
         
         # write results to file
