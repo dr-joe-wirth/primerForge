@@ -5,7 +5,7 @@ from Bio.SeqRecord import SeqRecord
 from bin.getCandidateKmers import _kmpSearch
 
 
-def __getPcrLen(p1:Primer, p2:Primer, contig:SeqRecord) -> tuple[Primer,Primer,int]:
+def __getPcrLen(p1:Primer, p2:Primer, contig:Seq) -> tuple[Primer,Primer,int]:
     """gets the pcr length of a primer pair for a given contig using substring searches
 
     Args:
@@ -17,12 +17,12 @@ def __getPcrLen(p1:Primer, p2:Primer, contig:SeqRecord) -> tuple[Primer,Primer,i
         tuple[Primer,Primer,int]: a pair of primers and the corresponding pcr product length
     """
     # search the contig for the first primer sequence
-    found1,start1 = _kmpSearch(contig.seq, p1.seq)
+    found1,start1 = _kmpSearch(contig, p1.seq)
     
     # nothing to do unless first primer found
     if found1:
         # search the contig for the second primer (it is rc; need to undo that)
-        found2,start2 = _kmpSearch(contig.seq, p2.seq.reverse_complement())
+        found2,start2 = _kmpSearch(contig, p2.seq.reverse_complement())
         
         # if a second primer is found
         if found2:
@@ -53,16 +53,13 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     # for each contig
     for name in outgroup.keys():
         for contig in outgroup[name]:
-            # make sure the contig sequence is capitalized
-            contig.seq = contig.seq.upper()
-            
             # for each primer pair (reevaluate each iteration as it may change)
             pairsToCheck = set(pairs.keys())
             
             # add each pair to check to a list of arguments
             args = list()
             for p1,p2 in pairsToCheck:
-                args.append((p1, p2, contig))
+                args.append((p1, p2, contig.seq.upper()))
             
             # process the pairs in parallel for this contig
             with multiprocessing.Pool(numThreads) as pool:
