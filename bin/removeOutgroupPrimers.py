@@ -1,4 +1,5 @@
 import multiprocessing
+from Bio.Seq import Seq
 from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
