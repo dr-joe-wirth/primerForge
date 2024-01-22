@@ -333,8 +333,8 @@ def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord
     # for each file in the list
     for fn in seqFiles:
         # get the genome name and use it as a key to store the list of parsed contigs
-        name = os.path.splitext(os.path.basename(fn))[0]
-        out[name] = list(SeqIO.parse(fn, frmt))
+        name = os.path.basename(fn)
+        out[name] = SeqIO.parse(fn, frmt)
     
     return out
 
