@@ -3,10 +3,8 @@ __author__ = "Joseph S. Wirth"
 
 from Bio import SeqIO
 from bin.Primer import Primer
-from primerForge.bin.Log import Log
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-import getopt, glob, logging, os, pickle, sys
 from bin.getPrimerPairs import _getPrimerPairs
 from bin.Clock import Clock, _printStart, _printDone
 from bin.getCandidateKmers import _getAllCandidateKmers
