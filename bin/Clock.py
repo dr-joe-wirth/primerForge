@@ -131,6 +131,5 @@ def _printDone(clock:Clock) -> None:
     Args:
         clock (Clock): a Clock object
     """
-    print("done", end=' ')
-    clock.printTime()
+    print(f"done {clock.getTime()}" )
     sys.stdout.flush()

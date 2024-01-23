@@ -3,6 +3,7 @@ from Bio.Seq import Seq
 from bin.Clock import Clock, _printStart, _printDone
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
+from bin.Parameters import Parameters
 from multiprocessing.managers import ListProxy
 
 # global constants
@@ -159,13 +160,12 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
     return kmers
             
 
-def __getSharedKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> dict[Seq,dict[str,tuple[str,int,int]]]:
+def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int]]]:
     """retrieves all the kmers that are shared between the input genomes
 
     Args:
         seqs (dict[str, list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
-        minLen (int): the minimum kmer length
-        maxLen (int): the maximum kmer length
+        params (Parameters): a Parameters object
 
     Returns:
         dict[Seq,dict[str,tuple[str,int,int]]]: key=kmer sequence; val=dict: key=genome name; val=(contig, start, length)
@@ -179,10 +179,13 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], minLen:int, maxLen:int) -> 
     # for each genome
     for name in seqs.keys():
         # get the unique kmers for this genome/kmer length pair
-        kmers = __getUniqueKmers(seqs[name], minLen, maxLen, name)
+        kmers = __getUniqueKmers(seqs[name], params.minLen, params.maxLen, name)
         
         # make sure there are kmers for this genome
         if kmers == dict():
+            if params.debug:
+                params.debugger.setLogger(__getSharedKmers.__name__)
+                params.debugger.writeErrorMsg(ERR_MSG_1)
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
         # keep only the (+) strand kmers if this is the first genome
@@ -387,7 +390,7 @@ def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[
     return out
 
 
-def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:int, minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> dict[str,dict[str,list[Primer]]]:
+def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
     """gets all the candidate kmer sequences for a given ingroup with respect to a given outgroup
 
     Args:
@@ -399,10 +402,19 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:
         minTm (float): minimum primer melting temp
         maxTm (float): maximum primer melting temp
         numThreads (int): number threads available for parallel processing
+        debug (bool, optional): indicates if it should run in debug mode. Defaults to False.
+
+    Raises:
+        RuntimeError: no shared ingroup kmers
+        RuntimeError: shared ingroup kmers are not suitable for use as primers
 
     Returns:
         dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
+    # constants for debugging
+    KMER_FN = "sharedKmers.p"
+    
+    # messages
     GAP = " "*4
     MSG_1 = GAP + "getting shared ingroup kmers that appear once in each genome"
     MSG_2 = GAP + "evaluating candidate ingroup kmers"
@@ -414,25 +426,35 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], minLen:int, maxLen:
     # start the timer
     clock = Clock()
     
+    if params.debug: params.debugger.setLogger(_getAllCandidateKmers.__name__)
+    
     # get all non-duplicated kmers that are shared in the ingroup
     _printStart(clock, MSG_1)
-    kmers = __getSharedKmers(ingroup, minLen, maxLen)
+    if params.debug: params.debugger.writeDebugMsg(f'{GAP}{MSG_1}')
+    kmers = __getSharedKmers(ingroup, params)
     _printDone(clock)
     
     # make sure that ingroup kmers were identified
     if kmers == dict():
+        if params.debug:
+            params.debugger.writeErrorMsg(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
+    
+    if params.debug:
+        params.debugger.writeDebugMsg(f'{GAP}done {clock.getTime()}')
+        params.dumpObj(kmers, KMER_FN)
     
     # reorganize data by each unique start positions for one genome
     positions = __reorganizeDataByPosition(kmers)
     
     # get a list of the kmers that pass the evaulation
     _printStart(clock, MSG_2)
-    candidates = __evaluateAllKmers(positions, minGc, maxGc, minTm, maxTm, numThreads)
+    candidates = __evaluateAllKmers(positions, params.minGc, params.maxGc, params.minTm, params.maxTm, params.numThreads)
     _printDone(clock)
     
     # make sure there are candidate kmers
     if candidates == []:
+        if params.debug: params.debugger.writeErrorMsg(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
     # print number of candidate kmers found

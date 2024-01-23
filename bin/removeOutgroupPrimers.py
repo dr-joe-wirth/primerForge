@@ -3,6 +3,7 @@ from Bio.Seq import Seq
 from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
+from bin.Parameters import Parameters
 from bin.getCandidateKmers import _kmpSearch
 
 
@@ -36,7 +37,7 @@ def __getPcrLen(p1:Primer, p2:Primer, contig:Seq) -> tuple[Primer,Primer,int]:
             return p1,p2,pcrLen
 
 
-def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,int]], disallowedLens:range, numThreads:int) -> None:
+def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,int]], params:Parameters) -> None:
     """removes any primer pairs that produce PCR products of the disallowed lengths
 
     Args:
@@ -63,13 +64,13 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                 args.append((p1, p2, contig.seq.upper()))
             
             # process the pairs in parallel for this contig
-            with multiprocessing.Pool(numThreads) as pool:
+            with multiprocessing.Pool(params.numThreads) as pool:
                 results = pool.starmap(__getPcrLen, args)
             
             # evaluate each result
             for p1,p2,pcrLen in [r for r in results if r is not None]:
                 # remove the pair from the dictionary if the length is not allowed
-                if pcrLen in disallowedLens:
+                if pcrLen in params.disallowedLens:
                     pairs.pop((p1,p2))
                 
                 # otherwise save length in the dictionary
@@ -77,4 +78,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                     pairs[(p1,p2)][name] = (contig,pcrLen)
     
     if pairs == dict():
+        if params.debug:
+            params.debugger.setLogger(_removeOutgroupPrimers.__name__)
+            params.debugger.writeErrorMsg(ERR_MSG)
         raise RuntimeError(ERR_MSG)
