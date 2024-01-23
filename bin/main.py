@@ -1,5 +1,5 @@
 from Bio import SeqIO
-import getopt, os, sys
+import getopt, glob, os, sys
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.getPrimerPairs import _getPrimerPairs
@@ -122,10 +122,10 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
                    "usage:" + EOL + \
                    GAP + "primerDesign.py [-iofpgtnrdh]" + EOL*2 + \
                    "required arguments:" + EOL + \
-                   GAP + f"{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<30}[file(s)] ingroup filename(s); comma-separated list{EOL}" + \
+                   GAP + f'{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<30}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                    GAP + f"{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<30}[file] output filename{EOL*2}" + \
                    "optional arguments:" + EOL + \
-                   GAP + f"{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<30}[file(s)] outgroup filename(s); comma-separated list{EOL}" + \
+                   GAP + f'{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<30}[file(s)] outgroup filename filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                    GAP + f"{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<30}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
                    GAP + f"{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<30}[str] file format of the ingroup and outgroup {ALLOWED_FORMATS[0]}{SEP_2}{ALLOWED_FORMATS[1]}{DEF_OPEN}{DEF_FRMT}{CLOSE}{EOL}" + \
                    GAP + f"{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<30}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_LEN}{SEP_3}{DEF_MAX_LEN}{CLOSE}{EOL}" + \
@@ -167,11 +167,12 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
         for opt,arg in opts:
             # get the ingroup filenames
             if opt in INGROUP_FLAGS:
-                arg = arg.split(SEP)
-                for fn in arg:
+                ingroupFns = glob.glob(arg)
+                for fn in ingroupFns:
                     if not os.path.isfile(fn):
                         raise ValueError(ERR_MSG_1)
-                ingroupFns = arg
+                if ingroupFns == []:
+                    raise ValueError(ERR_MSG_1)
             
             # get output filehandle
             elif opt in OUT_FLAGS:
@@ -179,11 +180,12 @@ def __parseArgs() -> tuple[list[str],list[str],str,str,int,int,float,float,float
             
             # get the outgroup filenames
             elif opt in OUTGROUP_FLAGS:
-                arg = arg.split(SEP)
+                outgroupFns = glob.glob(arg)
                 for fn in arg:
                     if not os.path.isfile(fn):
                         raise ValueError(ERR_MSG_2)
-                outgroupFns = arg
+                if outgroupFns == []:
+                    raise ValueError(ERR_MSG_2)
             
             # get the disallowed outgroup pcr product lengths
             elif opt in DISALLOW_FLAGS:
