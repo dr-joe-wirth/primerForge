@@ -14,20 +14,17 @@ class Clock:
         self.__duration:float = 0.0
         self.__start()
     
-    
     def __start(self) -> None:
         """ accepts no inputs
             saves the start time
         """
         self.__startTime = Clock.__time.time()
     
-    
     def __end(self) -> None:
         """ accepts no inputs
             saves the elapsed duration
         """
         self.__duration = Clock.__time.time() - self.__startTime
-        
     
     def __parseDuration(self,digi:int) -> tuple[int,int,float]:
         """converts duration from seconds to hours, minutes, and seconds
@@ -49,12 +46,14 @@ class Clock:
         
         return hours, minutes, seconds
     
-
-    def __printDuration(self, digi:int) -> None:
-        """converts the duration to a hh:mm::ss format and prints it
+    def __getDurationString(self, digi:int) -> str:
+        """converts the duration to a formatted string
 
         Args:
             digi (int): the number of decimal points for the seconds
+        
+        Returns:
+            str: the duration as a string in hh:mm:ss.ms format
         """
         # constant
         ZERO = "0"
@@ -92,9 +91,8 @@ class Clock:
         if digi != 0:
             seconds = seconds + "." + decimal
         
-        print(":".join([hours,minutes,seconds]))
+        return ":".join([hours,minutes,seconds])
         
-    
     def printTime(self, decimals:int=2) -> None:
         """prints the current time in hh:mm::ss format
 
@@ -102,19 +100,16 @@ class Clock:
             decimals (int, optional): the number of decimal points for the seconds. Defaults to 2.
         """
         self.__end()
-        self.__printDuration(decimals)
+        print(self.__getDurationString(decimals))
     
+    def getTime(self, decimals:int=2) -> str:
+        self.__end()
+        return self.__getDurationString(decimals)
     
     def restart(self) -> None:
         """ restarts the time on the clocker object
         """
         self.__start()
-    
-    
-    def getTime(self, decimals:int=2) -> tuple[int,int,float]:
-        self.__end()
-        return self.__parseDuration(decimals)
-
 
 # functions
 def _printStart(clock:Clock, msg:str, end:str=' ... ') -> None:
