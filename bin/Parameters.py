@@ -1,9 +1,11 @@
 from __future__ import annotations
-import getopt, glob, os, pickle, sys
-from bin.Debugger import Debugger
+from bin.Log import Log
 from bin.main import __version__
+import getopt, glob, os, pickle, sys
 
 class Parameters():
+    """class to store arguments and debug utilities
+    """
     def __init__(self) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
@@ -23,15 +25,15 @@ class Parameters():
         self.numThreads:int
         self.debug:bool
         self.helpRequested:bool
-        self.debugger:Debugger
+        self.log:Log
         
-        # parse the command line arguments
+        # parse the command line arguments (populates attributes)
         self.__parseArgs()
         
         # initialize a log if debugging
         if self.debug:
-            self.__debugSetup()
-    
+            self.log = Log()
+
     def __parseArgs(self) -> None:
         """parses command line arguments
 
@@ -346,30 +348,38 @@ class Parameters():
             # make sure an output file was specified
             if self.outFn is None:
                 raise ValueError(ERR_MSG_17)
-
-    def __debugSetup(self):
-        self.debugger = Debugger()
     
-    def logRunDetails(self, name:str, version:str) -> None:
+    def saveRunDetails(self) -> None:
+        """saves the details for the current instance of the program
+        """
+        # constant
         WIDTH = 32
-        self.debugger.writeDebugMsg(name, f'{"version:":<{WIDTH}}{version}')
-        self.debugger.writeDebugMsg(name, f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
-        self.debugger.writeDebugMsg(name, f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
-        self.debugger.writeDebugMsg(name, f'{"out filename:":{WIDTH}}{self.outFn}')
-        self.debugger.writeDebugMsg(name, f'{"file format:":{WIDTH}}{self.format}')
-        self.debugger.writeDebugMsg(name, f'{"min kmer len:":{WIDTH}}{self.minLen}')
-        self.debugger.writeDebugMsg(name, f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
-        self.debugger.writeDebugMsg(name, f'{"min % G+C":<{WIDTH}}{self.minGc}')
-        self.debugger.writeDebugMsg(name, f'{"max % G+C":<{WIDTH}}{self.maxGc}')
-        self.debugger.writeDebugMsg(name, f'{"min Tm:":<{WIDTH}}{self.minTm}')
-        self.debugger.writeDebugMsg(name, f'{"max Tm:":<{WIDTH}}{self.maxTm}')
-        self.debugger.writeDebugMsg(name, f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
-        self.debugger.writeDebugMsg(name, f'{"min PCR len:":<{WIDTH}}{self.minPcr}')
-        self.debugger.writeDebugMsg(name, f'{"max PCR len:":<{WIDTH}}{self.maxPcr}')
-        self.debugger.writeDebugMsg(name, f'{"disallowed outgroup PCR lens:":<{WIDTH}}{",".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
-        self.debugger.writeDebugMsg(name, f'{"num threads:":<{WIDTH}}{self.numThreads}')
+        
+        # write the parameters to the log file
+        self.log.writeDebugMsg(f'{"version:":<{WIDTH}}{__version__}')
+        self.log.writeDebugMsg(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
+        self.log.writeDebugMsg(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
+        self.log.writeDebugMsg(f'{"out filename:":{WIDTH}}{self.outFn}')
+        self.log.writeDebugMsg(f'{"file format:":{WIDTH}}{self.format}')
+        self.log.writeDebugMsg(f'{"min kmer len:":{WIDTH}}{self.minLen}')
+        self.log.writeDebugMsg(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
+        self.log.writeDebugMsg(f'{"min % G+C":<{WIDTH}}{self.minGc}')
+        self.log.writeDebugMsg(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
+        self.log.writeDebugMsg(f'{"min Tm:":<{WIDTH}}{self.minTm}')
+        self.log.writeDebugMsg(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
+        self.log.writeDebugMsg(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
+        self.log.writeDebugMsg(f'{"min PCR len:":<{WIDTH}}{self.minPcr}')
+        self.log.writeDebugMsg(f'{"max PCR len:":<{WIDTH}}{self.maxPcr}')
+        self.log.writeDebugMsg(f'{"disallowed outgroup PCR lens:":<{WIDTH}}{",".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
+        self.log.writeDebugMsg(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
-    def dumpObj(self, obj, fn:str) -> None:
-        with open(os.path.join(self.debugger.debugDir, fn)) as fh:
+    def dumpObj(self, obj:any, fn:str) -> None:
+        """dumps an object in memory to file as a pickle
+
+        Args:
+            obj (any): the object to dump
+            fn (str): the filename where object will be dumped
+        """
+        with open(os.path.join(self.log.debugDir, fn), 'wb') as fh:
             pickle.dump(obj, fh)
     

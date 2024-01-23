@@ -1,10 +1,9 @@
 import multiprocessing
 from Bio.Seq import Seq
-from bin.Clock import Clock, _printStart, _printDone
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from multiprocessing.managers import ListProxy
+from bin.Clock import Clock, _printStart, _printDone
 
 # global constants
 __PLUS  = "+"
@@ -184,8 +183,8 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
         # make sure there are kmers for this genome
         if kmers == dict():
             if params.debug:
-                params.debugger.setLogger(__getSharedKmers.__name__)
-                params.debugger.writeErrorMsg(ERR_MSG_1)
+                params.log.setLogger(__getSharedKmers.__name__)
+                params.log.writeErrorMsg(ERR_MSG_1)
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
         # keep only the (+) strand kmers if this is the first genome
@@ -426,22 +425,22 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     # start the timer
     clock = Clock()
     
-    if params.debug: params.debugger.setLogger(_getAllCandidateKmers.__name__)
+    if params.debug: params.log.setLogger(_getAllCandidateKmers.__name__)
     
     # get all non-duplicated kmers that are shared in the ingroup
     _printStart(clock, MSG_1)
-    if params.debug: params.debugger.writeDebugMsg(f'{GAP}{MSG_1}')
+    if params.debug: params.log.writeInfoMsg(f'{GAP}{MSG_1}')
     kmers = __getSharedKmers(ingroup, params)
     _printDone(clock)
     
     # make sure that ingroup kmers were identified
     if kmers == dict():
         if params.debug:
-            params.debugger.writeErrorMsg(ERR_MSG_1)
+            params.log.writeErrorMsg(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
     if params.debug:
-        params.debugger.writeDebugMsg(f'{GAP}done {clock.getTime()}')
+        params.log.writeInfoMsg(f'{GAP}done {clock.getTime()}')
         params.dumpObj(kmers, KMER_FN)
     
     # reorganize data by each unique start positions for one genome
@@ -454,7 +453,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # make sure there are candidate kmers
     if candidates == []:
-        if params.debug: params.debugger.writeErrorMsg(ERR_MSG_2)
+        if params.debug: params.log.writeErrorMsg(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
     # print number of candidate kmers found

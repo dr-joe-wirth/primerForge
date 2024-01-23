@@ -1,6 +1,5 @@
 import multiprocessing
 from Bio.Seq import Seq
-from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
@@ -79,6 +78,6 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     
     if pairs == dict():
         if params.debug:
-            params.debugger.setLogger(_removeOutgroupPrimers.__name__)
-            params.debugger.writeErrorMsg(ERR_MSG)
+            params.log.setLogger(_removeOutgroupPrimers.__name__)
+            params.log.writeErrorMsg(ERR_MSG)
         raise RuntimeError(ERR_MSG)

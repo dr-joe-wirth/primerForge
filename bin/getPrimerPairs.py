@@ -1,8 +1,7 @@
+import multiprocessing
 from Bio.Seq import Seq
-import multiprocessing, os
 from bin.Primer import Primer
 from bin.Parameters import Parameters
-from bin.Clock import Clock, _printDone, _printStart
 
 
 def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
@@ -378,8 +377,8 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     # make sure that some candidate pairs were identified
     if candidatePairs == []:
         if params.debug:
-            params.debugger.setLogger(_getPrimerPairs.__name__)
-            params.debugger.writeErrorMsg(ERR_MSG_1)
+            params.log.setLogger(_getPrimerPairs.__name__)
+            params.log.writeErrorMsg(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
     # find all the pairs that are shared between every ingroup genome
@@ -388,8 +387,8 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     # make sure that some candidate pairs still exist
     if len(pairs) == 0:
         if params.debug:
-            params.debugger.setLogger(_getPrimerPairs.__name__)
-            params.debugger.writeErrorMsg(ERR_MSG_1)
+            params.log.setLogger(_getPrimerPairs.__name__)
+            params.log.writeErrorMsg(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_2)
     
     return pairs

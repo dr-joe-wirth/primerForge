@@ -1,7 +1,9 @@
 __version__ = "0.1.0"
+__author__ = "Joseph S. Wirth"
+
 from Bio import SeqIO
 from bin.Primer import Primer
-from bin.Debugger import Debugger
+from primerForge.bin.Log import Log
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 import getopt, glob, logging, os, pickle, sys
@@ -92,7 +94,7 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,int]]) -
             fh.flush()
 
 
-def _main() -> None:
+def _main(params:Parameters) -> None:
     """main runner function:
         * reads ingroup and outgroup sequences into memory
         * gets candidate kmers to use to search for primer pairs
@@ -113,9 +115,6 @@ def _main() -> None:
     MSG_5A = "writing "
     MSG_5B = " primer pairs to file"
     MSG_6  = '\ntotal runtime: '
-
-    # parse command line arguments
-    params = Parameters()
     
     # start the timers
     totalClock = Clock()
@@ -124,45 +123,44 @@ def _main() -> None:
     # only do work if help was not requested
     if not params.helpRequested:
         if params.debug:
-            params.logRunDetails(_main.__name__, __version__)
-            params.debugger.setLogger(_main.__name__)
-        
+            params.log.setLogger(_main.__name__)
+
         # read the ingroup sequences into memory
         ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
 
         # get the candidate kmers for the ingroup
         _printStart(clock, MSG_1, '\n')
-        if params.debug: params.debugger.writeDebugMsg(MSG_1)
+        if params.debug: params.log.writeInfoMsg(MSG_1)
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, params)
         _printDone(clock)
         del ingroupSeqs
         
         # save the candidates to file if in debug mode
         if params.debug:
-            params.debugger.setLogger(_main.__name__)
-            params.debugger.writeDebugMsg(f"{DONE} {clock.getTime()}")
+            params.log.setLogger(_main.__name__)
+            params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
             params.dumpObj(candidateKmers, CAND_FN)
         
         # get the suitable primer pairs for the ingroup
         _printStart(clock, MSG_2)
-        if params.debug: params.debugger.writeDebugMsg(MSG_2)
+        if params.debug: params.log.writeInfoMsg(MSG_2)
         pairs = _getPrimerPairs(candidateKmers, params)
         _printDone(clock)
         del candidateKmers
         
         # save the pairs to file if in debug mode
         if params.debug:
-            params.debugger.writeDebugMsg(f"{DONE} {clock.getTime()}")
+            params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
             params.dumpObj(pairs, PAIR_1_FN)
         
         # print the number of candidate primer pairs
         print(f"{MSG_3A}{len(pairs)}{MSG_3B}")
-        if params.debug: params.debugger.writeDebugMsg(f"{MSG_3A}{len(pairs)}{MSG_3B}")
+        if params.debug: params.log.writeInfoMsg(f"{MSG_3A}{len(pairs)}{MSG_3B}")
         
         # remove primers that make products in the outgroup
         if params.outgroupFns != []:
             _printStart(clock, MSG_4)
-            if params.debug: params.debugger.writeDebugMsg(MSG_4)
+            if params.debug: params.log.writeInfoMsg(MSG_4)
             outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
             _removeOutgroupPrimers(outgroupSeqs, pairs, params)   ######## what is that final parameter??
             _printDone(clock)
@@ -170,18 +168,18 @@ def _main() -> None:
             
             # save pairs to file if in debug mode
             if params.debug:
-                params.debugger.setLogger(_main.__name__)
-                params.debugger.writeDebugMsg(f"{DONE} {clock.getTime()}")
+                params.log.setLogger(_main.__name__)
+                params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
                 params.dumpObj(pairs, PAIR_2_FN)
         
         # write results to file
         _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}")
-        if params.debug: params.debugger.writeDebugMsg(f"{MSG_5A}{len(pairs)}{MSG_5B}")
+        if params.debug: params.log.writeInfoMsg(f"{MSG_5A}{len(pairs)}{MSG_5B}")
         __writePrimerPairs(params.outFn, pairs)
-        if params.debug: params.debugger.writeDebugMsg(f"{DONE} {clock.getTime()}")
+        if params.debug: params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
         _printDone(clock)
         
         # print the total runtime
         print(MSG_6, end='', flush=True)
         totalClock.printTime()
-        if params.debug: params.debugger.writeDebugMsg(f"{MSG_6} {clock.getTime()}")
+        if params.debug: params.log.writeInfoMsg(f"{MSG_6} {clock.getTime()}")

@@ -1,7 +1,24 @@
 #!/usr/bin/env python3
-__author__ = "Joseph S. Wirth"
-
-from bin.main import _main, __version__
+from bin.main import _main, Parameters, __version__, __author__
 
 if __name__ == "__main__":
-    _main()
+    # parse command line arguments
+    params = Parameters()
+    
+    # save the run details
+    if params.debug:
+        params.log.setLogger(__name__)
+        params.saveRunDetails()
+    
+    # catch all error messages
+    try:
+        # run main program
+        _main(params)
+        
+    except Exception as e:
+        # save the error message if in debug mode
+        if params.debug:
+            params.log.setLogger(__name__)
+            params.log.writeCriticalMsg(e)
+        
+        raise Exception(e)
