@@ -1,6 +1,7 @@
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Joseph S. Wirth"
 
+import os
 from Bio import SeqIO
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
@@ -105,8 +106,8 @@ def _main(params:Parameters) -> None:
     DONE = "done"
     
     # messages
-    MSG_1  = "identifying kmers suitable for use as primers"
-    MSG_2  = "identifying primer pairs suitable for use in PCR"
+    MSG_1 = "identifying kmers suitable for use as primers"
+    MSG_2 = "evaluating candidate ingroup kmers"
     MSG_3A = "    identified "
     MSG_3B = " candidate primer pairs shared in all ingroup sequences"
     MSG_4  = "removing primer pairs present in the outgroup sequences"
@@ -131,13 +132,12 @@ def _main(params:Parameters) -> None:
         if params.debug: params.log.writeInfoMsg(MSG_1)
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, params)
         _printDone(clock)
-        del ingroupSeqs
         
         # save the candidates to file if in debug mode
         if params.debug:
             params.log.setLogger(_main.__name__)
             params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
-            params.dumpObj(candidateKmers, CAND_FN)
+            params.dumpObj(candidateKmers, CAND_FN, "candidate kmers")
         
         # get the suitable primer pairs for the ingroup
         _printStart(clock, MSG_2)
@@ -149,7 +149,7 @@ def _main(params:Parameters) -> None:
         # save the pairs to file if in debug mode
         if params.debug:
             params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
-            params.dumpObj(pairs, PAIR_1_FN)
+            params.dumpObj(pairs, PAIR_1_FN, "unfiltered pairs")
         
         # print the number of candidate primer pairs
         print(f"{MSG_3A}{len(pairs)}{MSG_3B}")
@@ -162,13 +162,11 @@ def _main(params:Parameters) -> None:
             outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
             _removeOutgroupPrimers(outgroupSeqs, pairs, params)   ######## what is that final parameter??
             _printDone(clock)
-            del outgroupSeqs
             
             # save pairs to file if in debug mode
             if params.debug:
-                params.log.setLogger(_main.__name__)
                 params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
-                params.dumpObj(pairs, PAIR_2_FN)
+                params.dumpObj(pairs, PAIR_2_FN, "filterd pairs")
         
         # write results to file
         _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}")
