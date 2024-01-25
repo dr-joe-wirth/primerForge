@@ -5,14 +5,13 @@ if __name__ == "__main__":
     # parse command line arguments
     params = Parameters()
     
-    # save the run details
+    # save the run details if debugging
     if params.debug:
         params.log.setLogger(__name__)
         params.saveRunDetails()
     
     # catch all error messages
     try:
-        # run main program
         _main(params)
         
     except Exception as e:
@@ -20,5 +19,6 @@ if __name__ == "__main__":
         if params.debug:
             params.log.setLogger(__name__)
             params.log.writeCriticalMsg(e)
-        
+
+        # terminate        
         raise Exception(e)
