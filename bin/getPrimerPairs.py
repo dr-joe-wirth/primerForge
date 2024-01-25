@@ -277,7 +277,9 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     Returns:
         dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length
     """
-    # initialize variables    
+    # initialize variables
+    k1:Primer
+    k2:Primer
     out = dict()
     allowedLengths = range(minProdLen, maxProdLen+1)
     
@@ -292,13 +294,12 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
         kmers[name] = __restructureCandidateKmerData(candidateKmers[name])
         
     # for each pair of primers in the candidate pairs
-    k1:Primer
-    k2:Primer
     for p1,p2,length in candidatePairs:
         # store the data for the genome (firstName) that has already been evaluated
         out[(p1,p2)] = dict()
         out[(p1,p2)][firstName] = (p1.contig,length)
         
+        # for each unprocessed genome
         for name in remaining:
             # get the first kmer (may be rev comp)
             try:
@@ -367,28 +368,37 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     ERR_MSG_1 = "could not identify suitable primer pairs from the candidate kmers"
     ERR_MSG_2 = "could not identify primer pairs present in every ingroup genome"
     
-    # bin kmers for `firstName` only
-    firstName = next(iter(candidateKmers.keys()))
-    binnedCandidateKmers = __binCandidatePrimers(candidateKmers[firstName], params.minLen)
+    # initialize variables
+    allCand = list()
+    out = dict()
     
-    # evaluate the pairs of bins in parallel
-    candidatePairs = __evaluateBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr, params.maxTmDiff, params.numThreads)
+    # process each genome as different results may be obtained
+    for name in candidateKmers.keys():
+        # bin kmers to reduce time complexity
+        binnedCandidateKmers = __binCandidatePrimers(candidateKmers[name], params.minLen)
+    
+        # evaluate pairs of bins in parallel
+        candidatePairs = __evaluateBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr, params.maxTmDiff, params.numThreads)
+        
+        # find the candidate pairs that are shared between every ingroup genome
+        pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params.minPcr, params.maxPcr)
+        
+        # save the results for this genome
+        allCand.extend(candidatePairs)
+        out.update(pairs)
     
     # make sure that some candidate pairs were identified
-    if candidatePairs == []:
+    if allCand == []:
         if params.debug:
             params.log.setLogger(_getPrimerPairs.__name__)
             params.log.writeErrorMsg(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
-    # find all the pairs that are shared between every ingroup genome
-    pairs = __getAllSharedPrimerPairs(firstName, candidateKmers, candidatePairs, params.minPcr, params.maxPcr)
-    
-    # make sure that some candidate pairs still exist
-    if len(pairs) == 0:
+    # make sure that some candidate pairs were universal
+    elif out == dict():
         if params.debug:
             params.log.setLogger(_getPrimerPairs.__name__)
-            params.log.writeErrorMsg(ERR_MSG_1)
+            params.log.writeErrorMsg(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
-    return pairs
+    return out
