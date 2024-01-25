@@ -2,13 +2,18 @@ from __future__ import annotations
 import logging, os
 
 class Log():
-    """class to interact with the logger 
+    """class for interacting with the logger 
     """
     # global constants
     __DEBUG_DIR = "_debug"
     __LOG_FN = "primerForge.log"
     
     def __init__(self) -> Log:
+        """creates a Log object
+
+        Returns:
+            Log: a Log object
+        """
         # type hint attributes
         self.__logger:logging.Logger
         self.debugDir:str = os.path.join(os.getcwd(), Log.__DEBUG_DIR)
