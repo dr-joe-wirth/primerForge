@@ -139,7 +139,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
                 revKmer = revSeq[-(start+klen):-start]
                 
                 # mark duplicate kmers for removal
-                if isDuplicated(fwdKmer) or isDuplicated(revKmer):
+                if isDuplicated(fwdKmer):
                     bad.add(fwdKmer)
                     bad.add(revKmer)
                 
@@ -214,7 +214,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
     return sharedKmers
 
 
-def __reorganizeDataByPosition(kmers:dict[Seq,dict[str,tuple[str,int,int]]]) -> dict[str,dict[int,list[tuple[Seq,int]]]]:
+def __reorganizeDataByPosition(name:str, kmers:dict[Seq,dict[str,tuple[str,int,int]]]) -> dict[str,dict[int,list[tuple[Seq,int]]]]:
     """reorganizes data from __getSharedKmers by its genomic position
 
     Args:
@@ -228,9 +228,6 @@ def __reorganizeDataByPosition(kmers:dict[Seq,dict[str,tuple[str,int,int]]]) -> 
     
     # for each kmer
     for kmer in kmers.keys():
-        # only need to process one genome
-        name = next(iter(kmers[kmer].keys()))
-        
         # extract data from the dictionary
         contig, start, length = kmers[kmer][name]
         
@@ -381,12 +378,28 @@ def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[
             out[name][contig] = out[name].get(contig, list())
             out[name][contig].append(Primer(cand.seq, contig, start, length))
     
-    # sort each list of primers by start their position
-    for name in out.keys():
-        for contig in out[name].keys():
-            out[name][contig] = sorted(out[name][contig], key=lambda x: x.start)
-    
     return out
+
+
+def __getCandidatesForOneGenome(name:str, kmers:dict[Seq,dict[str,tuple[str,int,int]]], params:Parameters) -> dict[str.dict[str,list[Primer]]]:
+    """gets candidate primers for a single genome
+
+    Args:
+        name (str): the name of the genome to get primers for
+        kmers (dict[Seq,dict[str,tuple[str,int,int]]]): the dictionary produced by __getSharedKmers
+        params (Parameters): a Parameters object
+
+    Returns:
+        dict[str.dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
+    """
+    # reorganize data by each unique start positions for one genome
+    positions = __reorganizeDataByPosition(name, kmers)
+    
+    # get a list of the kmers that pass the evaulation
+    candidates = __evaluateAllKmers(positions, params.minGc, params.maxGc, params.minTm, params.maxTm, params.numThreads)
+    
+    # create a dictionary whose keys are contigs and values are lists of candidate primers
+    return __buildOutput(kmers, candidates)
 
 
 def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
@@ -410,28 +423,32 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     Returns:
         dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
-    # constants for debugging
+    # constant for debugging
     KMER_FN = "sharedKmers.p"
-    
+
     # messages
     GAP = " "*4
-    MSG_1 = GAP + "getting shared ingroup kmers that appear once in each genome"
-    MSG_2 = GAP + "evaluating candidate ingroup kmers"
-    MSG_3A = GAP*2 + "identified "
-    MSG_3B = " candidate kmers suitable for use as primers"
+    MSG_1 = f"{GAP}getting shared ingroup kmers that appear once in each genome"
+    MSG_2 = f"{GAP}evaluating kmers"
+    MSG_3A = f"{GAP}identified "
+    MSG_3B = " candidate kmers"
     ERR_MSG_1 = "failed to identify a set of kmers shared between the ingroup genomes"
     ERR_MSG_2 = "none of the ingroup kmers are suitable for use as a primer"
     
-    # start the timer
+    # initialize variables
     clock = Clock()
+    shared = set()
+    allseen = set()
+    out = dict()
     
-    if params.debug: params.log.setLogger(_getAllCandidateKmers.__name__)
+    # setup debugger
+    if params.debug:
+        params.log.setLogger(_getAllCandidateKmers.__name__)
     
     # get all non-duplicated kmers that are shared in the ingroup
     _printStart(clock, MSG_1)
-    if params.debug: params.log.writeInfoMsg(f'{GAP}{MSG_1}')
+    if params.debug: params.log.writeInfoMsg(f'{MSG_1}')
     kmers = __getSharedKmers(ingroup, params)
-    _printDone(clock)
     
     # make sure that ingroup kmers were identified
     if kmers == dict():
@@ -439,25 +456,79 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
             params.log.writeErrorMsg(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
-    if params.debug:
-        params.log.writeInfoMsg(f'{GAP}done {clock.getTime()}')
-        params.dumpObj(kmers, KMER_FN)
-    
-    # reorganize data by each unique start positions for one genome
-    positions = __reorganizeDataByPosition(kmers)
-    
-    # get a list of the kmers that pass the evaulation
-    _printStart(clock, MSG_2)
-    candidates = __evaluateAllKmers(positions, params.minGc, params.maxGc, params.minTm, params.maxTm, params.numThreads)
+    # print status
     _printDone(clock)
     
-    # make sure there are candidate kmers
-    if candidates == []:
+    # save data if debugging
+    if params.debug:
+        params.log.writeInfoMsg(f'{GAP}done {clock.getTime()}')
+        params.dumpObj(kmers, KMER_FN, "shared kmers")
+    
+    # print status
+    _printStart(clock, MSG_2)
+    if params.debug: params.log.writeInfoMsg(MSG_2)
+    
+    # go through each genome name
+    names = list(next(iter(kmers.values())).keys())
+    for name in names:
+        # initialize a set to track the kmers seen in this genome
+        seen = set()
+        
+        # get the candidate kmers for the genome
+        candidates = __getCandidatesForOneGenome(name, kmers, params)
+        
+        # for each genome in the candidates
+        for genome in candidates.keys():
+            # create a sub dictionary if one does not already exist
+            out[genome] = out.get(genome, dict())
+            
+            # for each contig in the genome
+            for contig in candidates[genome].keys():
+                # store a set of all the candidates for this contig
+                out[genome][contig] = out[genome].get(contig, set())
+                out[genome][contig].update(candidates[genome][contig])
+                
+                # keep track of the kmers seen in this genome
+                seen.update(candidates[genome][contig])
+        
+        # keep track of all the kmers seen
+        allseen.update(seen)
+        
+        # calculate the kmers shared in all genomes
+        if shared == set():
+            shared.update(seen)
+        else:
+            shared.intersection_update(seen)
+    
+    # remove the unshared kmers
+    bad = allseen.difference(shared)
+    for name in out.keys():
+        for contig in out[name].keys():
+            out[name][contig].difference_update(bad)
+    
+    # convert sets of primers to sorted lists; count the number of candidates
+    numCand = 0
+    for name in out.keys():
+        for contig in out[name].keys():
+            # sort the primers by start position
+            out[name][contig] = sorted(out[name][contig], key=lambda x: x.start)
+            
+            # count the number of primers (only need to do it for one genome)
+            if name == names[0]:
+                numCand += len(out[name][contig])
+
+    # make sure candidates were found
+    if numCand == 0:
         if params.debug: params.log.writeErrorMsg(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
-    # print number of candidate kmers found
-    print(f"{MSG_3A}{len(candidates)}{MSG_3B}")
+    # print status
+    _printDone(clock)
+    print(f"{MSG_3A}{numCand}{MSG_3B}")
     
-    # create a dictionary whose keys are contigs and values are lists of candidate primers
-    return __buildOutput(kmers, candidates)
+    # save data if debugging
+    if params.debug:
+        params.log.writeInfoMsg(f'{GAP}done {clock.getTime()}')
+        params.log.writeInfoMsg(f'{MSG_3A}{numCand}{MSG_3B}')
+
+    return out
