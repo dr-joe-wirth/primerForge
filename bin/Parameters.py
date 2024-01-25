@@ -373,13 +373,16 @@ class Parameters():
         self.log.writeDebugMsg(f'{"disallowed outgroup PCR lens:":<{WIDTH}}{",".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
         self.log.writeDebugMsg(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
-    def dumpObj(self, obj:any, fn:str) -> None:
+    def dumpObj(self, obj:any, fn:str, objName:str) -> None:
         """dumps an object in memory to file as a pickle
 
         Args:
             obj (any): the object to dump
             fn (str): the filename where object will be dumped
+            objName (str): the name of the dumped object
         """
-        with open(os.path.join(self.log.debugDir, fn), 'wb') as fh:
+        fn = os.path.join(self.log.debugDir, fn)
+        with open(fn, 'wb') as fh:
             pickle.dump(obj, fh)
-    
+        
+        self.log.writeDebugMsg(f"dumped {objName} to {fn}")
