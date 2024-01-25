@@ -107,7 +107,7 @@ def _main(params:Parameters) -> None:
     
     # messages
     MSG_1 = "identifying kmers suitable for use as primers"
-    MSG_2 = "evaluating candidate ingroup kmers"
+    MSG_2 = "identifying pairs of primers found in all ingroup sequences"
     MSG_3A = "    identified "
     MSG_3B = " candidate primer pairs shared in all ingroup sequences"
     MSG_4  = "removing primer pairs present in the outgroup sequences"
