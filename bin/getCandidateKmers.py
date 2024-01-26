@@ -106,13 +106,13 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
     Returns:
         dict[str,dict[Seq,dict[str,tuple[str,int,int]]]]: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen
     """
+    # constant
+    GC = {"G", "C", 'g', 'c'}
+    
     # helper functions to clarify boolean expressions
     def isOneEndGc(seq:Seq) -> bool:
         """ evaluates if one end of a sequence is a GC
         """
-        # constants
-        GC = {"G", "C", 'g', 'c'}
-        
         return seq[-1] in GC or seq[0] in GC
 
     def isDuplicated(seq:Seq) -> bool:
@@ -123,6 +123,8 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
     kmers[__PLUS] = dict()
     kmers[__MINUS] = dict()
     bad = set()
+    krange = range(minLen, maxLen + 1)
+    smallest = min(krange)
     
     # go through each contig
     for contig in seqs:
@@ -130,23 +132,42 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         fwdSeq:Seq = contig.seq
         revSeq:Seq = fwdSeq.reverse_complement()
         
-        # for each allowed kmer length
-        for klen in range(minLen, maxLen + 1):            
-            # get every possible kmer start position
-            for start in range(len(contig) - (klen - 1)):
-                # extract the kmer sequences
-                fwdKmer = fwdSeq[start:start+klen]
-                revKmer = revSeq[-(start+klen):-start]
+        # get the length of the contig
+        contigLen = len(contig)
+        done = False
+        
+        # get every possible kmer start position
+        for start in range(contigLen):
+            # for each allowed kmer length
+            for klen in krange:
+                # stop looping through the contig once we're past the smallest kmer
+                if start+smallest > contigLen:
+                    done = True
+                    break
                 
-                # mark duplicate kmers for removal
-                if isDuplicated(fwdKmer):
-                    bad.add(fwdKmer)
-                    bad.add(revKmer)
-                
-                # only save kmers that have GC at one end
-                elif isOneEndGc(fwdSeq):
-                    kmers[__PLUS][fwdKmer]  = {name: (contig.id, start, klen)}
-                    kmers[__MINUS][revKmer] = {name: (contig.id, start, klen)}
+                # stop looping through the kmers once the length is too long
+                elif start+klen > contigLen:
+                    break
+            
+                # proceed if the extracted kmer length is good
+                else:
+                    # extract the kmer sequences
+                    fwdKmer = fwdSeq[start:start+klen]
+                    revKmer = revSeq[-(start+klen):-start]
+                    
+                    # mark duplicate kmers for removal
+                    if isDuplicated(fwdKmer):
+                        bad.add(fwdKmer)
+                        bad.add(revKmer)
+                    
+                    # only save kmers that have GC at one end
+                    elif isOneEndGc(fwdSeq):
+                        kmers[__PLUS][fwdKmer]  = {name: (contig.id, start, klen)}
+                        kmers[__MINUS][revKmer] = {name: (contig.id, start, klen)}
+            
+            # stop iterating through the contig when we're done with it
+            if done:
+                break
 
     # discard any sequences that were duplicated
     for seq in bad:
