@@ -458,6 +458,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # initialize variables
     clock = Clock()
+    numCand = 0
     shared = set()
     allseen = set()
     out = dict()
@@ -521,20 +522,18 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
         else:
             shared.intersection_update(seen)
     
-    # remove the unshared kmers
+    # get all unshared kmers
     bad = allseen.difference(shared)
-    for name in out.keys():
-        for contig in out[name].keys():
-            out[name][contig].difference_update(bad)
     
-    # convert sets of primers to sorted lists; count the number of candidates
-    numCand = 0
+    # for each genome
     for name in out.keys():
+        # for each genome
         for contig in out[name].keys():
-            # sort the primers by start position
+            # remove unshared contigs and sort kmers by start position
+            out[name][contig].difference_update(bad)
             out[name][contig] = sorted(out[name][contig], key=lambda x: x.start)
             
-            # count the number of primers (only need to do it for one genome)
+            # count the number of candidate kmers for the first genome only
             if name == names[0]:
                 numCand += len(out[name][contig])
 
