@@ -87,7 +87,7 @@ def __minimizeOverlaps(bins:dict[str,dict[int,list[Primer]]], minimizerLen:int) 
                     curBin += 1
 
 
-def __binCandidatePrimers(candidates:dict[str,list[Primer]], minPrimerLen:int) -> dict[str,dict[int,list[Primer]]]:
+def __binCandidateKmers(candidates:dict[str,list[Primer]], minPrimerLen:int) -> dict[str,dict[int,list[Primer]]]:
     """bins overlapping candidate primers; splits long overlaps on minimizer sequences
 
     Args:
@@ -106,105 +106,9 @@ def __binCandidatePrimers(candidates:dict[str,list[Primer]], minPrimerLen:int) -
     return bins
 
 
-def __evaluateOneBinPair(bin1:list[Primer], bin2:list[Primer], maxTmDiff:float, minProdLen:int, maxProdLen:int) -> tuple[Primer, Primer, int]:
-    """evaluates a pair of bins of primers to find a single suitable pair; designed to run in parallel
-
-    Args:
-        bin1 (list[Primer]): the first (upstream) bin of primers
-        bin2 (list[Primer]): the second (downstream) bin of primers
-        maxTmDiff (float): the maximum difference in melting temps
-        minProdLen (int): the minimum PCR product length
-        maxProdLen (int): the maximum PCR product length
-    
-    Returns:
-        tuple[Primer,Primer,int]: a pair of primers and their corresponding pcr product length
-    """
-    # constants
-    FWD = 'forward'
-    REV = 'reverse'
-    
-    # helper functions for evaluating primers
-    def isThreePrimeGc(primer:Primer, direction:str=FWD) -> bool:
-        """checks if a primer has a G or C at its 3' end
-        """
-        # constant
-        GC = {"G", "C"}
-        
-        # different check depending if forward or reverse primer
-        if direction == FWD:
-            return primer.seq[-1] in GC
-        if direction == REV:
-            return primer.seq[0] in GC
-    
-    def isTmDiffWithinRange(p1:Primer, p2:Primer) -> bool:
-        """ checks if the difference between melting temps is within the specified range
-        """
-        return abs(p1.Tm - p2.Tm) <= maxTmDiff
-
-    def noPrimerDimer(p1:Primer, p2:Primer) -> bool:
-        """verifies that the primer pair will not form primer dimers
-        """
-        # constant
-        MAX_PID = 0.9
-        
-        # create the aligner; cost-free end gaps; no internal gaps
-        from Bio.Align import PairwiseAligner, Alignment
-        aligner = PairwiseAligner(mode='global',
-                                  end_gap_score=0,
-                                  end_open_gap_score=0,
-                                  internal_open_gap_score=-float('inf'),
-                                  match_score=2,
-                                  mismatch_score=-1)
-        
-        # go through the alignments and check for high percent identities
-        aln:Alignment
-        for aln in aligner.align(p1.seq, p2.seq):
-            matches = aln.counts().identities
-            pid1 = matches / len(p1)
-            pid2 = matches / len(p2)
-            
-            if max(pid1,pid2) > MAX_PID:
-                return False
-        
-        return True
-    
-    # for each primer in the first bin
-    for p1 in bin1:
-        # only proceed if three prime end is GC
-        if isThreePrimeGc(p1):
-            # for each primer in the second bin
-            for p2 in bin2:
-                # get the pcr product length for this pair
-                productLen = p2.end - p1.start + 1
-                
-                # only proceed if the product length is within allowable limits
-                if minProdLen <= productLen <= maxProdLen:
-                    # only proceed if the reverse primer's end is GC
-                    if isThreePrimeGc(p2, REV):
-                        # only proceed if the Tm difference is allowable
-                        if isTmDiffWithinRange(p1, p2):
-                            # only proceed if primer dimers won't form
-                            if noPrimerDimer(p1, p2):
-                                # found a suitable pair; stop comparing other primers in these bins
-                                return p1, p2.reverseComplement(), productLen
-
-
-def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int, maxTmDiff:float, numThreads:int) -> list[tuple[Primer,Primer,int]]:
-    """evaluate pairs of bins to identify candidate primer pairs for a single genome
-
-    Args:
-        binned (dict[str,dict[int,list[Primer]]]): the dictionary produced by __binCandidatePrimers
-        minPrimerLen (int): the minimum primer length
-        minProdLen (int): the minimum PCR product length
-        maxProdLen (int): the maximum PCR product length
-        maxTmDiff (float): the maximum Tm difference bewteen two primers
-        numThreads (int): the number of threads available for parallel processing
-
-    Returns:
-        list[tuple[Primer,Primer,int]]: a list of tuples produced by __evaluateOneBinPair
-    """
+def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int) -> list[tuple[str,int,int]]:
     # initialize a list of arguments for __evaluateOneBinPair
-    args = list()
+    out = list()
 
     # for each contig in the genome
     for contig in binned.keys():
@@ -233,13 +137,106 @@ def __evaluateBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int
                 
                 # otherwise, these two bins could produce viable PCR product lengths; compare them
                 else:
-                    args.append((bin1, bin2, maxTmDiff, minProdLen, maxProdLen))
+                    out.append((contig, sortedBins[idx], sortedBins[jdx]))
+    return out
+
+
+def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float) -> tuple[bool,int]:
+    """determines if a pair of primers is suitable for PCR
+
+    Args:
+        fwd (Primer): the forward primer
+        rev (Primer): the reverse primer
+        minPcr (int): minimum PCR product size
+        maxPcr (int): maximum PCR product size
+        maxTmDiff (float): maximum Tm difference bewteen Primers
+
+    Returns:
+        tuple[bool,int]: bool indicating if the pair is suitable, int indicating the PCR product length
+    """
+    # calculate the pcr product length
+    pcrLen = (rev.end - fwd.start + 1)
+
+    # unsuitable if the product length is not within the allowed range
+    if not minPcr <= pcrLen <= maxPcr: return False, pcrLen
     
-    # process pairs of bins in parallel
-    with multiprocessing.Pool(numThreads) as pool:
-        out = pool.starmap(__evaluateOneBinPair, args)
+    # unsuitable if the Tm difference is not within the allowed range
+    if not abs(fwd.Tm - rev.Tm) <= maxTmDiff: return False, pcrLen
     
-    # remove failed bin pairs (None) before returning
+    return True, pcrLen
+
+
+def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float) -> tuple[Primer,Primer,int]:
+    """evaluates a primer pair; designed to work in parallel; only returns if the pair passes evaluation
+
+    Args:
+        fwd (Primer): the forward Primer
+        rev (Primer): the reverse Primer
+        minPcr (int): the minimum PCR product size
+        maxPcr (int): the maximum PCR product size
+        maxTmDiff (float): the maximum difference between primer Tm
+
+    Returns:
+        tuple[Primer,Primer,int]: forward primer, reverse primer, pcr product size
+    """
+    # determine the product size and if the pair is suitable for PCR
+    acceptablePair, pcrLen = __isPairSuitable(fwd, rev, minPcr, maxPcr, maxTmDiff)
+    
+    # return acceptable pairs and their pcr product sizes
+    if acceptablePair: return fwd,rev,pcrLen
+
+
+def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int]]:
+    """gets candidate primer pairs from pairs of bins
+
+    Args:
+        binPairs (list[tuple[str,int,int]]): the list produced by __getBinPairs
+        bins (dict[str,dict[int,list[Primer]]]): the list produced by __binCandidateKmers
+        params (Parameters): a Parameters object
+
+    Returns:
+        list[tuple[Primer,Primer,int]]: a list of primer pairs and the corresponding pcr product size
+    """
+    # constants
+    FWD = 'forward'
+    REV = 'reverse'
+    GC = {"G", "C"}
+    
+    # helper functions for evaluating primers
+    def isThreePrimeGc(primer:Primer, direction:str=FWD) -> bool:
+        """checks if a primer has a G or C at its 3' end
+        """
+        # different check depending if forward or reverse primer
+        if direction == FWD:
+            return primer.seq[-1] in GC
+        if direction == REV:
+            return primer.seq[0] in GC
+
+    # initialize a list of arguments for parallel processing
+    args = list()
+    
+    # for each pair of bins
+    for contig,num1,num2 in binPairs:
+        # extract the lists of primers for these bins
+        bin1 = bins[contig][num1]
+        bin2 = bins[contig][num2]
+
+        # for each forward primer
+        for fwd in bin1:
+            # only evaluate if the 3' end is GC
+            if isThreePrimeGc(fwd):
+                # for each reverse primer
+                for rev in bin2:
+                    # only evaluate if the 3' end is GC
+                    if isThreePrimeGc(rev, REV):
+                        # save the arguments to the list to evaluate in parallel
+                        args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff))
+    
+    # evaluate pairs of primers in parallel
+    with multiprocessing.Pool(params.numThreads) as pool:
+        out = pool.starmap(__evaluateOnePair, args)
+    
+    # remove failed results from the list before returning
     return [x for x in out if x is not None]
 
 
@@ -264,15 +261,15 @@ def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Se
     return out
 
 
-def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int]], minProdLen:int, maxProdLen:int) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]:
+def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int]], minPcr:int, maxPcr:int) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]:
     """gets all the primer pairs that are shared in all the genomes
 
     Args:
         firstName (str): the name of the genome that has already been evaluated
         candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate Primers
         candidatePairs (list[tuple[Primer,Primer,int]]): the list produced by __evaluateBinPairs
-        minProdLen (int): the minimum PCR product length
-        maxProdLen (int): the maximum PCR product length
+        minPcr (int): the minimum PCR product length
+        maxPcr (int): the maximum PCR product length
 
     Returns:
         dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length
@@ -281,7 +278,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     k1:Primer
     k2:Primer
     out = dict()
-    allowedLengths = range(minProdLen, maxProdLen+1)
+    allowedLengths = range(minPcr, maxPcr+1)
     
     # get a set of genomes that need to be evaluated (the first name has already been evaluated)
     remaining = set(candidateKmers.keys())
@@ -347,22 +344,18 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
 
 
 def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,int]]:
-    """gets pairs of primers suitable for use in all ingroup genomes
+    """gets primer pairs found in all the ingroup genomes
 
     Args:
-        candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate primers
-        minPrimerLen (int): minimum primer length
-        minProdLen (int): minimum PCR product length
-        maxProdLen (int): maximum PCR product length
-        maxTmDiff (float): maximum Tm difference between a pair of primers
-        numThreads (int): the number of threads available for multiprocessing
+        candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig; val=list of Primers
+        params (Parameters): a Parameters object
 
     Raises:
-        RuntimeError: unable to find any suitable primer pairs 
-        RuntimeError: unable to find suitable primer pairs shared in all ingroup genomes
+        RuntimeError: unable to identify suitable primer pairs from the candidate kmers
+        RuntimeError: unable to identify primer pairs in every ingroup genome
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,int]]: the dictionary produced by __getAllSharedPrimerPairs
+        dict[tuple[Primer,Primer],dict[str,int]]: key=Primer pairs; val=dict: key=genome name; val=tuple: contig, pcr product size
     """
     # messages
     ERR_MSG_1 = "could not identify suitable primer pairs from the candidate kmers"
@@ -375,15 +368,18 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     # process each genome as different results may be obtained
     for name in candidateKmers.keys():
         # bin kmers to reduce time complexity
-        binnedCandidateKmers = __binCandidatePrimers(candidateKmers[name], params.minLen)
-    
-        # evaluate pairs of bins in parallel
-        candidatePairs = __evaluateBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr, params.maxTmDiff, params.numThreads)
+        binnedCandidateKmers = __binCandidateKmers(candidateKmers[name], params.minLen)
         
-        # find the candidate pairs that are shared between every ingroup genome
+        # get the bins that could work
+        binPairs = __getBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr)
+
+        # get candidate primer pairs
+        candidatePairs = __getCandidatePrimerPairs(binPairs, binnedCandidateKmers, params)
+        
+        # get the primer pairs that are shared in all genomes
         pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params.minPcr, params.maxPcr)
         
-        # save the results for this genome
+        # keep track of all the candidate pairs and final pairs
         allCand.extend(candidatePairs)
         out.update(pairs)
     
