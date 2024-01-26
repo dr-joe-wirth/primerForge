@@ -381,7 +381,7 @@ def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[
     return out
 
 
-def __getCandidatesForOneGenome(name:str, kmers:dict[Seq,dict[str,tuple[str,int,int]]], params:Parameters) -> dict[str.dict[str,list[Primer]]]:
+def __getCandidatesForOneGenome(name:str, kmers:dict[Seq,dict[str,tuple[str,int,int]]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
     """gets candidate primers for a single genome
 
     Args:
