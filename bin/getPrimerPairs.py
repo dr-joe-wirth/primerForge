@@ -166,7 +166,7 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     return True, pcrLen
 
 
-def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float) -> tuple[Primer,Primer,int]:
+def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float, bin1:int, bin2:int) -> tuple[Primer,Primer,int,int,int]:
     """evaluates a primer pair; designed to work in parallel; only returns if the pair passes evaluation
 
     Args:
@@ -175,18 +175,20 @@ def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:
         minPcr (int): the minimum PCR product size
         maxPcr (int): the maximum PCR product size
         maxTmDiff (float): the maximum difference between primer Tm
+        bin1 (int):
+        bin2 (int):
 
     Returns:
-        tuple[Primer,Primer,int]: forward primer, reverse primer, pcr product size
+        tuple[Primer,Primer,int,int,int]: forward primer, reverse primer, pcr product size, bin1, bin2
     """
     # determine the product size and if the pair is suitable for PCR
     acceptablePair, pcrLen = __isPairSuitable(fwd, rev, minPcr, maxPcr, maxTmDiff)
     
     # return acceptable pairs and their pcr product sizes
-    if acceptablePair: return fwd,rev,pcrLen
+    if acceptablePair: return fwd,rev,pcrLen,bin1,bin2
 
 
-def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int]]:
+def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int,int,int]]:
     """gets candidate primer pairs from pairs of bins
 
     Args:
@@ -195,7 +197,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
         params (Parameters): a Parameters object
 
     Returns:
-        list[tuple[Primer,Primer,int]]: a list of primer pairs and the corresponding pcr product size
+        list[tuple[Primer,Primer,int,int,int]]: a list of primer pairs and the corresponding pcr product size and the bin number combination
     """
     # constants
     FWD = 'forward'
@@ -230,7 +232,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
                     # only evaluate if the 3' end is GC
                     if isThreePrimeGc(rev, REV):
                         # save the arguments to the list to evaluate in parallel
-                        args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff))
+                        args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff, num1, num2))
     
     # evaluate pairs of primers in parallel
     with multiprocessing.Pool(params.numThreads) as pool:
@@ -343,6 +345,10 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
+def __keepOnePairPerBinPair(pairs:list[tuple[Primer,Primer,int,int,int]]):
+    pass
+
+
 def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,int]]:
     """gets primer pairs found in all the ingroup genomes
 
@@ -378,6 +384,9 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         
         # get the primer pairs that are shared in all genomes
         pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params.minPcr, params.maxPcr)
+        
+        # wittle down the pairs; keep only one pair per bin
+        __keepOnePairPerBinPair(pairs)
         
         # keep track of all the candidate pairs and final pairs
         allCand.extend(candidatePairs)
