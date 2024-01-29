@@ -87,7 +87,7 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
             
             # then save the contig name and PCR product length for each genome
             for name in names:
-                row.extend(pairs[(fwd,rev)][name])
+                row.append(pairs[(fwd,rev)][name])
             
             fh.write(SEP.join(map(str, row)) + EOL)
             fh.flush()
