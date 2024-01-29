@@ -166,7 +166,7 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     return True, pcrLen
 
 
-def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float, binPair:tuple[int,int]) -> tuple[Primer,Primer,int,tuple[int,int]]:
+def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float, binPair:tuple[str,int,int]) -> tuple[Primer,Primer,int,tuple[str,int,int]]:
     """evaluates a primer pair; designed to work in parallel; only returns if the pair passes evaluation
 
     Args:
@@ -187,7 +187,7 @@ def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:
     if acceptablePair: return fwd,rev,pcrLen,binPair
 
 
-def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int,tuple[int,int]]]:
+def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int,tuple[str,int,int]]]:
     """gets candidate primer pairs from pairs of bins
 
     Args:
@@ -196,7 +196,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
         params (Parameters): a Parameters object
 
     Returns:
-        list[tuple[Primer,Primer,int,int,int]]: a list of primer pairs and the corresponding pcr product size and the bin pair
+        list[tuple[Primer,Primer,int,tuple[str,int,int]]]: a list of primer pairs and the corresponding pcr product size and the bin pair
     """
     # constants
     FWD = 'forward'
@@ -231,7 +231,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
                     # only evaluate if the 3' end is GC
                     if isThreePrimeGc(rev, REV):
                         # save the arguments to the list to evaluate in parallel
-                        args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff, (num1, num2)))
+                        args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff, (contig, num1, num2)))
     
     # evaluate pairs of primers in parallel
     with multiprocessing.Pool(params.numThreads) as pool:
@@ -262,7 +262,7 @@ def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Se
     return out
 
 
-def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int]], minPcr:int, maxPcr:int) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]:
+def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int,tuple[str,int,int]]], minPcr:int, maxPcr:int) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
     """gets all the primer pairs that are shared in all the genomes
 
     Args:
@@ -292,10 +292,10 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
         kmers[name] = __restructureCandidateKmerData(candidateKmers[name])
         
     # for each pair of primers in the candidate pairs
-    for p1,p2,length in candidatePairs:
+    for p1,p2,length,binPair in candidatePairs:
         # store the data for the genome (firstName) that has already been evaluated
         out[(p1,p2)] = dict()
-        out[(p1,p2)][firstName] = (p1.contig,length)
+        out[(p1,p2)][firstName] = (p1.contig,length,binPair)
         
         # for each unprocessed genome
         for name in remaining:
@@ -334,7 +334,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
                     # only save the pair if the length falls within the acceptable range
                     length = rev.end - fwd.start + 1
                     if length in allowedLengths:
-                        out[(p1,p2)][name] = (fwd.contig, length)
+                        out[(p1,p2)][name] = (fwd.contig, length, binPair)
 
     # remove any pairs that are not universally suitable in all genomes
     for pair in set(out.keys()):
@@ -344,7 +344,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
-def __keepOnePairPerBinPair(pairs:list[tuple[Primer,Primer,int,tuple[int,int]]]) -> None:
+def __keepOnePairPerBinPair(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], name:str) -> None:
     """keeps only one primer pair per bin pair
 
     Args:
@@ -356,21 +356,21 @@ def __keepOnePairPerBinPair(pairs:list[tuple[Primer,Primer,int,tuple[int,int]]])
     # initialize a set to track the pairs that have already been seen
     seen = set()
     
-    # go through the list indices in reverse order for on-the-fly popping
-    for idx in range(len(pairs)-1,-1,-1):
-        # extract the bin pair for this primer pair
-        binPair = pairs[idx][-1]
+    # go through each pair in the dictionary
+    for pair in set(pairs.keys()):
+        # extract the bin pair for the reference genome
+        binPair = pairs[pair][name][-1]
         
-        # remove any pairs that are already represented
+        # if the bin pair has already been seen, then remove this primer pair
         if binPair in seen:
-            pairs.pop(idx)
+            pairs.pop(pair)
         
-        # otherwise this is the first time this bin pair has been seen
+        # otherwise mark the bin pair as seen
         else:
             seen.add(binPair)
-            
 
-def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,int]]:
+
+def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
     """gets primer pairs found in all the ingroup genomes
 
     Args:
@@ -407,7 +407,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params.minPcr, params.maxPcr)
         
         # wittle down the pairs; keep only one pair per bin
-        __keepOnePairPerBinPair(pairs)
+        __keepOnePairPerBinPair(pairs, name)
         
         # keep track of all the candidate pairs and final pairs
         allCand.extend(candidatePairs)

@@ -36,12 +36,12 @@ def __getPcrLen(p1:Primer, p2:Primer, contig:Seq) -> tuple[Primer,Primer,int]:
             return p1,p2,pcrLen
 
 
-def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,int]], params:Parameters) -> None:
+def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], params:Parameters) -> None:
     """removes any primer pairs that produce PCR products of the disallowed lengths
 
     Args:
         outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
-        pairs (dict[tuple[Primer,Primer],dict[str,int]]): key=Primer pairs; val=dict: key=genome name; val=contig, PCR product length
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pairs; val=dict: key=genome name; val=contig, PCR product length
         disallowedLens (range): the range of pcr product lengths that are not allowed for the outgroup
         numThreads (int): the number of threads available for parallel processing
 

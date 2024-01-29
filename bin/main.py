@@ -34,7 +34,7 @@ def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord
     return out
 
 
-def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,int]]) -> None:
+def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
     """writes pairs of primers to file
 
     Args:
