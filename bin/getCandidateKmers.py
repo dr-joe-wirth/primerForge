@@ -205,7 +205,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
         if kmers == dict():
             if params.debug:
                 params.log.setLogger(__getSharedKmers.__name__)
-                params.log.writeErrorMsg(ERR_MSG_1)
+                params.log.writeErrorMsg(f"{ERR_MSG_1}{name}")
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
         # keep only the (+) strand kmers if this is the first genome
@@ -231,6 +231,10 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
                 # remove any kmers that are not shared with this genome
                 else:
                     sharedKmers.pop(kmer)
+        
+        # log the number of shared kmers if debugging
+        if params.debug:
+            params.log.writeDebugMsg(f"{' '*8}{len(sharedKmers)} shared kmers after processing {name}")
     
     return sharedKmers
 
