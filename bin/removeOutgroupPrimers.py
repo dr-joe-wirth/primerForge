@@ -6,77 +6,162 @@ from bin.Parameters import Parameters
 from bin.getCandidateKmers import _kmpSearch
 
 
-def __getPcrLen(p1:Primer, p2:Primer, contig:Seq) -> tuple[Primer,Primer,int]:
-    """gets the pcr length of a primer pair for a given contig using substring searches
+def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int]]:
+    """gets all the kmers and their start positions from a contig
 
     Args:
-        p1 (Primer): the forward primer
-        p2 (Primer): the reverse primer
-        contig (SeqRecord): the contig to amplify using the primer pairs
+        contig (SeqRecord): a contig as a SeqRecord object
+        minLen (int): the minimum kmer length
+        maxLen (int): the maximum kmer length
 
     Returns:
-        tuple[Primer,Primer,int]: a pair of primers and the corresponding pcr product length
+        dict[Seq,list[int]]: key=kmer sequence; val=list of start positions
     """
-    # search the contig for the first primer sequence
-    found1,start1 = _kmpSearch(contig, p1.seq)
+    # initialize variables
+    kmers = dict()
+    krange = range(minLen, maxLen + 1)
+    smallest = min(krange)
     
-    # nothing to do unless first primer found
-    if found1:
-        # search the contig for the second primer (it is rc; need to undo that)
-        found2,start2 = _kmpSearch(contig, p2.seq.reverse_complement())
-        
-        # if a second primer is found
-        if found2:
-            # return the length of the pcr product
-            if start1 > start2:
-                pcrLen = start1 - start2 + len(p1)
-            else:
-                pcrLen = start2 - start1 + len(p2)
+    # extract the contig sequences
+    fwdSeq:Seq = contig.seq
+    
+    # get the length of the contig
+    contigLen = len(contig)
+    done = False
+    
+    # get every possible kmer start position
+    for start in range(contigLen):
+        # for each allowed kmer length
+        for klen in krange:
+            # stop looping through the contig once we're past the smallest kmer
+            if start+smallest > contigLen:
+                done = True
+                break
             
-            return p1,p2,pcrLen
+            # stop looping through the kmers once the length is too long
+            elif start+klen > contigLen:
+                break
+        
+            # proceed if the extracted kmer length is good
+            else:
+                # extract the kmer sequences
+                kmer = fwdSeq[start:start+klen]
+                kmers[kmer] = kmers.get(kmer, list())
+                kmers[kmer].append(start)
+        
+        # stop iterating through the contig when we're done with it
+        if done:
+            break
+
+    return kmers
+
+
+def __getOutgroupProductSizes(kmers:dict[Seq,list[int]], fwd:Primer, rev:Primer) -> set[int]:
+    """gets a set of pcr product sizes for a primer pair
+
+    Args:
+        kmers (dict[Seq,list[int]]): the dictionary produced by __getAllKmers
+        fwd (Primer): the forward primer
+        rev (Primer): the reverse primer
+
+    Returns:
+        set[int]: a set of pcr product sizes
+    """
+    # initialize the output
+    out = set()
+    
+    # try to get the primer binding sites from the kmers
+    try:
+        # (+) strand if forward and reverse sequence are both present
+        fStarts = kmers[fwd.seq]
+        rStarts = kmers[rev.seq.reverse_complement()]
+        reversed = False
+    
+    except KeyError:
+        try:
+            # (-) strand if the reverse complements are present
+            fStarts = kmers[fwd.seq.reverse_complement()]
+            rStarts = kmers[rev.seq]
+            reversed = True
+        
+        # no binding sites ==> empty set
+        except KeyError:
+            return out
+    
+    # we found the binding sites; calculate the pcr product sizes
+    for f in fStarts:
+        for r in rStarts:
+            # equation if the binding sites are on the (+) strand
+            if not reversed:
+                pcrLen = r + len(rev) - f
+            
+            # equation if the binding sites are on the (-) strand
+            else:
+                pcrLen = f + len(fwd) - r
+            
+            # negative products mean the primers are oriented opposite from each other
+            if pcrLen > 0:
+                out.add(pcrLen)
+    
+    return out
 
 
 def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], params:Parameters) -> None:
-    """removes any primer pairs that produce PCR products of the disallowed lengths
+    """removes primers found in the outgroup that produce disallowed product sizes
 
     Args:
-        outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pairs; val=dict: key=genome name; val=contig, PCR product length
-        disallowedLens (range): the range of pcr product lengths that are not allowed for the outgroup
-        numThreads (int): the number of threads available for parallel processing
+        outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple:contig,pcr product size,bin pair(contig, num1, num2)
+        params (Parameters): a Parameters object
 
     Raises:
-        RuntimeError: all input pairs form pcr products of the disallowed lengths
+        RuntimeError: all primer pairs were present in the outgroup
     """
     # message
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
     
-    # for each contig
+    # for each outgroup genome
     for name in outgroup.keys():
+        # for each contig in the genome
         for contig in outgroup[name]:
-            # for each primer pair (reevaluate each iteration as it may change)
+            # get all the kmers in this genome
+            kmers = __getAllKmers(contig, params.minLen, params.maxLen)
+            
+            # recalculate which pairs need to be evaluated
             pairsToCheck = set(pairs.keys())
-            
-            # add each pair to check to a list of arguments
-            args = list()
-            for p1,p2 in pairsToCheck:
-                args.append((p1, p2, contig.seq.upper()))
-            
-            # process the pairs in parallel for this contig
-            with multiprocessing.Pool(params.numThreads) as pool:
-                results = pool.starmap(__getPcrLen, args)
-            
-            # evaluate each result
-            for p1,p2,pcrLen in [r for r in results if r is not None]:
-                # remove the pair from the dictionary if the length is not allowed
-                if pcrLen in params.disallowedLens:
-                    pairs.pop((p1,p2))
+            for fwd,rev in pairsToCheck:
+                # get the outgroup products for this primer pair
+                outgroupProducts = __getOutgroupProductSizes(kmers, fwd, rev)
                 
-                # otherwise save length in the dictionary
-                elif pcrLen > 0:
-                    pairs[(p1,p2)][name] = (contig,pcrLen)
-    
+                # if there are no products, then the size is 0
+                if outgroupProducts == set():
+                    pairs[(fwd,rev)][name] = 0
+                
+                # if there are products
+                else:
+                    # determine if multiple product lengths need to be reported
+                    count = 0
+                    
+                    # for each pcr product length
+                    for pcrLen in outgroupProducts:
+                        # remove any pairs that produce disallowed product sizes
+                        if pcrLen in params.disallowedLens:
+                            pairs.pop((fwd,rev))
+                        
+                        # otherwise count the number of sizes seen
+                        else:
+                            count += 1
+                    
+                    # if more than one product size, then join them as a comma-separated list
+                    if count > 1:
+                        pcrLen = ",".join(map(str, outgroupProducts))
+                    
+                    # save the pcr product size for this genome (binpair is empty tuple)
+                    pairs[(fwd,rev)][name] = (contig.id, pcrLen, ())
+
+    # if the pairs is now empty, then raise an error
     if pairs == dict():
+        # save details if debugging
         if params.debug:
             params.log.setLogger(_removeOutgroupPrimers.__name__)
             params.log.writeErrorMsg(ERR_MSG)
