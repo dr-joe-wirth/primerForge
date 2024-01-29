@@ -195,6 +195,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
     
     # intialize variables
     sharedKmers = dict()
+    firstGenome = True
 
     # for each genome
     for name in seqs.keys():
@@ -209,8 +210,9 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
         # keep only the (+) strand kmers if this is the first genome
-        if sharedKmers == dict():
+        if firstGenome:
             sharedKmers.update(kmers[__PLUS])
+            firstGenome = False
         
         # otherwise keep the shared kmers (both + and -)
         else:
