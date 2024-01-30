@@ -1,6 +1,6 @@
 from __future__ import annotations
 from bin.Log import Log
-from bin.main import __version__
+from bin.main import __author__, __version__
 import getopt, glob, os, pickle, sys
 
 class Parameters():
@@ -68,14 +68,15 @@ class Parameters():
         INGROUP_FLAGS = ('-i', '--ingroup')
         OUT_FLAGS = ('-o', '--out')
         OUTGROUP_FLAGS = ('-u', '--outgroup')
-        DISALLOW_FLAGS = ("-b", "--bad_outgroup_pcr_len")
+        DISALLOW_FLAGS = ("-b", "--bad_sizes")
         FMT_FLAGS = ('-f', '--format')
         PRIMER_LEN_FLAGS = ('-p', '--primer_len')
         GC_FLAGS = ('-g', '--gc_range')
         TM_FLAGS = ('-t', '--tm_range')
         THREADS_FLAGS = ('-n', '--num_threads')
-        PCR_LEN_FLAGS = ('-r', '--pcr_prod_len')
+        PCR_LEN_FLAGS = ('-r', '--pcr_prod')
         TM_DIFF_FLAGS = ('-d', '--tm_diff')
+        VERSION_FLAGS = ('-v', '--version')
         HELP_FLAGS = ('-h', '--help')
         DEBUG_FLAGS = ("--debug",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
@@ -89,6 +90,7 @@ class Parameters():
                     PCR_LEN_FLAGS[0][-1] + ":" + \
                     TM_DIFF_FLAGS[0][-1] + ":" + \
                     THREADS_FLAGS[0][-1] + ":" + \
+                    VERSION_FLAGS[0][-1] + \
                     HELP_FLAGS[0][-1]
         LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
                     OUT_FLAGS[1][2:] + "=",
@@ -101,6 +103,7 @@ class Parameters():
                     PCR_LEN_FLAGS[1][2:] + "=",
                     TM_DIFF_FLAGS[1][2:] + "=",
                     THREADS_FLAGS[1][2:] + "=",
+                    VERSION_FLAGS[1][2:],
                     HELP_FLAGS[1][2:],
                     DEBUG_FLAGS[0][2:])
 
@@ -145,25 +148,27 @@ class Parameters():
             SEP_3 = ","
             DEF_OPEN = ' (default: '
             CLOSE = ')'
-            WIDTH = 30
-            HELP_MSG = EOL + "Finds pairs of primers suitable for a group of input genomes" + EOL + \
-                    GAP + "Joseph S. Wirth, 2023" + EOL*2 + \
-                    "usage:" + EOL + \
-                    GAP + "primerDesign.py [-iofpgtnrdh]" + EOL*2 + \
-                    "required arguments:" + EOL + \
-                    GAP + f'{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
-                    GAP + f"{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename{EOL*2}" + \
-                    "optional arguments:" + EOL + \
-                    GAP + f'{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
-                    GAP + f"{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
-                    GAP + f"{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {ALLOWED_FORMATS[0]}{SEP_2}{ALLOWED_FORMATS[1]}{DEF_OPEN}{DEF_FRMT}{CLOSE}{EOL}" + \
-                    GAP + f"{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_LEN}{SEP_3}{DEF_MAX_LEN}{CLOSE}{EOL}" + \
-                    GAP + f"{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{DEF_MIN_GC}{SEP_3}{DEF_MAX_GC}{CLOSE}{EOL}" + \
-                    GAP + f"{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{DEF_MIN_TM}{SEP_3}{DEF_MAX_TM}{CLOSE}{EOL}" + \
-                    GAP + f"{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_PCR}{SEP_3}{DEF_MAX_PCR}{CLOSE}{EOL}" + \
-                    GAP + f"{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
-                    GAP + f"{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{DEF_NUM_THREADS}{CLOSE}{EOL}" + \
-                    GAP + f"{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL*2}"
+            WIDTH = 21
+            HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
+                       f"{GAP}{__author__}, 2024{EOL*2}" + \
+                       f"usage:{EOL}" + \
+                       f"{GAP}primerForge.py [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
+                       f"required arguments:{EOL}" + \
+                       f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
+                       f"{GAP}{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename{EOL*2}" + \
+                       f"optional arguments: {EOL}" + \
+                       f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
+                       f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
+                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {ALLOWED_FORMATS[0]}{SEP_2}{ALLOWED_FORMATS[1]}{DEF_OPEN}{DEF_FRMT}{CLOSE}{EOL}" + \
+                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_LEN}{SEP_3}{DEF_MAX_LEN}{CLOSE}{EOL}" + \
+                       f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{DEF_MIN_GC}{SEP_3}{DEF_MAX_GC}{CLOSE}{EOL}" + \
+                       f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{DEF_MIN_TM}{SEP_3}{DEF_MAX_TM}{CLOSE}{EOL}" + \
+                       f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_PCR}{SEP_3}{DEF_MAX_PCR}{CLOSE}{EOL}" + \
+                       f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
+                       f"{GAP}{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{DEF_NUM_THREADS}{CLOSE}{EOL}" + \
+                       f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
+                       f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
+                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{EOL*2}"
             
             print(HELP_MSG)
             
@@ -190,6 +195,11 @@ class Parameters():
         if HELP_FLAGS[0] in sys.argv or HELP_FLAGS[1] in sys.argv or len(sys.argv) == 1:
             self.helpRequested = True
             printHelp()
+        
+        # print the version if requested
+        elif VERSION_FLAGS[0] in sys.argv or VERSION_FLAGS[1] in sys.argv:
+            self.helpRequested = True
+            print(__version__)
         
         # parse command line arguments
         else:
