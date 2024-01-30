@@ -39,7 +39,7 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
 
     Args:
         fn (str): the filename to write
-        pairs (dict[tuple[Primer,Primer],dict[str,int]]): key=primer pair; val=dict: key=genome name; val=pcr product length
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]])): key=primer pair; val=dict: key=genome name; val=tuple: contig; pcr len;  bin pair
     """
     # contants
     EOL = "\n"
@@ -87,8 +87,12 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
             
             # then save the contig name and PCR product length for each genome
             for name in names:
-                row.append(pairs[(fwd,rev)][name])
+                contig = pairs[(fwd,rev)][name][0]
+                pcrLen = pairs[(fwd,rev)][name][1]
+                row.append(contig)
+                row.append(pcrLen)
             
+            # write the data to the file
             fh.write(SEP.join(map(str, row)) + EOL)
             fh.flush()
 
@@ -97,7 +101,9 @@ def _main(params:Parameters) -> None:
     """main runner function:
         * reads ingroup and outgroup sequences into memory
         * gets candidate kmers to use to search for primer pairs
-        * gets primer pairs that are present in all ingroup and excluded from all outgroup
+        * gets primer pairs that are present in all ingroup
+        * removes primer pairs that are present in the outgroup
+        * writes data to file
     """
     # debugging constants
     CAND_FN = "candidates.p"

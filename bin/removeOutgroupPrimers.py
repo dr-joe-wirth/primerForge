@@ -135,7 +135,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                 
                 # if there are no products, then the size is 0
                 if outgroupProducts == set():
-                    pairs[(fwd,rev)][name] = 0
+                    pairs[(fwd,rev)][name] = ("NA", 0, ())
                 
                 # if there are products
                 else:
