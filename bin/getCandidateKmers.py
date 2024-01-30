@@ -102,6 +102,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         seqs (list[SeqRecord]): a list of contigs as SeqRecord objects
         minLen (int): the minimum kmer length
         maxLen (int): the maximum kmer length
+        name (str): the name of the genome
     
     Returns:
         dict[str,dict[Seq,dict[str,tuple[str,int,int]]]]: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen
@@ -184,22 +185,32 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
     """retrieves all the kmers that are shared between the input genomes
 
     Args:
-        seqs (dict[str, list[SeqRecord]]): key=genome name; val=list of contigs as SeqRecord objects
+        seqs (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs
         params (Parameters): a Parameters object
 
+    Raises:
+        RuntimeError: could not extract kmers from a single genome
+        RuntimeError: a single genome has no shared kmers with other genomes
+
     Returns:
-        dict[Seq,dict[str,tuple[str,int,int]]]: key=kmer sequence; val=dict: key=genome name; val=(contig, start, length)
+        dict[Seq,dict[str,tuple[str,int,int]]]: key=kmer; val=dict: key=genome name: val=tuple: contig, start, klen
     """
     # messages
     ERR_MSG_1 = 'failed to extract kmers from '
+    ERR_MSG_2 = 'no shared kmers after processing '
+    DBG_MSG_1 = ' shared kmers after processing '
     
     # intialize variables
     sharedKmers = dict()
     firstGenome = True
 
+    # set the debugger if required
+    if params.debug:
+        params.log.setLogger(__getSharedKmers.__name__)
+
     # for each genome
     for name in seqs.keys():
-        # get the unique kmers for this genome/kmer length pair
+        # get the unique kmers for this genome/kmer lengths
         kmers = __getUniqueKmers(seqs[name], params.minLen, params.maxLen, name)
         
         # make sure there are kmers for this genome
@@ -234,9 +245,15 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
                 else:
                     sharedKmers.pop(kmer)
         
+        # make sure the kmers did not depopulate
+        if sharedKmers == dict():
+            if params.debug:
+                params.log.writeErrorMsg(f"{ERR_MSG_2}{name}")
+            raise RuntimeError(f"{ERR_MSG_2}{name}")
+        
         # log the number of shared kmers if debugging
         if params.debug:
-            params.log.writeDebugMsg(f"{' '*8}{len(sharedKmers)} shared kmers after processing {name}")
+            params.log.writeDebugMsg(f"{' '*8}{len(sharedKmers)}{DBG_MSG_1}{name}")
     
     return sharedKmers
 
@@ -245,10 +262,11 @@ def __reorganizeDataByPosition(name:str, kmers:dict[Seq,dict[str,tuple[str,int,i
     """reorganizes data from __getSharedKmers by its genomic position
 
     Args:
-        kmers (dict[str,dict[Seq,tuple[str,int,int]]]): key=contig; val=dict: key=kmer sequence; val=contig,start,length
+        name (str): the name of the genome to be processed
+        kmers (dict[Seq,dict[str,tuple[str,int,int]]]): the dictionary produced by __getSharedKmers
 
     Returns:
-        dict[str,dict[str,dict[int,list[tuple[Seq,int]]]]]: key=contig; val=dict: key=start position; val=list of tuples: (kmer sequence, kmer length)
+        dict[str,dict[int,list[tuple[Seq,int]]]]: key=contig; val=dict: key=start position; val=list of tuples: kmer, klen
     """
     # initialize output
     out = dict()
@@ -274,7 +292,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
     Args:
         contig (str): the name of the contig
         start (int): the start position in the sequence
-        posL (list[tuple[Seq,int]]): a list of tuples; primer sequence and primer length
+        posL (list[tuple[Seq,int]]): a list of tuples; kmer, klen
         minGc (float): the minimum percent GC allowed
         maxGc (float): the maximum percent GC allowed
         minTm (float): the minimum melting temperature allowed
@@ -477,6 +495,10 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     _printStart(clock, MSG_1)
     if params.debug: params.log.writeInfoMsg(f'{MSG_1}')
     kmers = __getSharedKmers(ingroup, params)
+    
+    # move log back to this function
+    if params.debug:
+        params.log.setLogger(_getAllCandidateKmers.__name__)
     
     # make sure that ingroup kmers were identified
     if kmers == dict():
