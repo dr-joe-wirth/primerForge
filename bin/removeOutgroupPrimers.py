@@ -1,9 +1,7 @@
-import multiprocessing
 from Bio.Seq import Seq
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from bin.getCandidateKmers import _kmpSearch
 
 
 def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int]]:
