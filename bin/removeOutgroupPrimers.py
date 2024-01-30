@@ -109,11 +109,11 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
 
     Args:
         outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple:contig,pcr product size,bin pair(contig, num1, num2)
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
         params (Parameters): a Parameters object
 
     Raises:
-        RuntimeError: all primer pairs were present in the outgroup
+        RuntimeError: all candidate primer pairs were present in the outgroup
     """
     # message
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"

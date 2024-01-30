@@ -55,10 +55,6 @@ class Parameters():
             ValueError: num threads not an integer
             ValueError: must specify an ingroup file
             ValueError: must specify an output file
-
-        Returns:
-            tuple[list[str],list[str],str,str,int,int,float,float,float,float,int,int,float,range,int,bool,bool]:
-                ingroupFns,outgroupFns,outFN,format,minPrimerLen,maxPrimerLen,minGc,maxGc,minTm,maxTm,minPcrLen,maxPcrLen,maxTmDiff,disallowedLens,numThreads,helpRequested,debug
         """
         # constants
         ALLOWED_FORMATS = ('genbank', 'fasta')
@@ -363,7 +359,7 @@ class Parameters():
         """saves the details for the current instance of the program
         """
         # constant
-        WIDTH = 32
+        WIDTH = 34
         
         # write the parameters to the log file
         self.log.writeDebugMsg(f'{"version:":<{WIDTH}}{__version__}')
@@ -378,9 +374,9 @@ class Parameters():
         self.log.writeDebugMsg(f'{"min Tm:":<{WIDTH}}{self.minTm}')
         self.log.writeDebugMsg(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
         self.log.writeDebugMsg(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
-        self.log.writeDebugMsg(f'{"min PCR len:":<{WIDTH}}{self.minPcr}')
-        self.log.writeDebugMsg(f'{"max PCR len:":<{WIDTH}}{self.maxPcr}')
-        self.log.writeDebugMsg(f'{"disallowed outgroup PCR lens:":<{WIDTH}}{",".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
+        self.log.writeDebugMsg(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
+        self.log.writeDebugMsg(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
+        self.log.writeDebugMsg(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
         self.log.writeDebugMsg(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
     def dumpObj(self, obj:any, fn:str, objName:str) -> None:

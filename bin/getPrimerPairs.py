@@ -101,12 +101,23 @@ def __binCandidateKmers(candidates:dict[str,list[Primer]], minPrimerLen:int) -> 
     bins = __binOverlappingPrimers(candidates)
     
     # next divide excessively long overlapping primers by minimizers (window size 1/2 min primer len)
-    __minimizeOverlaps(bins, int(minPrimerLen / 2))
+    __minimizeOverlaps(bins, int(minPrimerLen // 2))
       
     return bins
 
 
 def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int) -> list[tuple[str,int,int]]:
+    """gets a list of bin pairs that can be used to find primer pairs
+
+    Args:
+        binned (dict[str,dict[int,list[Primer]]]): the dictionary produced by __binCandidateKmers
+        minPrimerLen (int): the minimum primer length
+        minProdLen (int): the minimum pcr product size
+        maxProdLen (int): the maximum pcr product size
+
+    Returns:
+        list[tuple[str,int,int]]: list of tuples: contig, bin1 number, bin2 number
+    """
     # initialize a list of arguments for __evaluateOneBinPair
     out = list()
 
@@ -175,7 +186,7 @@ def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:
         minPcr (int): the minimum PCR product size
         maxPcr (int): the maximum PCR product size
         maxTmDiff (float): the maximum difference between primer Tm
-        binPair (tuple): 
+        binPair (tuple[str,int,int]): contig, bin1 number, bin2 number
 
     Returns:
         tuple[Primer,Primer,int,int,int]: forward primer, reverse primer, pcr product size, bin pair
@@ -192,18 +203,18 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
 
     Args:
         binPairs (list[tuple[str,int,int]]): the list produced by __getBinPairs
-        bins (dict[str,dict[int,list[Primer]]]): the list produced by __binCandidateKmers
+        bins (dict[str,dict[int,list[Primer]]]): the dictionary produced by __binCandidateKmers
         params (Parameters): a Parameters object
 
     Returns:
-        list[tuple[Primer,Primer,int,tuple[str,int,int]]]: a list of primer pairs and the corresponding pcr product size and the bin pair
+        list[tuple[Primer,Primer,int,tuple[str,int,int]]]: a list of primer pairs, the corresponding pcr product size, and the bin pair (contig, bin1, bin2)
     """
     # constants
     FWD = 'forward'
     REV = 'reverse'
     GC = {"G", "C"}
     
-    # helper functions for evaluating primers
+    # helper function for evaluating primers
     def isThreePrimeGc(primer:Primer, direction:str=FWD) -> bool:
         """checks if a primer has a G or C at its 3' end
         """
@@ -268,12 +279,12 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     Args:
         firstName (str): the name of the genome that has already been evaluated
         candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate Primers
-        candidatePairs (list[tuple[Primer,Primer,int]]): the list produced by __evaluateBinPairs
+        candidatePairs (list[tuple[Primer,Primer,int,tuple[str,int,int]]]): the list produced by __evaluateBinPairs
         minPcr (int): the minimum PCR product length
         maxPcr (int): the maximum PCR product length
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,tuple[str,int]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length
+        dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length, bin pair (contig, bin1, bin2)
     """
     # initialize variables
     k1:Primer
@@ -348,7 +359,8 @@ def __keepOnePairPerBinPair(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,i
     """keeps only one primer pair per bin pair
 
     Args:
-        pairs (list[tuple[Primer,Primer,int,tuple[int,int]]]): the list created by __getAllSharedPrimerPairs
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary created by __getAllSharedPrimerPairs
+        name (str): the name of the genome used to bin kmers
     
     Returns:
         does not return; modifies input
@@ -382,7 +394,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         RuntimeError: unable to identify primer pairs in every ingroup genome
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,int]]: key=Primer pairs; val=dict: key=genome name; val=tuple: contig, pcr product size
+        dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=Primer pairs; val=dict: key=genome name; val=tuple: contig, pcr product size, bin pair (contig, bin1, bin2)
     """
     # messages
     ERR_MSG_1 = "could not identify suitable primer pairs from the candidate kmers"

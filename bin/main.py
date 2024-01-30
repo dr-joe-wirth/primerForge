@@ -20,7 +20,7 @@ def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord
         frmt (str): the format of the sequence files
 
     Returns:
-        dict[str, list[SeqRecord]]: key=genome name; val=list of contigs as SeqRecords
+        dict[str, list[SeqRecord]]: key=genome name; val=a sequence iterator; functionally a list of SeqRecords
     """
     # initialize output
     out = dict()
@@ -93,7 +93,7 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
                 row.append(pcrLen)
             
             # write the data to the file
-            fh.write(SEP.join(map(str, row)) + EOL)
+            fh.write(f"{SEP.join(map(str, row))}{EOL}")
             fh.flush()
 
 
@@ -118,7 +118,7 @@ def _main(params:Parameters) -> None:
     MSG_3B = " primer pairs shared in all ingroup sequences"
     MSG_4  = "removing primer pairs present in the outgroup sequences"
     MSG_5A = "writing "
-    MSG_5B = " primer pairs to file"
+    MSG_5B = " primer pairs to "
     MSG_6  = '\ntotal runtime: '
     
     # start the timers
@@ -150,6 +150,8 @@ def _main(params:Parameters) -> None:
         if params.debug: params.log.writeInfoMsg(MSG_2)
         pairs = _getPrimerPairs(candidateKmers, params)
         _printDone(clock)
+        
+        # remove the candidate kmers to free up memory
         del candidateKmers
         
         # save the pairs to file if in debug mode
@@ -161,7 +163,7 @@ def _main(params:Parameters) -> None:
         print(f"{MSG_3A}{len(pairs)}{MSG_3B}")
         if params.debug: params.log.writeInfoMsg(f"{MSG_3A}{len(pairs)}{MSG_3B}")
         
-        # remove primers that make products in the outgroup
+        # remove primer pairs that make products in the outgroup
         if params.outgroupFns != []:
             _printStart(clock, MSG_4)
             if params.debug: params.log.writeInfoMsg(MSG_4)
@@ -175,8 +177,8 @@ def _main(params:Parameters) -> None:
                 params.dumpObj(pairs, PAIR_2_FN, "filterd pairs")
         
         # write results to file
-        _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}")
-        if params.debug: params.log.writeInfoMsg(f"{MSG_5A}{len(pairs)}{MSG_5B}")
+        _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
+        if params.debug: params.log.writeInfoMsg(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
         __writePrimerPairs(params.outFn, pairs)
         if params.debug: params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
         _printDone(clock)
