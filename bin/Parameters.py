@@ -1,7 +1,7 @@
 from __future__ import annotations
 from bin.Log import Log
-from bin.main import __author__, __version__
 import getopt, glob, os, pickle, sys
+from bin.main import __author__, __version__
 
 class Parameters():
     """class to store arguments and debug utilities
