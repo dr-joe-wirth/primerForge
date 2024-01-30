@@ -1,11 +1,9 @@
-import sys
+import sys, time
 
 # class definition
 class Clock:
     """ this class is used to easily track durations in a pretty format
     """
-    import time as __time
-    
     def __init__(self):
         """ accepts no inputs
             saves the start time and initializes member variables
@@ -18,13 +16,13 @@ class Clock:
         """ accepts no inputs
             saves the start time
         """
-        self.__startTime = Clock.__time.time()
+        self.__startTime = time.time()
     
     def __end(self) -> None:
         """ accepts no inputs
             saves the elapsed duration
         """
-        self.__duration = Clock.__time.time() - self.__startTime
+        self.__duration = time.time() - self.__startTime
     
     def __parseDuration(self,digi:int) -> tuple[int,int,float]:
         """converts duration from seconds to hours, minutes, and seconds
@@ -92,22 +90,30 @@ class Clock:
             seconds = seconds + "." + decimal
         
         return ":".join([hours,minutes,seconds])
-        
+
+    def getTime(self, decimals:int=2) -> str:
+        """gets the elapsed time as a string in hh:mm:ss.ms format
+
+        Args:
+            decimals (int, optional): the number of decimal points for the seconds. Defaults to 2.
+
+        Returns:
+            str: hh:mm:ss.ms
+        """
+        self.__end()
+        return self.__getDurationString(decimals)
+      
     def printTime(self, decimals:int=2) -> None:
-        """prints the current time in hh:mm::ss format
+        """prints the current time in hh:mm::ss.ms format
 
         Args:
             decimals (int, optional): the number of decimal points for the seconds. Defaults to 2.
         """
         self.__end()
         print(self.__getDurationString(decimals))
-    
-    def getTime(self, decimals:int=2) -> str:
-        self.__end()
-        return self.__getDurationString(decimals)
-    
+
     def restart(self) -> None:
-        """ restarts the time on the clocker object
+        """ restarts the clock object
         """
         self.__start()
 
