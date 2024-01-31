@@ -143,7 +143,7 @@ def _main(params:Parameters) -> None:
         # save the candidates to file if in debug mode
         if params.debug:
             params.log.setLogger(_main.__name__)
-            params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
+            params.log.writeInfoMsg(f"{DONE} {clock.getTimeString()}")
             params.dumpObj(candidateKmers, CAND_FN, "candidate kmers")
         
         # get the suitable primer pairs for the ingroup
@@ -157,7 +157,7 @@ def _main(params:Parameters) -> None:
         
         # save the pairs to file if in debug mode
         if params.debug:
-            params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
+            params.log.writeInfoMsg(f"{DONE} {clock.getTimeString()}")
             params.dumpObj(pairs, PAIR_1_FN, "unfiltered pairs")
         
         # print the number of candidate primer pairs
@@ -174,17 +174,17 @@ def _main(params:Parameters) -> None:
             
             # save pairs to file if in debug mode
             if params.debug:
-                params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
+                params.log.writeInfoMsg(f"{DONE} {clock.getTimeString()}")
                 params.dumpObj(pairs, PAIR_2_FN, "filterd pairs")
         
         # write results to file
         _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
         if params.debug: params.log.writeInfoMsg(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
         __writePrimerPairs(params.outFn, pairs)
-        if params.debug: params.log.writeInfoMsg(f"{DONE} {clock.getTime()}")
+        if params.debug: params.log.writeInfoMsg(f"{DONE} {clock.getTimeString()}")
         _printDone(clock)
         
         # print the total runtime
         print(MSG_6, end='', flush=True)
         totalClock.printTime()
-        if params.debug: params.log.writeInfoMsg(f"{MSG_6} {totalClock.getTime()}")
+        if params.debug: params.log.writeInfoMsg(f"{MSG_6} {totalClock.getTimeString()}")

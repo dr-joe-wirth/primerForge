@@ -511,7 +511,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # save data if debugging
     if params.debug:
-        params.log.writeInfoMsg(f'{GAP}done {clock.getTime()}')
+        params.log.writeInfoMsg(f'{GAP}done {clock.getTimeString()}')
         params.dumpObj(kmers, KMER_FN, "shared kmers")
     
     # print status
@@ -576,7 +576,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # save data if debugging
     if params.debug:
-        params.log.writeInfoMsg(f'{GAP}done {clock.getTime()}')
+        params.log.writeInfoMsg(f'{GAP}done {clock.getTimeString()}')
         params.log.writeInfoMsg(f'{MSG_3A}{numCand}{MSG_3B}')
 
     return out

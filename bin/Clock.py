@@ -91,7 +91,19 @@ class Clock:
         
         return ":".join([hours,minutes,seconds])
 
-    def getTime(self, decimals:int=2) -> str:
+    def getTime(self, decimals:int=2) -> tuple[int,int,float]:
+        """gets the elapsed time as a tuple
+
+        Args:
+            decimals (int, optional): the number of deimal points for the seconds. Defaults to 2.
+
+        Returns:
+            tuple[int,int,float]: hours, minutes, seconds
+        """
+        self.__end()
+        return self.__parseDuration(decimals)
+
+    def getTimeString(self, decimals:int=2) -> str:
         """gets the elapsed time as a string in hh:mm:ss.ms format
 
         Args:
@@ -137,5 +149,5 @@ def _printDone(clock:Clock) -> None:
     Args:
         clock (Clock): a Clock object
     """
-    print(f"done {clock.getTime()}" )
+    print(f"done {clock.getTimeString()}" )
     sys.stdout.flush()
