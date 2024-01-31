@@ -112,7 +112,8 @@ def _main(params:Parameters) -> None:
     DONE = "done"
     
     # messages
-    MSG_1 = "identifying kmers suitable for use as primers"
+    MSG_1A = "identifying kmers suitable for use as primers in all "
+    MSG_1B = " ingroup genome sequences"
     MSG_2 = "identifying pairs of primers found in all ingroup sequences"
     MSG_3A = "    identified "
     MSG_3B = " primer pairs shared in all ingroup sequences"
@@ -134,8 +135,8 @@ def _main(params:Parameters) -> None:
         ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
 
         # get the candidate kmers for the ingroup
-        _printStart(clock, MSG_1, '\n')
-        if params.debug: params.log.writeInfoMsg(MSG_1)
+        _printStart(clock, f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", '\n')
+        if params.debug: params.log.writeInfoMsg(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}")
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, params)
         _printDone(clock)
         
