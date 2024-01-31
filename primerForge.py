@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-from bin.main import _main, Parameters, __version__, __author__
+
+__version__ = "0.2.0"
+__author__ = "Joseph S. Wirth"
+
+from bin.Parameters import Parameters
+from bin.main import _main
 
 if __name__ == "__main__":
     # parse command line arguments
-    params = Parameters()
+    params = Parameters(__author__, __version__)
     
     # save the run details if debugging
     if params.debug:

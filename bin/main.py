@@ -1,6 +1,3 @@
-__version__ = "0.2.0"
-__author__ = "Joseph S. Wirth"
-
 import os
 from Bio import SeqIO
 from bin.Primer import Primer

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from bin.Log import Log
 import getopt, glob, os, pickle, sys
-from bin.main import __author__, __version__
 
 class Parameters():
     """class to store arguments and debug utilities
@@ -23,7 +22,7 @@ class Parameters():
     _DEF_DEBUG = False
     _DEF_HELP = False
     
-    def __init__(self) -> Parameters:
+    def __init__(self, author:str, version:str) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
@@ -45,14 +44,18 @@ class Parameters():
         self.log:Log
         
         # parse the command line arguments (populates attributes)
-        self.__parseArgs()
+        self.__parseArgs(author, version)
         
         # initialize a log if debugging
         if self.debug:
             self.log = Log()
 
-    def __parseArgs(self) -> None:
+    def __parseArgs(self, author, version) -> None:
         """parses command line arguments
+        
+        Args:
+            author (str): the author
+            version (str): the version
 
         Raises:
             ValueError: invalid ingroup file(s)
@@ -150,7 +153,7 @@ class Parameters():
             CLOSE = ')'
             WIDTH = 21
             HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
-                       f"{GAP}{__author__}, 2024{EOL*2}" + \
+                       f"{GAP}{author}, 2024{EOL*2}" + \
                        f"usage:{EOL}" + \
                        f"{GAP}primerForge.py [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
                        f"required arguments:{EOL}" + \
@@ -199,7 +202,7 @@ class Parameters():
         # print the version if requested
         elif VERSION_FLAGS[0] in sys.argv or VERSION_FLAGS[1] in sys.argv:
             self.helpRequested = True
-            print(__version__)
+            print(version)
         
         # parse command line arguments
         else:
@@ -373,7 +376,7 @@ class Parameters():
         WIDTH = 34
         
         # write the parameters to the log file
-        self.log.writeDebugMsg(f'{"version:":<{WIDTH}}{__version__}')
+        self.log.writeDebugMsg(f'{"version:":<{WIDTH}}{version}')
         self.log.writeDebugMsg(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
         self.log.writeDebugMsg(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
         self.log.writeDebugMsg(f'{"out filename:":{WIDTH}}{self.outFn}')
