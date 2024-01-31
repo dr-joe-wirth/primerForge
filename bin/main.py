@@ -186,4 +186,4 @@ def _main(params:Parameters) -> None:
         # print the total runtime
         print(MSG_6, end='', flush=True)
         totalClock.printTime()
-        if params.debug: params.log.writeInfoMsg(f"{MSG_6} {clock.getTime()}")
+        if params.debug: params.log.writeInfoMsg(f"{MSG_6} {totalClock.getTime()}")
