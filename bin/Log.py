@@ -5,7 +5,7 @@ class Log():
     """class for interacting with the logger 
     """
     # global constants
-    __DEBUG_DIR = "_debug"
+    __LOG_DIR = "_debug"
     __LOG_FN = "primerForge.log"
     
     def __init__(self) -> Log:
@@ -16,11 +16,11 @@ class Log():
         """
         # type hint attributes
         self.__logger:logging.Logger
-        self.debugDir:str = os.path.join(os.getcwd(), Log.__DEBUG_DIR)
+        self.debugDir:str = os.path.join(os.getcwd(), Log.__LOG_DIR)
         
         # make sure debug directory exists
-        if not os.path.isdir(Log.__DEBUG_DIR):
-            os.mkdir(Log.__DEBUG_DIR)
+        if not os.path.isdir(Log.__LOG_DIR):
+            os.mkdir(Log.__LOG_DIR)
         
         # initialize the logging file
         logging.basicConfig(filename=os.path.join(self.debugDir, Log.__LOG_FN), level=logging.DEBUG)
