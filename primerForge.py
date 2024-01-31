@@ -8,7 +8,7 @@ if __name__ == "__main__":
     # save the run details if debugging
     if params.debug:
         params.log.setLogger(__name__)
-        params.saveRunDetails()
+        params.logRunDetails()
     
     # catch all error messages
     try:

@@ -363,7 +363,7 @@ class Parameters():
             if self.outFn is None:
                 raise ValueError(ERR_MSG_18)
     
-    def saveRunDetails(self) -> None:
+    def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
         """
         # constant
