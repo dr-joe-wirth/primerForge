@@ -6,6 +6,23 @@ from bin.main import __author__, __version__
 class Parameters():
     """class to store arguments and debug utilities
     """
+    # default values
+    _ALLOWED_FORMATS = ('genbank', 'fasta')
+    _DEF_OUTGROUP = list()
+    _DEF_FRMT = _ALLOWED_FORMATS[0]
+    _DEF_MIN_LEN = 16
+    _DEF_MAX_LEN = 20
+    _DEF_MIN_GC = 40.0
+    _DEF_MAX_GC = 60.0
+    _DEF_MIN_TM = 55.0
+    _DEF_MAX_TM = 68.0
+    _DEF_MIN_PCR = 120
+    _DEF_MAX_PCR = 2400
+    _DEF_MAX_TM_DIFF = 5.0
+    _DEF_NUM_THREADS = 1
+    _DEF_DEBUG = False
+    _DEF_HELP = False
+    
     def __init__(self) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
@@ -57,7 +74,6 @@ class Parameters():
             ValueError: must specify an output file
         """
         # constants
-        ALLOWED_FORMATS = ('genbank', 'fasta')
         SEP = ","
         
         # flags
@@ -103,19 +119,6 @@ class Parameters():
                     HELP_FLAGS[1][2:],
                     DEBUG_FLAGS[0][2:])
 
-        # default values
-        DEF_FRMT = ALLOWED_FORMATS[0]
-        DEF_MIN_LEN = 16
-        DEF_MAX_LEN = 20
-        DEF_MIN_GC = 40.0
-        DEF_MAX_GC = 60.0
-        DEF_MIN_TM = 55.0
-        DEF_MAX_TM = 68.0
-        DEF_MIN_PCR = 120
-        DEF_MAX_PCR = 2400
-        DEF_MAX_TM_DIFF = 5.0
-        DEF_NUM_THREADS = 1
-
         # messages
         IGNORE_MSG = 'ignoring unused argument: '
         ERR_MSG_1  = 'invalid or missing ingroup file(s)'
@@ -156,13 +159,13 @@ class Parameters():
                        f"optional arguments: {EOL}" + \
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
-                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {ALLOWED_FORMATS[0]}{SEP_2}{ALLOWED_FORMATS[1]}{DEF_OPEN}{DEF_FRMT}{CLOSE}{EOL}" + \
-                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_LEN}{SEP_3}{DEF_MAX_LEN}{CLOSE}{EOL}" + \
-                       f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{DEF_MIN_GC}{SEP_3}{DEF_MAX_GC}{CLOSE}{EOL}" + \
-                       f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{DEF_MIN_TM}{SEP_3}{DEF_MAX_TM}{CLOSE}{EOL}" + \
-                       f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{DEF_MIN_PCR}{SEP_3}{DEF_MAX_PCR}{CLOSE}{EOL}" + \
-                       f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
-                       f"{GAP}{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{DEF_NUM_THREADS}{CLOSE}{EOL}" + \
+                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters._ALLOWED_FORMATS[0]}{SEP_2}{Parameters._ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
+                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
+                       f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_GC}{SEP_3}{DEF_MAX_GC}{CLOSE}{EOL}" + \
+                       f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_TM}{SEP_3}{Parameters._DEF_MAX_TM}{CLOSE}{EOL}" + \
+                       f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_PCR}{SEP_3}{Parameters._DEF_MAX_PCR}{CLOSE}{EOL}" + \
+                       f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{Parameters._DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
+                       f"{GAP}{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{Parameters._DEF_NUM_THREADS}{CLOSE}{EOL}" + \
                        f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
                        f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
                        f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{EOL*2}"
@@ -172,21 +175,21 @@ class Parameters():
         # set default values
         self.ingroupFns = None
         self.outFn = None
-        self.outgroupFns = list()
+        self.outgroupFns = Parameters._DEF_OUTGROUP
         self.disallowedLens = None # start as None; update at the end
-        self.format = DEF_FRMT
-        self.minLen = DEF_MIN_LEN
-        self.maxLen = DEF_MAX_LEN
-        self.minGc = DEF_MIN_GC
-        self.maxGc = DEF_MAX_GC
-        self.minTm = DEF_MIN_TM
-        self.maxTm = DEF_MAX_TM
-        self.minPcr = DEF_MIN_PCR
-        self.maxPcr = DEF_MAX_PCR
-        self.maxTmDiff = DEF_MAX_TM_DIFF
-        self.numThreads = DEF_NUM_THREADS
-        self.debug = False
-        self.helpRequested = False
+        self.format = Parameters._DEF_FRMT
+        self.minLen = Parameters._DEF_MIN_LEN
+        self.maxLen = Parameters._DEF_MAX_LEN
+        self.minGc = Parameters._DEF_MIN_GC
+        self.maxGc = Parameters._DEF_MAX_GC
+        self.minTm = Parameters._DEF_MIN_TM
+        self.maxTm = Parameters._DEF_MAX_TM
+        self.minPcr = Parameters._DEF_MIN_PCR
+        self.maxPcr = Parameters._DEF_MAX_PCR
+        self.maxTmDiff = Parameters._DEF_MAX_TM_DIFF
+        self.numThreads = Parameters._DEF_NUM_THREADS
+        self.debug = Parameters._DEF_DEBUG
+        self.helpRequested = Parameters._DEF_HELP
         
         # give help if requested
         if HELP_FLAGS[0] in sys.argv or HELP_FLAGS[1] in sys.argv or len(sys.argv) == 1:
@@ -251,7 +254,7 @@ class Parameters():
                 
                 # get the file format
                 elif opt in FMT_FLAGS:
-                    if arg not in ALLOWED_FORMATS:
+                    if arg not in Parameters._ALLOWED_FORMATS:
                         raise ValueError(ERR_MSG_6)
                     self.format = arg
                 
