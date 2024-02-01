@@ -22,6 +22,74 @@ class ParametersTest(unittest.TestCase):
     AUTHOR = 'null'
     
     
+    def setUp(self) -> None:
+        """set up for each test
+        """
+        # silence prints
+        self.stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+        
+        # make the dummy files needed for testing
+        ParametersTest._makeDummyFiles()
+        
+        # sys.argv for default values using short args
+        self.basic1 = ['primerForge.py',
+                       '-i', ParametersTest.IG_PATTERN,
+                       '-o', ParametersTest.OUT_FN]
+        
+        # sys.argv for default values using long args
+        self.basic2 = ['primerForge.py',
+                       '--ingroup', ParametersTest.IG_PATTERN,
+                       '--out', ParametersTest.OUT_FN]
+        
+        # sys.argv with custom values using short args
+        self.short  = ['primerForge.py',
+                       '-i', ParametersTest.IG_PATTERN,
+                       '-o', ParametersTest.OUT_FN,
+                       '-u', ParametersTest.OG_PATTERN,
+                       '-b', ParametersTest.BAD_SIZE,
+                       '-f', ParametersTest.FORMAT,
+                       '-p', ParametersTest.PRIMER_LEN,
+                       '-g', ParametersTest.GC_RANGE,
+                       '-t', ParametersTest.TM_RANGE,
+                       '-r', ParametersTest.PCR_SIZE,
+                       '-d', ParametersTest.TM_DIFF,
+                       '-n', ParametersTest.THREADS]
+
+        # sys.argv with custom values using long args
+        self.long   =  ['primerForge.py',
+                       '--ingroup', ParametersTest.IG_PATTERN,
+                       '--out', ParametersTest.OUT_FN,
+                       '--outgroup', ParametersTest.OG_PATTERN,
+                       '--bad_sizes', ParametersTest.BAD_SIZE,
+                       '--format', ParametersTest.FORMAT,
+                       '--primer_len', ParametersTest.PRIMER_LEN,
+                       '--gc_range', ParametersTest.GC_RANGE,
+                       '--tm_range', ParametersTest.TM_RANGE,
+                       '--pcr_prod', ParametersTest.PCR_SIZE,
+                       '--tm_diff', ParametersTest.TM_DIFF,
+                       '--num_threads', ParametersTest.THREADS]
+        
+        # additional sys.argv to test
+        self.help1  = ['primerForge.py', '-h']
+        self.help2  = ['primerForge.py', '--help']
+        self.vers1  = ['primerForge.py', '-v']
+        self.vers2  = ['primerForge.py', '--version']
+        self.debug1 = self.basic1 + ['--debug']
+        self.debug2 = self.basic2 + ['--debug']
+        self.debug3 = self.short + ['--debug']
+        self.debug4 = self.long + ['--debug']
+    
+    def tearDown(self) -> None:
+        """tear downs after each test
+        """
+        # reset sys.stdout
+        sys.stdout.close()
+        sys.stdout = self.stdout
+        
+        # remove dummy files
+        ParametersTest._removeDummyFiles()
+
     def _makeDummyFiles() -> None:
         """creates the dummy files
         """
@@ -37,17 +105,6 @@ class ParametersTest(unittest.TestCase):
         if os.path.exists(ParametersTest.DUMP_FN):
             os.remove(ParametersTest.DUMP_FN)
 
-    def _removeDummyDirectories(dir:str) -> None:
-        try:
-            shutil.rmtree(dir)
-        except:
-            try:
-                for fn in glob.glob(os.path.join(dir, "*")):
-                    os.remove(fn)
-                shutil.rmtree(dir)
-            except:
-                print(f'failed to remove {dir}')
-    
     def _checkDefaultValues(self, params:Parameters) -> None:
         """evaluates that params has the appropriate values when default
 
@@ -132,72 +189,13 @@ class ParametersTest(unittest.TestCase):
         params.dumpObj(obj, ParametersTest.DUMP_FN, 'test')
         
         # load the dumped object and remove the file
-        with open(os.path.join(Log._Log__LOG_DIR, ParametersTest.DUMP_FN), 'rb') as fh:
+        with open(os.path.join(params.log.debugDir, ParametersTest.DUMP_FN), 'rb') as fh:
             imported = pickle.load(fh)
-        os.remove(os.path.join(Log._Log__LOG_DIR, ParametersTest.DUMP_FN))
+        os.remove(os.path.join(params.log.debugDir, ParametersTest.DUMP_FN))
         
         # make sure the original object matches the loaded one
         self.assertEqual(obj, imported)
     
-    def setUp(self) -> None:
-        # silence prints
-        self.stdout = sys.stdout
-        sys.stdout = open(os.devnull, 'w')
-        
-        ParametersTest._makeDummyFiles()
-        # sys.argv for default values using short args
-        self.basic1 = ['primerForge.py',
-                       '-i', ParametersTest.IG_PATTERN,
-                       '-o', ParametersTest.OUT_FN]
-        
-        # sys.argv for default values using long args
-        self.basic2 = ['primerForge.py',
-                       '--ingroup', ParametersTest.IG_PATTERN,
-                       '--out', ParametersTest.OUT_FN]
-        
-        # sys.argv with custom values using short args
-        self.short  = ['primerForge.py',
-                       '-i', ParametersTest.IG_PATTERN,
-                       '-o', ParametersTest.OUT_FN,
-                       '-u', ParametersTest.OG_PATTERN,
-                       '-b', ParametersTest.BAD_SIZE,
-                       '-f', ParametersTest.FORMAT,
-                       '-p', ParametersTest.PRIMER_LEN,
-                       '-g', ParametersTest.GC_RANGE,
-                       '-t', ParametersTest.TM_RANGE,
-                       '-r', ParametersTest.PCR_SIZE,
-                       '-d', ParametersTest.TM_DIFF,
-                       '-n', ParametersTest.THREADS]
-
-        # sys.argv with custom values using long args
-        self.long   =  ['primerForge.py',
-                       '--ingroup', ParametersTest.IG_PATTERN,
-                       '--out', ParametersTest.OUT_FN,
-                       '--outgroup', ParametersTest.OG_PATTERN,
-                       '--bad_sizes', ParametersTest.BAD_SIZE,
-                       '--format', ParametersTest.FORMAT,
-                       '--primer_len', ParametersTest.PRIMER_LEN,
-                       '--gc_range', ParametersTest.GC_RANGE,
-                       '--tm_range', ParametersTest.TM_RANGE,
-                       '--pcr_prod', ParametersTest.PCR_SIZE,
-                       '--tm_diff', ParametersTest.TM_DIFF,
-                       '--num_threads', ParametersTest.THREADS]
-        
-        # additional sys.argv to test
-        self.help1  = ['primerForge.py', '-h']
-        self.help2  = ['primerForge.py', '--help']
-        self.vers1  = ['primerForge.py', '-v']
-        self.vers2  = ['primerForge.py', '--version']
-        self.debug1 = self.basic1 + ['--debug']
-        self.debug2 = self.basic2 + ['--debug']
-        self.debug3 = self.short + ['--debug']
-        self.debug4 = self.long + ['--debug']
-    
-    def tearDown(self) -> None:
-        sys.stdout.close()
-        sys.stdout = self.stdout
-        ParametersTest._removeDummyFiles()
-
     def testA_parseBasic1(self) -> None:
         """are args parsed with short flags and default values
         """
@@ -252,13 +250,12 @@ class ParametersTest(unittest.TestCase):
         params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
         self.assertTrue(params.helpRequested)
     
-    def testG_debug(self) -> None:
+    def testG_debug1(self) -> None:
         """checks if params.debug is True and has default values when in debug mode
         """
         # check short flags with default args
         sys.argv = self.debug1
         params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
-        params
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
@@ -284,13 +281,41 @@ class ParametersTest(unittest.TestCase):
         params.debug = False
         self._checkCustomValues(params)
     
-    def testH_dumpObjects(self) -> None:
+    def testH_debug2(self) -> None:
+        """is the logger working
+        """
+        # create the params object
+        sys.argv = self.debug1
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        # replace the current Log object with one that references this directory
+        params.log = Log(os.getcwd())
+        
+        # start up the log
+        params.log.initialize(ParametersTest.testH_debug2.__name__)
+        
+        # verify that the log file exists
+        self.assertTrue(os.path.exists(params.log.logFn))
+        
+        # make sure each writer works
+        params.log.critical('')
+        params.log.debug('')
+        params.log.error('')
+        params.log.info('')
+        
+        # remove the log file
+        os.remove(params.log.logFn)
+    
+    def testI_dumpObjects(self) -> None:
         """evaluate Parameters.dumpObj
         """
         # create a parameters object
-        sys.argv = self.debug1
+        sys.argv = self.basic1
         params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
-        params.log.setLogger('asdf')
+        
+        # initialize the log object
+        params.log = Log(os.getcwd())
+        params.log.initialize('tmp')
         
         # check sets
         obj  = {1,2,3,4,5}
