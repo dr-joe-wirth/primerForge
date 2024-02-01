@@ -195,7 +195,7 @@ def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:
     acceptablePair, pcrLen = __isPairSuitable(fwd, rev, minPcr, maxPcr, maxTmDiff)
     
     # return acceptable pairs and their pcr product sizes
-    if acceptablePair: return fwd,rev,pcrLen,binPair
+    if acceptablePair: return fwd,rev.reverseComplement(),pcrLen,binPair
 
 
 def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int,tuple[str,int,int]]]:
@@ -331,7 +331,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
             # both primers need to be on the same contig
             if k1.contig == k2.contig:
                 # only proceed if on opposite strands (p2 is already rev comped)
-                if k1_rev == k2_rev:
+                if k1_rev != k2_rev:
                     # save values when k1 is the foward primer and k2 is the reverse primer
                     if k1.start < k2.start:
                         fwd = k1
