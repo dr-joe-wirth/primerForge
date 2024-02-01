@@ -8,7 +8,7 @@ class Log():
     __LOG_DIR = "_debug"
     __LOG_FN = "primerForge.log"
     
-    def __init__(self) -> Log:
+    def __init__(self, debugDir:str='') -> Log:
         """creates a Log object
 
         Returns:
@@ -16,24 +16,33 @@ class Log():
         """
         # type hint attributes
         self.__logger:logging.Logger
-        self.debugDir:str = os.path.join(os.getcwd(), Log.__LOG_DIR)
         
-        # make sure debug directory exists
-        if not os.path.isdir(Log.__LOG_DIR):
-            os.mkdir(Log.__LOG_DIR)
+        # set the debug directory
+        if debugDir == '':
+            self.debugDir:str = os.path.join(os.getcwd(), Log.__LOG_DIR)
+        else:
+            self.debugDir = debugDir
         
-        # initialize the logging file
-        logging.basicConfig(filename=os.path.join(self.debugDir, Log.__LOG_FN), level=logging.DEBUG)
+        # set the log file
+        self.logFn:str = os.path.join(self.debugDir, Log.__LOG_FN)
     
-    def setLogger(self, name:str) -> None:
-        """sets the name of the logger
+    def initialize(self, name:str) -> None:
+        """initializes the log
 
         Args:
             name (str): the name of the logger
         """
+        # make sure debug directory exists
+        if not os.path.isdir(self.debugDir):
+            os.mkdir(self.debugDir)
+        
+        # point the log at the log file; level is debug
+        logging.basicConfig(filename=self.logFn, level=logging.DEBUG)
+        
+        # start up the logger
         self.__logger = logging.getLogger(name)
     
-    def writeInfoMsg(self, msg:str) -> None:
+    def info(self, msg:str) -> None:
         """writes message as logger.info
 
         Args:
@@ -41,7 +50,7 @@ class Log():
         """
         self.__logger.info(msg)
     
-    def writeDebugMsg(self, msg:str) -> None:
+    def debug(self, msg:str) -> None:
         """writes message as logger.debug
 
         Args:
@@ -49,7 +58,7 @@ class Log():
         """
         self.__logger.debug(msg)
     
-    def writeErrorMsg(self, msg:str) -> None:
+    def error(self, msg:str) -> None:
         """writes message as logger.error
 
         Args:
@@ -57,7 +66,7 @@ class Log():
         """
         self.__logger.error(msg)
     
-    def writeCriticalMsg(self, msg:str) -> None:
+    def critical(self, msg:str) -> None:
         """writes message as logger.critical
 
         Args:
