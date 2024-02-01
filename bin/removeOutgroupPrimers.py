@@ -128,6 +128,9 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
             # recalculate which pairs need to be evaluated
             pairsToCheck = set(pairs.keys())
             for fwd,rev in pairsToCheck:
+                # initialize a boolean to track status
+                done = False
+                
                 # get the outgroup products for this primer pair
                 outgroupProducts = __getOutgroupProductSizes(kmers, fwd, rev)
                 
@@ -145,17 +148,20 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                         # remove any pairs that produce disallowed product sizes
                         if pcrLen in params.disallowedLens:
                             pairs.pop((fwd,rev))
+                            done = True
+                            break
                         
                         # otherwise count the number of sizes seen
                         else:
                             count += 1
                     
-                    # if more than one product size, then join them as a comma-separated list
-                    if count > 1:
-                        pcrLen = ",".join(map(str, outgroupProducts))
-                    
-                    # save the pcr product size for this genome (binpair is empty tuple)
-                    pairs[(fwd,rev)][name] = (contig.id, pcrLen, ())
+                    if not done:
+                        # if more than one product size, then join them as a comma-separated list
+                        if count > 1:
+                            pcrLen = ",".join(map(str, outgroupProducts))
+                        
+                        # save the pcr product size for this genome (binpair is empty tuple)
+                        pairs[(fwd,rev)][name] = (contig.id, pcrLen, ())
 
     # if the pairs is now empty, then raise an error
     if pairs == dict():
