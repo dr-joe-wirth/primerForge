@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 # additional ignores for testing and debugging
-test/
+test*/
 debug*py
 screenlog*
 proto*.py
