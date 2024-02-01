@@ -386,22 +386,22 @@ class Parameters():
         WIDTH = 34
         
         # write the parameters to the log file
-        self.log.writeDebugMsg(f'{"version:":<{WIDTH}}{version}')
-        self.log.writeDebugMsg(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
-        self.log.writeDebugMsg(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
-        self.log.writeDebugMsg(f'{"out filename:":{WIDTH}}{self.outFn}')
-        self.log.writeDebugMsg(f'{"file format:":{WIDTH}}{self.format}')
-        self.log.writeDebugMsg(f'{"min kmer len:":{WIDTH}}{self.minLen}')
-        self.log.writeDebugMsg(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
-        self.log.writeDebugMsg(f'{"min % G+C":<{WIDTH}}{self.minGc}')
-        self.log.writeDebugMsg(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
-        self.log.writeDebugMsg(f'{"min Tm:":<{WIDTH}}{self.minTm}')
-        self.log.writeDebugMsg(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
-        self.log.writeDebugMsg(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
-        self.log.writeDebugMsg(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
-        self.log.writeDebugMsg(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
-        self.log.writeDebugMsg(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
-        self.log.writeDebugMsg(f'{"num threads:":<{WIDTH}}{self.numThreads}')
+        self.log.debug(f'{"version:":<{WIDTH}}{version}')
+        self.log.debug(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
+        self.log.debug(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
+        self.log.debug(f'{"out filename:":{WIDTH}}{self.outFn}')
+        self.log.debug(f'{"file format:":{WIDTH}}{self.format}')
+        self.log.debug(f'{"min kmer len:":{WIDTH}}{self.minLen}')
+        self.log.debug(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
+        self.log.debug(f'{"min % G+C":<{WIDTH}}{self.minGc}')
+        self.log.debug(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
+        self.log.debug(f'{"min Tm:":<{WIDTH}}{self.minTm}')
+        self.log.debug(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
+        self.log.debug(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
+        self.log.debug(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
+        self.log.debug(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
+        self.log.debug(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
+        self.log.debug(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
     def dumpObj(self, obj:any, fn:str, objName:str) -> None:
         """dumps an object in memory to file as a pickle
@@ -415,4 +415,4 @@ class Parameters():
         with open(fn, 'wb') as fh:
             pickle.dump(obj, fh)
         
-        self.log.writeDebugMsg(f"dumped {objName} to {fn}")
+        self.log.debug(f"dumped {objName} to {fn}")

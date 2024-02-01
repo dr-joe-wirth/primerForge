@@ -161,6 +161,6 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     if pairs == dict():
         # save details if debugging
         if params.debug:
-            params.log.setLogger(_removeOutgroupPrimers.__name__)
-            params.log.writeErrorMsg(ERR_MSG)
+            params.log.initialize(_removeOutgroupPrimers.__name__)
+            params.log.error(ERR_MSG)
         raise RuntimeError(ERR_MSG)

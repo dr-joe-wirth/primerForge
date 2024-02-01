@@ -12,7 +12,7 @@ if __name__ == "__main__":
     
     # save the run details if debugging
     if params.debug:
-        params.log.setLogger(__name__)
+        params.log.initialize(__name__)
         params.logRunDetails(__version__)
     
     # catch all error messages
@@ -22,8 +22,8 @@ if __name__ == "__main__":
     except Exception as e:
         # save the error message if in debug mode
         if params.debug:
-            params.log.setLogger(__name__)
-            params.log.writeCriticalMsg(e)
+            params.log.initialize(__name__)
+            params.log.critical(e)
 
         # terminate        
         raise Exception(e)

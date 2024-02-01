@@ -206,7 +206,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
 
     # set the debugger if required
     if params.debug:
-        params.log.setLogger(__getSharedKmers.__name__)
+        params.log.initialize(__getSharedKmers.__name__)
 
     # for each genome
     for name in seqs.keys():
@@ -216,8 +216,8 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
         # make sure there are kmers for this genome
         if kmers == dict():
             if params.debug:
-                params.log.setLogger(__getSharedKmers.__name__)
-                params.log.writeErrorMsg(f"{ERR_MSG_1}{name}")
+                params.log.initialize(__getSharedKmers.__name__)
+                params.log.error(f"{ERR_MSG_1}{name}")
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
         # keep only the (+) strand kmers if this is the first genome
@@ -248,12 +248,12 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
         # make sure the kmers did not depopulate
         if sharedKmers == dict():
             if params.debug:
-                params.log.writeErrorMsg(f"{ERR_MSG_2}{name}")
+                params.log.error(f"{ERR_MSG_2}{name}")
             raise RuntimeError(f"{ERR_MSG_2}{name}")
         
         # log the number of shared kmers if debugging
         if params.debug:
-            params.log.writeDebugMsg(f"{' '*8}{len(sharedKmers)}{DBG_MSG_1}{name}")
+            params.log.debug(f"{' '*8}{len(sharedKmers)}{DBG_MSG_1}{name}")
     
     return sharedKmers
 
@@ -489,21 +489,21 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # setup debugger
     if params.debug:
-        params.log.setLogger(_getAllCandidateKmers.__name__)
+        params.log.initialize(_getAllCandidateKmers.__name__)
     
     # get all non-duplicated kmers that are shared in the ingroup
     _printStart(clock, MSG_1)
-    if params.debug: params.log.writeInfoMsg(f'{MSG_1}')
+    if params.debug: params.log.info(f'{MSG_1}')
     kmers = __getSharedKmers(ingroup, params)
     
     # move log back to this function
     if params.debug:
-        params.log.setLogger(_getAllCandidateKmers.__name__)
+        params.log.initialize(_getAllCandidateKmers.__name__)
     
     # make sure that ingroup kmers were identified
     if kmers == dict():
         if params.debug:
-            params.log.writeErrorMsg(ERR_MSG_1)
+            params.log.error(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
     # print status
@@ -511,12 +511,12 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # save data if debugging
     if params.debug:
-        params.log.writeInfoMsg(f'{GAP}done {clock.getTimeString()}')
+        params.log.info(f'{GAP}done {clock.getTimeString()}')
         params.dumpObj(kmers, KMER_FN, "shared kmers")
     
     # print status
     _printStart(clock, MSG_2)
-    if params.debug: params.log.writeInfoMsg(MSG_2)
+    if params.debug: params.log.info(MSG_2)
     
     # go through each genome name
     names = list(next(iter(kmers.values())).keys())
@@ -567,7 +567,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
 
     # make sure candidates were found
     if numCand == 0:
-        if params.debug: params.log.writeErrorMsg(ERR_MSG_2)
+        if params.debug: params.log.error(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
     # print status
@@ -576,7 +576,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # save data if debugging
     if params.debug:
-        params.log.writeInfoMsg(f'{GAP}done {clock.getTimeString()}')
-        params.log.writeInfoMsg(f'{MSG_3A}{numCand}{MSG_3B}')
+        params.log.info(f'{GAP}done {clock.getTimeString()}')
+        params.log.info(f'{MSG_3A}{numCand}{MSG_3B}')
 
     return out
