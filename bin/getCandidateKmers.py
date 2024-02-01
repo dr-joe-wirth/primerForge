@@ -162,7 +162,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
                         bad.add(revKmer)
                     
                     # only save kmers that have GC at one end
-                    elif isOneEndGc(fwdSeq):
+                    elif isOneEndGc(fwdKmer):
                         kmers[__PLUS][fwdKmer]  = {name: (contig.id, start, klen)}
                         kmers[__MINUS][revKmer] = {name: (contig.id, start, klen)}
             
