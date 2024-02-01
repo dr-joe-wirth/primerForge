@@ -50,31 +50,35 @@ class Parameters():
         if self.debug:
             self.log = Log()
 
-    def __parseArgs(self, author, version) -> None:
+    def __parseArgs(self, author:str, version:str) -> None:
         """parses command line arguments
-        
+
         Args:
-            author (str): the author
-            version (str): the version
+            author (str): the author of the program
+            version (str): the version of the program
 
         Raises:
-            ValueError: invalid ingroup file(s)
-            ValueError: invalid outgroup file(s)
-            ValueError: two bad pcr lengths no specified
-            ValueError: bad pcr lengths are not integers
+            ValueError: invalid/missing ingroup files
+            ValueError: invalid/missing ingroup files
+            ValueError: output file already exists
+            ValueError: cannot write to output file
+            ValueError: invalid/missing outgroup files
+            ValueError: invalid/missing outgroup files
+            ValueError: invalid disallowed sizes: not two value
+            ValueError: invalid disallowed sizes: not int
             ValueError: invalid file format
-            ValueError: invalid primer length
-            ValueError: primer lengths not integers
-            ValueError: specify range of GC
-            ValueError: GC values non-numeric
-            ValueError: specify range of Tm
-            ValueError: Tm values non-numeric
-            ValueError: invalid PCR product length
-            ValueError: PCR product lengths not integers
-            ValueError: Tm difference is non-numeric
+            ValueError: invalid primer length: wrong num arguments
+            ValueError: invalid primer length: not int
+            ValueError: invalid GC: not two values
+            ValueError: invalid GC: not numeric
+            ValueError: invalid Tm: not two values
+            ValueError: invalid Tm: not numeric
+            ValueError: invalid PCR size: not two values
+            ValueError: invalid PCR size: not int
+            ValueError: Tm difference is not numeric
             ValueError: num threads not an integer
-            ValueError: must specify an ingroup file
-            ValueError: must specify an output file
+            ValueError: ingroup file argument is missing
+            ValueError: output file argument is missing
         """
         # constants
         SEP = ","
@@ -125,23 +129,24 @@ class Parameters():
         # messages
         IGNORE_MSG = 'ignoring unused argument: '
         ERR_MSG_1  = 'invalid or missing ingroup file(s)'
-        ERR_MSG_2  = 'cannot write to output directory'
-        ERR_MSG_3  = 'invalid or missing outgroup file(s)'
-        ERR_MSG_4  = 'must specify exactly two integers for bad outgroup PCR product length'
-        ERR_MSG_5  = 'bad outgroup PCR product lengths are not integers'
-        ERR_MSG_6  = 'invalid format'
-        ERR_MSG_7  = 'can only specify one primer length or a range (min,max)'
-        ERR_MSG_8  = 'primer lengths are not integers'
-        ERR_MSG_9  = 'must specify a range of GC values (min,max)'
-        ERR_MSG_10 = 'gc values are not numeric'
-        ERR_MSG_11 = 'must specify a range of Tm values (min, max)'
-        ERR_MSG_12 = 'Tm values are not numeric'
-        ERR_MSG_13 = 'can only specify one PCR product length or a range (min,max)'
-        ERR_MSG_14 = 'PCR product lengths are not integers'
-        ERR_MSG_15 = 'max Tm difference is not numeric'
-        ERR_MSG_16 = 'num threads is not an integer'
-        ERR_MSG_17 = 'must specify one or more ingroup files'
-        ERR_MSG_18 = 'must specify an output file'
+        ERR_MSG_2  = 'specified output file already exists'
+        ERR_MSG_3  = 'cannot write to output file'
+        ERR_MSG_4  = 'invalid or missing outgroup file(s)'
+        ERR_MSG_5  = 'must specify exactly two integers for bad outgroup PCR product length'
+        ERR_MSG_6  = 'bad outgroup PCR product lengths are not integers'
+        ERR_MSG_7  = 'invalid format'
+        ERR_MSG_8  = 'can only specify one primer length or a range (min,max)'
+        ERR_MSG_9  = 'primer lengths are not integers'
+        ERR_MSG_10 = 'must specify a range of GC values (min,max)'
+        ERR_MSG_11 = 'gc values are not numeric'
+        ERR_MSG_12 = 'must specify a range of Tm values (min, max)'
+        ERR_MSG_13 = 'Tm values are not numeric'
+        ERR_MSG_14 = 'can only specify one PCR product length or a range (min,max)'
+        ERR_MSG_15 = 'PCR product lengths are not integers'
+        ERR_MSG_16 = 'max Tm difference is not numeric'
+        ERR_MSG_17 = 'num threads is not an integer'
+        ERR_MSG_18 = 'must specify one or more ingroup files'
+        ERR_MSG_19 = 'must specify an output file'
 
         def printHelp():
             GAP = " "*4
@@ -219,12 +224,17 @@ class Parameters():
                 
                 # get output filehandle
                 elif opt in OUT_FLAGS:
+                    # make sure the file does not exist
+                    if os.path.exists(arg):
+                        raise ValueError(ERR_MSG_2)
+                    
                     # make sure the file can be written
                     try:
                         fh = open(arg, 'w')
                         fh.close()
+                        os.remove(arg)
                     except:
-                        raise ValueError(ERR_MSG_2)
+                        raise ValueError(ERR_MSG_3)
                     
                     self.outFn = arg
                 
@@ -233,9 +243,9 @@ class Parameters():
                     self.outgroupFns = glob.glob(arg)
                     for fn in self.outgroupFns:
                         if not os.path.isfile(fn):
-                            raise ValueError(ERR_MSG_3)
+                            raise ValueError(ERR_MSG_4)
                     if self.outgroupFns == []:
-                        raise ValueError(ERR_MSG_3)
+                        raise ValueError(ERR_MSG_4)
                 
                 # get the disallowed outgroup pcr product lengths
                 elif opt in DISALLOW_FLAGS:
@@ -244,13 +254,13 @@ class Parameters():
                     
                     # make sure exactly two values provided
                     if len(disallowed) != 2:
-                        raise ValueError(ERR_MSG_4)
+                        raise ValueError(ERR_MSG_5)
                     
                     # coerce lengths to ints
                     try:
                         disallowed = [int(x) for x in disallowed]
                     except:
-                        raise ValueError(ERR_MSG_5)
+                        raise ValueError(ERR_MSG_6)
                     
                     # save the values
                     self.disallowedLens = range(min(disallowed), max(disallowed)+1)
@@ -258,7 +268,7 @@ class Parameters():
                 # get the file format
                 elif opt in FMT_FLAGS:
                     if arg not in Parameters._ALLOWED_FORMATS:
-                        raise ValueError(ERR_MSG_6)
+                        raise ValueError(ERR_MSG_7)
                     self.format = arg
                 
                 # get the primer lengths
@@ -268,13 +278,13 @@ class Parameters():
                     
                     # make sure at one or two primers specified
                     if len(primerRange) not in {1,2}:
-                        raise ValueError(ERR_MSG_7)
+                        raise ValueError(ERR_MSG_8)
                     
                     # coerce to lengths to ints
                     try:
                         primerRange = [int(x) for x in primerRange]
                     except:
-                        raise ValueError(ERR_MSG_8)
+                        raise ValueError(ERR_MSG_9)
                     
                     # save values
                     self.minLen = min(primerRange)
@@ -285,13 +295,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     gcRange = arg.split(SEP)
                     if len(gcRange) != 2:
-                        raise ValueError(ERR_MSG_9)
+                        raise ValueError(ERR_MSG_10)
                     
                     # make sure the values are numeric
                     try:
                         gcRange = [float(x) for x in gcRange]
                     except:
-                        raise ValueError(ERR_MSG_10)
+                        raise ValueError(ERR_MSG_11)
                 
                     # save values
                     self.minGc = min(gcRange)
@@ -302,13 +312,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     tmRange = arg.split(SEP)
                     if len(tmRange) != 2:
-                        raise ValueError(ERR_MSG_11)
+                        raise ValueError(ERR_MSG_12)
                 
                     # make sure the values are numeric
                     try:
                         tmRange = [float(x) for x in tmRange]
                     except:
-                        raise ValueError(ERR_MSG_12)
+                        raise ValueError(ERR_MSG_13)
                 
                     # save values
                     self.minTm = min(tmRange)
@@ -319,13 +329,13 @@ class Parameters():
                     # expecting one or two values
                     pcrRange = arg.split(SEP)
                     if len(pcrRange) not in {1,2}:
-                        raise ValueError(ERR_MSG_13)
+                        raise ValueError(ERR_MSG_14)
                     
                     # coerce to integers
                     try:
                         pcrRange = [int(x) for x in pcrRange]
                     except:
-                        raise ValueError(ERR_MSG_14)
+                        raise ValueError(ERR_MSG_15)
                 
                     # save values
                     self.minPcr = min(pcrRange)
@@ -341,7 +351,7 @@ class Parameters():
                     try:
                         self.maxTmDiff = float(arg)
                     except:
-                        raise ValueError(ERR_MSG_15)
+                        raise ValueError(ERR_MSG_16)
                 
                 # get the number of threads to use
                 elif opt in THREADS_FLAGS:
@@ -349,7 +359,7 @@ class Parameters():
                     try:
                         self.numThreads = int(arg)
                     except:
-                        raise ValueError(ERR_MSG_16)
+                        raise ValueError(ERR_MSG_17)
                 
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
@@ -363,11 +373,11 @@ class Parameters():
             
             # make sure an input file was specified
             if self.ingroupFns is None:
-                raise ValueError(ERR_MSG_17)
+                raise ValueError(ERR_MSG_18)
             
             # make sure an output file was specified
             if self.outFn is None:
-                raise ValueError(ERR_MSG_18)
+                raise ValueError(ERR_MSG_19)
     
     def logRunDetails(self, version) -> None:
         """saves the details for the current instance of the program
