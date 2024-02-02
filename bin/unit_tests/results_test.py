@@ -17,6 +17,9 @@ class Result():
         self.revTm:float = revTm
         self.revGc:float = revGc
         self.additional:dict[str] = additional
+    
+    def __repr__(self) -> str:
+        return str(vars(self))
 
 class ResultsTest(unittest.TestCase):
     """class for testing the results of primerForge
@@ -195,10 +198,10 @@ class ResultsTest(unittest.TestCase):
                         # if the `_length` string is in the column name
                         if LEN_SUFFIX == key[idx][-len(LEN_SUFFIX):]:
                             # then get a list of the product sizes
-                            additional[key[idx]] = map(int, row[idx].split(SEP_2))
+                            additional[key[idx]] = list(map(int, row[idx].split(SEP_2)))
                         else:
                             # otherwise this is the name of the contig
-                            additional[key[idx]] = row[idx]
+                            additional[key[idx]] = row[idx].split(SEP_2)
                     
                     out[(fwd,rev)] = Result(ftm,fgc,rtm,rgc,additional)
         return out
