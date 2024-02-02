@@ -126,6 +126,11 @@ class Parameters():
                     DEBUG_FLAGS[0][2:])
 
         # messages
+        YN = ['y', 'n']
+        WARN_MSG_A = 'output file ('
+        WARN_MSG_B = ") already exists."
+        PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}]"
+        INVALID_SELECTION = 'invalid selection'
         IGNORE_MSG = 'ignoring unused argument: '
         ERR_MSG_1  = 'invalid or missing ingroup file(s)'
         ERR_MSG_2  = 'cannot write to output file'
@@ -222,6 +227,21 @@ class Parameters():
                 
                 # get output filename
                 elif opt in OUT_FLAGS:
+                    # make sure the file doesn't already exist
+                    if os.path.exists(arg):
+                        # warn the user and abort if the file already exists
+                        print(f"{WARN_MSG_A}{arg}{WARN_MSG_B}")
+                        
+                        # ask the user if they wish to proceed
+                        proceed = input(PROCEED_MSG)
+                        while proceed not in YN:
+                            print(INVALID_SELECTION)
+                            proceed = input(PROCEED_MSG)
+                        
+                        # if the user declined, then abort
+                        if proceed == YN[1]:
+                            raise FileExistsError(f"{WARN_MSG_A}{arg}{WARN_MSG_B}")
+                        
                     # make sure the file can be written
                     try:
                         fh = open(arg, 'w')
