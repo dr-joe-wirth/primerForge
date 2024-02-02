@@ -1,12 +1,14 @@
 from __future__ import annotations
 from bin.Clock import Clock, _printDone, _printStart
-from bin.getCandidateKmers import _kmpSearch
+from bin.getCandidateKmers import _kmpSearch as _kmp
 import gzip, os, subprocess, sys, unittest
 from bin.Parameters import Parameters
 from Bio.SeqUtils import MeltingTemp
+from Bio.SeqRecord import SeqRecord
 from bin.main import _main
 from Bio.Seq import Seq
 from bin.Log import Log
+from Bio import SeqIO
 
 class Result():
     """class to save results for easy lookup
@@ -35,6 +37,8 @@ class ResultsTest(unittest.TestCase):
                 'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
     PCRLEN = "length"
     CONTIG = "contig"
+    PLS = "+"
+    MNS = "-"
     
     @classmethod
     def setUpClass(cls) -> None:
@@ -71,6 +75,37 @@ class ResultsTest(unittest.TestCase):
         cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.RESULT_FN)
         _printDone(clock)
     
+        # load genomic sequences into memory
+        _printStart(clock, 'reading genomic sequences into memory')
+        cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
+        _printDone(clock)
+        
+        # initialize a dictionary to store binding sites (memoization)
+        cls.bindingSites:dict = dict()
+    
+    # functions for setting up the class
+    def _getParameters() -> Parameters:
+        """creates a Parameters object for testing
+
+        Returns:
+            Parameters: a Parameters object
+        """
+        # make the parameters object
+        sys.argv = ['primerForge.py',
+                    '-i', os.path.join(ResultsTest.TEST_DIR, "i[123].gbff"),
+                    '-u', os.path.join(ResultsTest.TEST_DIR, "o[12].gbff"),
+                    '-r', '70,120',
+                    '-b', '45,150',
+                    '-n', ResultsTest.NUM_THREADS,
+                    '-o', ResultsTest.RESULT_FN,
+                    '--debug']
+        params = Parameters('', '')
+        
+        # use a different logger pointing at the test directory
+        params.log = Log(ResultsTest.TEST_DIR)
+        
+        return params
+
     def _downloadOneGenome(ftp:str, fn:str) -> None:
         """downloads a genome using wget
 
@@ -131,28 +166,6 @@ class ResultsTest(unittest.TestCase):
         
         ResultsTest._downloadGenomesForGroup(ResultsTest.INGROUP)
         ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
-    
-    def _getParameters() -> Parameters:
-        """creates a Parameters object for testing
-
-        Returns:
-            Parameters: a Parameters object
-        """
-        # make the parameters object
-        sys.argv = ['primerForge.py',
-                    '-i', os.path.join(ResultsTest.TEST_DIR, "i[123].gbff"),
-                    '-u', os.path.join(ResultsTest.TEST_DIR, "o[12].gbff"),
-                    '-r', '70,120',
-                    '-b', '45,150',
-                    '-n', ResultsTest.NUM_THREADS,
-                    '-o', ResultsTest.RESULT_FN,
-                    '--debug']
-        params = Parameters('', '')
-        
-        # use a different logger pointing at the test directory
-        params.log = Log(ResultsTest.TEST_DIR)
-        
-        return params
 
     def _parseResultsFile(fn:str) -> dict[tuple[Seq,Seq],Result]:
         """parses the results file produced by running primerForge
@@ -234,6 +247,47 @@ class ResultsTest(unittest.TestCase):
         
         return out
 
+    def _loadOneGenomeSequence(fn:str) -> dict[str,dict[str,Seq]]:
+        """loads a single genome sequence into memory
+
+        Args:
+            fn (str): the filename (basename)
+
+        Returns:
+            dict[str,SeqRecord]: key=contig name; val=dict: key=strand; val=sequence
+        """
+        # initialize variables
+        out = dict()
+        contig:SeqRecord
+        
+        # store each contig underneath its name
+        for contig in SeqIO.parse(os.path.join(ResultsTest.TEST_DIR, fn), 'genbank'):
+            out[contig.id] = dict()
+            out[contig.id][ResultsTest.PLS] = contig.seq.upper()
+            out[contig.id][ResultsTest.MNS] = contig.seq.reverse_complement().upper()
+        
+        return out
+
+    def _loadGenomeSequences() -> dict[str,dict[str,dict[str,Seq]]]:
+        """loads genome sequences into memory
+
+        Returns:
+            dict[str,list[SeqRecord]]: key=genome name; val=dict: key=contig name; val=dict: key=strand; val=sequence
+        """
+        # initialize output
+        out = dict()
+        
+        # load ingroup sequences
+        for fn in ResultsTest.INGROUP.keys():
+            out[fn] = ResultsTest._loadOneGenomeSequence(fn)
+        
+        # load outgroup sequences
+        for fn in ResultsTest.OUTGROUP.keys():
+            out[fn] = ResultsTest._loadOneGenomeSequence(fn)
+        
+        return out
+    
+    # functions for testing
     def _getGc(seq:Seq) -> float:
         """gets the percent G+C for the provided sequence
 
@@ -262,25 +316,286 @@ class ResultsTest(unittest.TestCase):
 
         # check for each repeat in the primer
         for repeat in REPEATS:
-            if _kmpSearch(seq, repeat)[0]:
+            if _kmp(seq, repeat)[0]:
                 return False
         return True
     
-    def _getBindingSites(self, seq:Seq) -> None:
-        pass
+    def _kmpSearch(contig:Seq, primer:Seq) -> list[int]:
+        """implementation of the KMP string search algorithm: O(n+m)
+
+        Args:
+            contig (Seq): contig to search
+            primer (Seq): primer to find within the contig
+
+        Returns:
+            list[int]: a list of starting positions of matches
+        """
+        # helper function
+        def computeLpsArray(patternLen:int) -> list[int]:
+            """precomputes the longest prefix that is also a suffix array
+
+            Args:
+                patternLen (int): the length of the pattern
+
+            Returns:
+                list[int]: the precomputed lps array
+            """
+            # initialize the lps array
+            lps = [0] * patternLen
+            
+            # initialize the indices; lps[0] always == 0 so start idx at 1
+            matchLen = 0 
+            idx = 1
+            
+            # go through each position in the pattern 
+            while idx < patternLen:
+                # if a match occurs update the match length, store in the array, and move to the next position
+                if primer[idx] == primer[matchLen]:
+                    matchLen += 1
+                    lps[idx] = matchLen
+                    idx += 1
+                
+                # if a mismatch
+                else:
+                    # if at previous string also did not match, then no lps; move to next position
+                    if matchLen == 0:
+                        lps[idx] = 0
+                        idx += 1 
+                    
+                    # if the previous string matched, we need to start at the beginning of the last match
+                    else:
+                        matchLen = lps[matchLen - 1]
+            
+            return lps
+
+        # initialize output
+        out = list()
+
+        # get the length of the text and the pattern
+        textLen = len(contig)
+        patternLen = len(primer)
+        
+        lps = computeLpsArray(patternLen)
+        
+        # initialize indices
+        idx = 0
+        jdx = 0
+        
+        # keep evaluating the text until at the end
+        while idx < textLen:
+            # keep comparing strings while they match
+            if contig[idx] == primer[jdx]:
+                idx += 1
+                jdx += 1
+            
+            # if a mismatch occurs
+            else:
+                # if at the start of the pattern, cannot reset; move to next text character
+                if jdx == 0:
+                    idx += 1
+                
+                # otherwise, move to the previous character as defined by the lps array
+                else:
+                    jdx = lps[jdx -1]
+        
+            # match found if at the end of the pattern
+            if jdx == patternLen:
+                out.append(idx - patternLen)
+                jdx = 0
+        
+        return out
     
-    def _isRepeatedInIngroup(self, fbind, rbind) -> None:
-        pass
+    def _getBindingSitesForOneGenome(self, name:str, primer:Seq) -> dict[str,dict[str,list[int]]]:
+        """gets the binding sites of a primer for a single genome
+
+        Args:
+            name (str): name of the genome sequence
+            primer (Seq): the primer sequence to find
+
+        Returns:
+            dict[str,dict[str,list[int]]]: key=contig name; val=dict: key=strand; val=list of binding start sites
+        """
+        # initialize output
+        out = dict()
+        
+        # for each contig in the genome sequence
+        for contig in self.sequences[name].keys():
+            # extract the binding sites on both strands
+            plus  = ResultsTest._kmpSearch(self.sequences[name][contig][ResultsTest.PLS], primer)
+            minus = ResultsTest._kmpSearch(self.sequences[name][contig][ResultsTest.MNS], primer)
+            
+            # save the binding sites
+            out[contig] = {ResultsTest.PLS: plus,
+                           ResultsTest.MNS: minus}
+        
+        return out
+
+    def _getBindingSites(self, primer:Seq) -> dict[str,dict[str,dict[str,list[int]]]]:
+        """gets the binding sites of a primer in all the test genomes
+
+        Args:
+            primer (Seq): the primer to evaluate
+
+        Returns:
+            dict[str,dict[str,dict[str,list[int]]]]: key=genome name; val=dictionary produced by _getBindingSitesForOneGenome
+        """
+        # only do work if necessary
+        if primer in self.bindingSites.keys():
+            out = self.bindingSites[primer]
+        
+        else:
+            # initialize output
+            out = dict()
+            
+            # for each ingroup sequence, get all of the binding sites
+            for name in ResultsTest.INGROUP.keys():
+                out[name] = self._getBindingSitesForOneGenome(name, primer)
+
+            # for each outgroup sequence, get all of the binding sites
+            for name in ResultsTest.OUTGROUP.keys():
+                out[name] = self._getBindingSitesForOneGenome(name, primer)
+            
+            # save results to prevent redundant operations
+            self.bindingSites[primer] = out
+
+        return out
     
-    def _isProductLengthCorrect(self, fbind, rbind) -> None:
-        pass
+    def _isRepeatedInIngroup(self, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
+        """does the primer pair have exactly one binding site
+
+        Args:
+            fbind (dict[str,dict[str,dict[str,list[int]]]]): _description_
+            rbind (dict[str,dict[str,dict[str,list[int]]]]): _description_
+        """
+        fCount = 0
+        rCount = 0
+        for name in ResultsTest.INGROUP.keys():
+            for contig in fbind[name].keys():
+                for strand in fbind[name].keys():
+                    fCount += len(fbind[name][contig][strand])
+                    rCount += len(rbind[name][contig][strand])
+        
+        self.assertEqual(fCount, 1)
+        self.assertEqual(rCount, 1)
     
-    def _onSeparateStrands(self, fbind, rbind) -> None:
-        pass
+    def _onSeparateStrands(self, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
+        """evaluates if the forward and reverse primers bind on separate strands in the ingroup
+
+        Args:
+            fbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites
+            rbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites
+        """
+        # only evaluate for the ingroup
+        for name in ResultsTest.INGROUP.keys():
+            for contig in fbind[name].keys():
+                # if the forward primer is on the (+) strand
+                if fbind[name][contig][ResultsTest.PLS] != []:
+                    # then the reverse primer should be on the (-) strand
+                    self.assertNotEqual(rbind[name][contig][ResultsTest.MNS], [])
+                    
+                    # the forward primer should not be on the (-) strand
+                    self.assertEqual(fbind[name][contig][ResultsTest.MNS], [])
+                    
+                    # the reverse primer should not be on the (+) strand
+                    self.assertEqual(rbind[name][contig][ResultsTest.PLS], [])
+                
+                # if the forward primer is on the (-) strand
+                elif fbind[name][contig][ResultsTest.MNS] != []:
+                    # then the reverse primer should be on the (+) strand
+                    self.assertNotEqual(rbind[name][contig][ResultsTest.PLS], [])
+                    
+                    # the forward primer should not be on the (+) strand
+                    self.assertEqual(fbind[name][contig][ResultsTest.PLS], [])
+                    
+                    # the reverse primer should not be on the (-) strand
+                    self.assertEqual(rbind[name][contig][ResultsTest.MNS], [])
     
-    def _noDisallowedOutgroupProducts(self, fbind, rbind) -> None:
-        pass
+    def _isProductLengthCorrect(self, fwd:Seq, rev:Seq, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
+        """determines if the product length is correctly saved
+
+        Args:
+            fwd (Seq): forward primer
+            rev (Seq): reverse primer
+            fbind (dict[str,dict[str,dict[str,list[int]]]]): forward binding sites (dict produced by _getBindingSites)
+            rbind (dict[str,dict[str,dict[str,list[int]]]]): reverse binding sites (dict produced by _getBindingSites)
+        """
+        # for each ingroup genome
+        for name in ResultsTest.INGROUP.keys():
+            # extract the stored pcr length and the contig
+            pcrLen = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN][0]
+            contig = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG][0]
+            
+            # find where the forward and reverse primers bind
+            if fbind[name][contig][ResultsTest.PLS] != []:
+                fstart = fbind[name][contig][ResultsTest.PLS][0]
+                rstart = rbind[name][contig][ResultsTest.MNS][0]
+            else:
+                fstart = fbind[name][contig][ResultsTest.MNS][0]
+                rstart = rbind[name][contig][ResultsTest.PLS][0]
+            
+            # the true length is just the space between the two ends
+            truLen = len(self.sequences[name][contig][ResultsTest.PLS]) - fstart - rstart
+            
+            # make sure the saved length and the true length match
+            self.assertEqual(pcrLen, truLen)
+        
+        # for each outgroup genome
+        for name in ResultsTest.OUTGROUP.keys():
+            # get the list of of pcr products and their contigs
+            pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
+            contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
+            
+            # key results' the product sizes under the contig names
+            res = dict()
+            for idx in range(len(pcrLens)):
+                res[contigs[idx]] = res.get(contigs[idx], set())
+                res[contigs[idx]].add(pcrLens[idx])
+
+            # initialize a dictionary to store the true values
+            tru = dict()
+            
+            # for each contig
+            for contig in fbind[name].keys():
+                # only proceed if the reverse primer also binds to this contig
+                if contig in rbind[name].keys():
+                    # extrac the forward and reverse binding sites on both strands
+                    fwdPlsStarts = fbind[name][contig][ResultsTest.PLS]
+                    fwdMnsStarts = fbind[name][contig][ResultsTest.MNS]
+                    revPlsStarts = rbind[name][contig][ResultsTest.PLS]
+                    revMnsStarts = rbind[name][contig][ResultsTest.MNS]
+                    
+                    # extract the length of the contig
+                    contigLen = len(self.sequences[name][contig][ResultsTest.PLS])
+                    
+                    # for each fwd/rev pair on the (+)/(-) strands
+                    for fstart in fwdPlsStarts:
+                        for rstart in revMnsStarts:
+                            # save the pcr length
+                            tru[contig] = tru.get(contig, set())
+                            tru[contig].add(contigLen - fstart - rstart)
+                    
+                    # for each fwd/rev pair on the (-)/(+) strands
+                    for fstart in fwdMnsStarts:
+                        for rstart in revPlsStarts:
+                            # save the pcr length
+                            tru[contig] = tru.get(contig, set())
+                            tru[contig].add(contigLen - fstart - rstart)
+            
+            # if the value was "NA", then there should be no saved data
+            if contigs == {"NA"}:
+                self.assertEqual(tru, dict())
+            
+            else:
+                # for each contig
+                for contig in res.keys():
+                    # the pcr lengths should be equal
+                    self.assertEqual(res[contig], tru[contig])
+                    
+                    # and the pcr lengths should not be disallowed
+                    for plen in tru[contig]:
+                        self.assertNotIn(plen, self.params.disallowedLens)
     
+    # test cases
     def testA_checkTm(self) -> None:
         """does the Tm match the expected value
         """
@@ -397,9 +712,8 @@ class ResultsTest(unittest.TestCase):
         """evaluate several additional tests
         """
         for fwd,rev in self.results.keys():
-            fwdIngroupBind,fwdOutgroupBind = self._getBindingSites(fwd)
-            revIngroupBind,revOutgroupBind = self._getBindingSites(rev)
-            self._isRepeatedInIngroup(fwdIngroupBind,revIngroupBind)
-            self._isProductLengthCorrect(fwdIngroupBind, revIngroupBind)
-            self._onSeparateStrands(fwdIngroupBind, revIngroupBind)
-            self._noDisallowedOutgroupProducts(fwdOutgroupBind, revOutgroupBind)
+            fwdSites = self._getBindingSites(fwd)
+            revSites = self._getBindingSites(rev)
+            self._isRepeatedInIngroup(fwdSites, revSites)
+            self._onSeparateStrands(fwdSites, revSites)
+            self._isProductLengthCorrect(fwd, rev, fwdSites, revSites)
