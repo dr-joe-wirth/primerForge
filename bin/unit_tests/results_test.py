@@ -11,12 +11,12 @@ from bin.Log import Log
 class Result():
     """class to save results for easy lookup
     """
-    def __init__(self, fwdTm:float, fwdGc:float, revTm:float, revGc:float, additional:dict[str]) -> Result:
+    def __init__(self, fwdTm:float, fwdGc:float, revTm:float, revGc:float, additional:dict[str,dict[str,list]]) -> Result:
         self.fwdTm:float = fwdTm
         self.fwdGc:float = fwdGc
         self.revTm:float = revTm
         self.revGc:float = revGc
-        self.additional:dict[str] = additional
+        self.additional:dict[str,dict[str,list]] = additional
     
     def __repr__(self) -> str:
         return str(vars(self))
@@ -33,6 +33,8 @@ class ResultsTest(unittest.TestCase):
                 'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
     OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
                 'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
+    PCRLEN = "length"
+    CONTIG = "contig"
     
     @classmethod
     def setUpClass(cls) -> None:
@@ -171,8 +173,8 @@ class ResultsTest(unittest.TestCase):
         REV_TM  = 4
         REV_GC  = 5
         FIRST   = 6
-        LEN_SUFFIX = "_length"
-        CON_SUFFIX = "_contig"
+        LEN_SUFFIX = "_" + ResultsTest.PCRLEN
+        CON_SUFFIX = "_" + ResultsTest.CONTIG
         
         # initialize variables
         out = dict()
@@ -214,7 +216,7 @@ class ResultsTest(unittest.TestCase):
                             additional[name] = additional.get(name, dict())
                             
                             # then save a list of product sizes
-                            additional[name]['length'] = list(map(int, row[idx].split(SEP_2)))
+                            additional[name][ResultsTest.PCRLEN] = list(map(int, row[idx].split(SEP_2)))
                         
                         # otherwise it is a contig name
                         else:
@@ -225,7 +227,7 @@ class ResultsTest(unittest.TestCase):
                             additional[name] = additional.get(name, dict())
                             
                             # then save the a list of contig names
-                            additional[name]['contig'] = row[idx].split(SEP_2)
+                            additional[name][ResultsTest.CONTIG] = row[idx].split(SEP_2)
                     
                     # store the result for this primer pair
                     out[(fwd,rev)] = Result(ftm,fgc,rtm,rgc,additional)
@@ -342,7 +344,56 @@ class ResultsTest(unittest.TestCase):
             self.assertTrue(ResultsTest._noLongRepeats(fwd))
             self.assertTrue(ResultsTest._noLongRepeats(rev))
 
-    def testH_sequenceTests(self) -> None:
+    def testH_ingroupHasOneProduct(self) -> None:
+        """do all pairs produce one product size in the ingroup
+        """
+        for pair in self.results.keys():
+            for name in ResultsTest.INGROUP.keys():
+                # there should be exactly one pcr product size for each ingroup genome
+                self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1)
+                self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1)
+    
+    def testI_ingroupProductsWithinRange(self) -> None:
+        """is ingroup pcr product size in the expected range
+        """
+        for pair in self.results.keys():
+            for name in ResultsTest.INGROUP.keys():
+                self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN], self.params.minPcr)
+                self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN], self.params.maxPcr)
+    
+    def testJ_outgroupProductsSavedCorrectly(self) -> None:
+        """do outgroup pcr products look valid
+        """
+        for pair in self.results.keys():
+            for name in ResultsTest.OUTGROUP.keys():
+                # the length of the contig and pcr size lists should be equal
+                numContigs = len(self.results[pair].additional[name][ResultsTest.CONTIG])
+                numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
+                self.assertEqual(numContigs, numPcrLens)
+    
+    def testK_outgroupProductsNaAreZero(self) -> None:
+        """do outgroup products of 0 have NA as the contig and vice-versa
+        """
+        for pair in self.results.keys():
+            for name in ResultsTest.OUTGROUP.keys():
+                for idx in range(self.results[pair].additional[name][ResultsTest.CONTIG]):
+                    # if the contig is NA, then the pcr size should be zero
+                    if self.results[pair].additional[name][ResultsTest.CONTIG][idx] == 'NA':
+                        self.assertEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][idx], 0)
+                    
+                    # if the pcr size is zero, then the contig should be NA
+                    if self.results[pair].additional[name][ResultsTest.PCRLEN][idx] == 0:
+                        self.assertEqual(self.results[pair].additional[name][ResultsTest.CONTIG][idx], 'NA')
+                
+    def testL_outgroupProductsNotWithinDisallowedRange(self) -> None:
+        """are outgroup pcr products outside the disallowed range
+        """
+        for pair in self.results.keys():
+            for name in ResultsTest.OUTGROUP.keys():
+                for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
+                    self.assertNotIn(pcrLen, self.params.disallowedLens)
+
+    def testM_sequenceTests(self) -> None:
         """evaluate several additional tests
         """
         for fwd,rev in self.results.keys():
