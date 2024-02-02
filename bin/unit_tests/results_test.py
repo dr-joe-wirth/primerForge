@@ -163,6 +163,7 @@ class ResultsTest(unittest.TestCase):
         REV_GC  = 5
         FIRST   = 6
         LEN_SUFFIX = "_length"
+        CON_SUFFIX = "_contig"
         
         # initialize variables
         out = dict()
@@ -197,13 +198,29 @@ class ResultsTest(unittest.TestCase):
                     for idx in key.keys():
                         # if the `_length` string is in the column name
                         if LEN_SUFFIX == key[idx][-len(LEN_SUFFIX):]:
-                            # then get a list of the product sizes
-                            additional[key[idx]] = list(map(int, row[idx].split(SEP_2)))
+                            # get the name of the sequence
+                            name = key[idx][:-len(LEN_SUFFIX)]
+                            
+                            # initialize a dictionary for the name if one doesn't exist
+                            additional[name] = additional.get(name, dict())
+                            
+                            # then save a list of product sizes
+                            additional[name]['length'] = list(map(int, row[idx].split(SEP_2)))
+                        
+                        # otherwise it is a contig name
                         else:
-                            # otherwise this is the name of the contig
-                            additional[key[idx]] = row[idx].split(SEP_2)
+                            # get the name of the sequence
+                            name = key[idx][:-len(CON_SUFFIX)]
+                            
+                            # initialize a dictionary for the name if one deosn't exist
+                            additional[name] = additional.get(name, dict())
+                            
+                            # then save the a list of contig names
+                            additional[name]['contig'] = row[idx].split(SEP_2)
                     
+                    # store the result for this primer pair
                     out[(fwd,rev)] = Result(ftm,fgc,rtm,rgc,additional)
+        
         return out
 
     def _getGc(seq:Seq) -> float:
@@ -253,7 +270,7 @@ class ResultsTest(unittest.TestCase):
     def _noDisallowedOutgroupProducts(self, fbind, rbind) -> None:
         pass
     
-    def testA_checkTm(self):
+    def testA_checkTm(self) -> None:
         """does the Tm match the expected value
         """
         # for each pair, make sure the saved Tm matches the expected value
@@ -261,7 +278,7 @@ class ResultsTest(unittest.TestCase):
             self.assertEqual(self.results[(fwd,rev)].fwdTm, round(MeltingTemp.Tm_Wallace(fwd), 1))
             self.assertEqual(self.results[(fwd,rev)].revTm, round(MeltingTemp.Tm_Wallace(rev), 1))
     
-    def testB_tmWithinRange(self):
+    def testB_tmWithinRange(self) -> None:
         """is the Tm within the specified range
         """
         # for each pair, make sure the Tms are within the specified ranges
@@ -279,7 +296,7 @@ class ResultsTest(unittest.TestCase):
             tmDiff = abs(result.fwdTm - result.revTm)
             self.assertLessEqual(tmDiff, self.params.maxTmDiff)
     
-    def testD_checkGcPercent(self):
+    def testD_checkGcPercent(self) -> None:
         """is the G+C percentage the expected value
         """
         # for each pair, make sure the GC percent is accurate
@@ -287,7 +304,7 @@ class ResultsTest(unittest.TestCase):
             self.assertEqual(self.results[(fwd,rev)].fwdGc, round(ResultsTest._getGc(fwd), 1))
             self.assertEqual(self.results[(fwd,rev)].revGc, round(ResultsTest._getGc(rev), 1))
     
-    def testE_gcPercentInRange(self):
+    def testE_gcPercentInRange(self) -> None:
         """is the G+C percentage within the specified range
         """
         # for each pair, make sure the GC percent is within the specified range
@@ -297,7 +314,7 @@ class ResultsTest(unittest.TestCase):
             self.assertLessEqual(result.fwdGc, self.params.maxGc)
             self.assertLessEqual(result.revGc, self.params.maxGc)
     
-    def testF_threePrimeIsGc(self):
+    def testF_threePrimeIsGc(self) -> None:
         """is the 3' end of the primer a G or C
         """
         # constant
@@ -308,7 +325,7 @@ class ResultsTest(unittest.TestCase):
             self.assertIn(fwd[-1], GC)
             self.assertIn(rev[-1], GC)
 
-    def testG_noHomoPolymers(self):
+    def testG_noHomoPolymers(self) -> None:
         """does the primer contain homopolymers
         """
         # for each pair, make sure there are no homopolymers
@@ -316,7 +333,13 @@ class ResultsTest(unittest.TestCase):
             self.assertTrue(ResultsTest._noLongRepeats(fwd))
             self.assertTrue(ResultsTest._noLongRepeats(rev))
 
-    def testH_sequenceTests(self):
+    def testH_ingroupHasOneProduct(self) -> None:
+        """do all pairs produce one product size in the ingroup
+        """
+        for pair in self.results.keys():
+            pass
+
+    def testH_sequenceTests(self) -> None:
         """evaluate several additional tests
         """
         for fwd,rev in self.results.keys():
