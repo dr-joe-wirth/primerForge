@@ -28,11 +28,11 @@ class ResultsTest(unittest.TestCase):
     NUM_THREADS = 24
     TEST_DIR = os.path.join(os.getcwd(), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
-    GENOMES = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
-               'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
-               'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz',
-               'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
-               'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
+    INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
+                'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
+                'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
+    OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
+                'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
     
     @classmethod
     def setUpClass(cls) -> None:
@@ -105,6 +105,21 @@ class ResultsTest(unittest.TestCase):
         # remove the gzipped file
         os.remove(gz)
     
+    def _downloadGenomesForGroup(group:dict[str,str]) -> None:
+        """downloads a group of genomes
+
+        Args:
+            group (dict[str,str]): key=file basename; val=ftp path
+        """
+        # download each genome from ncbi
+        for fn in group.keys():
+            # get the ftp path and the filename
+            ftp = group[fn]
+            fn = os.path.join(ResultsTest.TEST_DIR, fn)
+            
+            # download the genome
+            ResultsTest._downloadOneGenome(ftp, fn)
+    
     def _downloadTestData() -> None:
         """downloads all the genomes for testing
         """
@@ -112,14 +127,8 @@ class ResultsTest(unittest.TestCase):
         if not os.path.isdir(ResultsTest.TEST_DIR):
             os.mkdir(ResultsTest.TEST_DIR)
         
-        # download each genome from ncbi
-        for fn in ResultsTest.GENOMES.keys():
-            # get the ftp path and the filename
-            ftp = ResultsTest.GENOMES[fn]
-            fn = os.path.join(ResultsTest.TEST_DIR, fn)
-            
-            # download the genome
-            ResultsTest._downloadOneGenome(ftp, fn)
+        ResultsTest._downloadGenomesForGroup(ResultsTest.INGROUP)
+        ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
     
     def _getParameters() -> Parameters:
         """creates a Parameters object for testing
@@ -332,12 +341,6 @@ class ResultsTest(unittest.TestCase):
         for fwd,rev in self.results.keys():
             self.assertTrue(ResultsTest._noLongRepeats(fwd))
             self.assertTrue(ResultsTest._noLongRepeats(rev))
-
-    def testH_ingroupHasOneProduct(self) -> None:
-        """do all pairs produce one product size in the ingroup
-        """
-        for pair in self.results.keys():
-            pass
 
     def testH_sequenceTests(self) -> None:
         """evaluate several additional tests
