@@ -3,6 +3,9 @@ from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
+# global constant
+__NULL_PRODUCT = ("NA", 0, ())
+
 
 def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int]]:
     """gets all the kmers and their start positions from a contig
@@ -104,6 +107,50 @@ def __getOutgroupProductSizes(kmers:dict[Seq,list[int]], fwd:Primer, rev:Primer)
     return out
 
 
+def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer],set[tuple[str,int,tuple]]]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+    """adds the outgroup results to the pairs dictionary
+
+    Args:
+        outgroupProducts (dict[str,dict[tuple[Primer,Primer],set[tuple[str,int,tuple]]]]): key=genome name; val=dict: key=primer pair; val=set of tuples: contig, pcrLen, binpair
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; val=dict: key=genome name; val=tuple: contig, pcrLen, binpair
+    
+    Returns:
+        does not return. modifies the pairs dictionary
+    """
+    # for each pair remaining to process
+    for pair in pairs.keys():
+        # for each outgroup genome
+        for name in outgroupProducts.keys():
+            # extract the outgroup product sizes for this pair
+            result = outgroupProducts[name][pair]
+
+            # if there is only one primer seize, then save it
+            if len(result) == 1:
+                pairs[pair][name] = result.pop()
+            
+            # otherwise
+            else:
+                # remove any null products from the set
+                try: result.remove(__NULL_PRODUCT)
+                except KeyError: pass
+                
+                # if there is only one primer size, then save it
+                if len(result) == 1:
+                    pairs[pair][name] = result.pop()
+                
+                # otherwise
+                else:
+                    # combine all contigs and pcrLens into separate lists
+                    contigs = list()
+                    pcrLens = list()
+                    for contig,pcrLen,binPair in result:
+                        contigs.append(contig)
+                        pcrLens.append(pcrLen)
+                    
+                    # convert the contigs and lengths to comma-separated strings; add empty bin pair
+                    pairs[pair][name] = (",".join(contigs), ",".join(map(str,pcrLens)), ())
+
+
 def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], params:Parameters) -> None:
     """removes primers found in the outgroup that produce disallowed product sizes
 
@@ -118,55 +165,55 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     # message
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
     
+    # initialize a dictionary to store all the PCR products for the outgroup
+    outgroupProducts = dict()
+    
     # for each outgroup genome
     for name in outgroup.keys():
+        # initialize a dictionary for the current outgroup genome
+        outgroupProducts[name] = dict()
+        
         # for each contig in the genome
         for contig in outgroup[name]:
-            # get all the kmers in this genome
+            # get all the kmers
             kmers = __getAllKmers(contig, params.minLen, params.maxLen)
             
-            # recalculate which pairs need to be evaluated
-            pairsToCheck = set(pairs.keys())
-            for fwd,rev in pairsToCheck:
-                # initialize a boolean to track status
-                done = False
-                
+            # evaluate only the pairs that are still present in the dictionary
+            for fwd,rev in set(pairs.keys()):
+                # initialize an empty set if one does not already exist
+                outgroupProducts[name][(fwd,rev)] = outgroupProducts[name].get((fwd,rev), set())
+
                 # get the outgroup products for this primer pair
-                outgroupProducts = __getOutgroupProductSizes(kmers, fwd, rev)
+                products = __getOutgroupProductSizes(kmers, fwd, rev)
                 
                 # if there are no products, then the size is 0
-                if outgroupProducts == set():
-                    pairs[(fwd,rev)][name] = ("NA", 0, ())
+                if products == set():
+                    outgroupProducts[name][(fwd,rev)].update({__NULL_PRODUCT})
                 
                 # if there are products
                 else:
-                    # determine if multiple product lengths need to be reported
-                    count = 0
+                    # initialize variable to determine if this product needs to be processed further
+                    done = False
                     
                     # for each pcr product length
-                    for pcrLen in outgroupProducts:
+                    for pcrLen in products:
                         # remove any pairs that produce disallowed product sizes
                         if pcrLen in params.disallowedLens:
                             pairs.pop((fwd,rev))
                             done = True
                             break
-                        
-                        # otherwise count the number of sizes seen
-                        else:
-                            count += 1
                     
+                    # if the pcr product lengths are not disallowed, then save them in the dictionary
                     if not done:
-                        # if more than one product size, then join them as a comma-separated list
-                        if count > 1:
-                            pcrLen = ",".join(map(str, outgroupProducts))
-                        
-                        # save the pcr product size for this genome (binpair is empty tuple)
-                        pairs[(fwd,rev)][name] = (contig.id, pcrLen, ())
-
-    # if the pairs is now empty, then raise an error
+                        outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
+    
+    # if the pairs dictionary is now empty, then raise an error
     if pairs == dict():
         # save details if debugging
         if params.debug:
             params.log.initialize(_removeOutgroupPrimers.__name__)
             params.log.error(ERR_MSG)
         raise RuntimeError(ERR_MSG)
+    
+    # process the outgroup results and add them to the pairs dictionary
+    __processOutgroupResults(outgroupProducts, pairs)
