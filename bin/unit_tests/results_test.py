@@ -48,34 +48,40 @@ class ResultsTest(unittest.TestCase):
         total = Clock()
         clock = Clock()
         
-        # get the parameters
-        cls.params:Parameters = ResultsTest._getParameters()
-        cls.params.log.initialize(ResultsTest.setUpClass.__name__)
-        
         # load existing results if present
         if os.path.exists(ResultsTest.RESULT_FN):
+            # get the parameters
+            cls.params:Parameters = ResultsTest._getParameters()
+            cls.params.log.initialize(ResultsTest.setUpClass.__name__)
+            
             print(f'running tests on existing results file: {ResultsTest.RESULT_FN}')
         
         # otherwise run primerForge
         else:
             _printStart(total, 'getting results for testing', end=' ...\n')
             
+            # download the genomes
             _printStart(clock, 'downloading genomes')
             ResultsTest._downloadTestData()
             _printDone(clock)
             
+            # get the parameters
+            cls.params:Parameters = ResultsTest._getParameters()
+            cls.params.log.initialize(ResultsTest.setUpClass.__name__)
+            
+            # run primerForge
             _printStart(clock, 'running primerForge', end=' ...\n')
             _main(cls.params)
             _printDone(clock)
             print()
             _printDone(total)
         
-        # load the results into memory
+        # load the results file into memory
         _printStart(clock, 'reading results into memory')
         cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.RESULT_FN)
         _printDone(clock)
     
-        # load genomic sequences into memory
+        # load the genomic sequences into memory
         _printStart(clock, 'reading genomic sequences into memory')
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
         _printDone(clock)
@@ -99,7 +105,16 @@ class ResultsTest(unittest.TestCase):
                     '-n', ResultsTest.NUM_THREADS,
                     '-o', ResultsTest.RESULT_FN,
                     '--debug']
-        params = Parameters('', '')
+        
+        # don't overwrite an existing results file
+        if os.path.exists(ResultsTest.RESULT_FN):
+            sys.argv[-2] = 'fakefile'
+            params = Parameters('', '')
+            params.outFn = ResultsTest.RESULT_FN
+        
+        # proceed like normal if the file doesn not yet exist
+        else:
+            params = Parameters('', '')
         
         # use a different logger pointing at the test directory
         params.log = Log(ResultsTest.TEST_DIR)
@@ -471,7 +486,7 @@ class ResultsTest(unittest.TestCase):
         rCount = 0
         for name in ResultsTest.INGROUP.keys():
             for contig in fbind[name].keys():
-                for strand in fbind[name].keys():
+                for strand in fbind[name][contig].keys():
                     fCount += len(fbind[name][contig][strand])
                     rCount += len(rbind[name][contig][strand])
         
@@ -673,8 +688,8 @@ class ResultsTest(unittest.TestCase):
         """
         for pair in self.results.keys():
             for name in ResultsTest.INGROUP.keys():
-                self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN], self.params.minPcr)
-                self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN], self.params.maxPcr)
+                self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr)
+                self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr)
     
     def testJ_outgroupProductsSavedCorrectly(self) -> None:
         """do outgroup pcr products look valid
@@ -691,7 +706,7 @@ class ResultsTest(unittest.TestCase):
         """
         for pair in self.results.keys():
             for name in ResultsTest.OUTGROUP.keys():
-                for idx in range(self.results[pair].additional[name][ResultsTest.CONTIG]):
+                for idx in range(len(self.results[pair].additional[name][ResultsTest.CONTIG])):
                     # if the contig is NA, then the pcr size should be zero
                     if self.results[pair].additional[name][ResultsTest.CONTIG][idx] == 'NA':
                         self.assertEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][idx], 0)
