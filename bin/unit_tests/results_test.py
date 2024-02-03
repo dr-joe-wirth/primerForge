@@ -474,7 +474,7 @@ class ResultsTest(unittest.TestCase):
             self.bindingSites[primer] = out
 
         return out
-    
+
     def _isRepeatedInIngroup(self, fwd:Seq, rev:Seq, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
         """does the primer pair have exactly one binding site
 
@@ -621,7 +621,18 @@ class ResultsTest(unittest.TestCase):
                         self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd}, {rev}")
     
     # test cases
-    def testA_checkTm(self) -> None:
+    def testA_isSequenceUpper(self) -> None:
+        """is primer sequence uppercase
+        """
+        # constants
+        FAIL_MSG = " is not uppercase"
+        
+        # make sure each primer saved is uppercase
+        for fwd,rev in self.results.keys():
+            self.assertEqual(fwd, fwd.upper(), f"{fwd}{FAIL_MSG}")
+            self.assertEqual(rev, rev.upper(), f"{rev}{FAIL_MSG}")
+    
+    def testB_checkTm(self) -> None:
         """does the Tm match the expected value
         """
         # constant
@@ -632,7 +643,7 @@ class ResultsTest(unittest.TestCase):
             self.assertEqual(self.results[(fwd,rev)].fwdTm, round(MeltingTemp.Tm_Wallace(fwd), 1), f"{FAIL_MSG}{fwd}")
             self.assertEqual(self.results[(fwd,rev)].revTm, round(MeltingTemp.Tm_Wallace(rev), 1), f"{FAIL_MSG}{rev}")
     
-    def testB_tmWithinRange(self) -> None:
+    def testC_tmWithinRange(self) -> None:
         """is the Tm within the specified range
         """
         # constant
@@ -645,7 +656,7 @@ class ResultsTest(unittest.TestCase):
             self.assertLessEqual(self.results[(fwd,rev)].fwdTm, self.params.maxTm, f"{FAIL_MSG}{fwd}")
             self.assertLessEqual(self.results[(fwd,rev)].revTm, self.params.maxTm, f"{FAIL_MSG}{rev}")
     
-    def testC_tmDiffWithinRange(self) -> None:
+    def testD_tmDiffWithinRange(self) -> None:
         """is the Tm difference below the specified threshold
         """
         # for each pair, make sure the Tm difference is below the threshold
@@ -653,7 +664,7 @@ class ResultsTest(unittest.TestCase):
             tmDiff = abs(self.results[(fwd,rev)].fwdTm - self.results[(fwd,rev)].revTm)
             self.assertLessEqual(tmDiff, self.params.maxTmDiff, f"tm diff to large for {fwd}, {rev}")
     
-    def testD_checkGcPercent(self) -> None:
+    def testE_checkGcPercent(self) -> None:
         """is the G+C percentage the expected value
         """
         # constant
@@ -664,7 +675,7 @@ class ResultsTest(unittest.TestCase):
             self.assertEqual(self.results[(fwd,rev)].fwdGc, round(ResultsTest._getGc(fwd), 1), f"{FAIL_MSG}{fwd}")
             self.assertEqual(self.results[(fwd,rev)].revGc, round(ResultsTest._getGc(rev), 1), f"{FAIL_MSG}{fwd}")
     
-    def testE_gcPercentInRange(self) -> None:
+    def testF_gcPercentInRange(self) -> None:
         """is the G+C percentage within the specified range
         """
         # constant
@@ -677,7 +688,7 @@ class ResultsTest(unittest.TestCase):
             self.assertLessEqual(self.results[(fwd,rev)].fwdGc, self.params.maxGc, f"{FAIL_MSG}{fwd}")
             self.assertLessEqual(self.results[(fwd,rev)].revGc, self.params.maxGc, f"{FAIL_MSG}{rev}")
     
-    def testF_threePrimeIsGc(self) -> None:
+    def testG_threePrimeIsGc(self) -> None:
         """is the 3' end of the primer a G or C
         """
         # constants
@@ -689,7 +700,7 @@ class ResultsTest(unittest.TestCase):
             self.assertIn(fwd[-1], GC, f"{FAIL_MSG}{fwd}")
             self.assertIn(rev[-1], GC, f"{FAIL_MSG}{rev}")
 
-    def testG_noHomoPolymers(self) -> None:
+    def testH_noHomoPolymers(self) -> None:
         """does the primer contain homopolymers
         """
         # constant
@@ -700,7 +711,7 @@ class ResultsTest(unittest.TestCase):
             self.assertTrue(ResultsTest._noLongRepeats(fwd), f"{FAIL_MSG}{fwd}")
             self.assertTrue(ResultsTest._noLongRepeats(rev), f"{FAIL_MSG}{rev}")
 
-    def testH_ingroupHasOneProduct(self) -> None:
+    def testI_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
         """
         # constants
@@ -714,7 +725,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testI_ingroupProductsWithinRange(self) -> None:
+    def testJ_ingroupProductsWithinRange(self) -> None:
         """is ingroup pcr product size in the expected range
         """
         # constants
@@ -728,7 +739,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testJ_outgroupProductsSavedCorrectly(self) -> None:
+    def testK_outgroupProductsSavedCorrectly(self) -> None:
         """do outgroup pcr products look valid
         """
         # constants
@@ -743,7 +754,7 @@ class ResultsTest(unittest.TestCase):
                 numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
                 self.assertEqual(numContigs, numPcrLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testK_outgroupProductsNaAreZero(self) -> None:
+    def testL_outgroupProductsNaAreZero(self) -> None:
         """do outgroup products of 0 have NA as the contig and vice-versa
         """
         # constants
@@ -764,7 +775,7 @@ class ResultsTest(unittest.TestCase):
                     if self.results[pair].additional[name][ResultsTest.PCRLEN][idx] == 0:
                         self.assertEqual(self.results[pair].additional[name][ResultsTest.CONTIG][idx], 'NA', f"{FAIL_MSG_2A}{pair}{FAIL_MSG_B}{name}")
                 
-    def testL_outgroupProductsNotWithinDisallowedRange(self) -> None:
+    def testM_outgroupProductsNotWithinDisallowedRange(self) -> None:
         """are outgroup pcr products outside the disallowed range
         """
         # constants
@@ -778,7 +789,7 @@ class ResultsTest(unittest.TestCase):
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
                     self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
 
-    def testM_sequenceTests(self) -> None:
+    def testN_sequenceTests(self) -> None:
         """evaluate several additional tests
         """
         # for each primer pair
