@@ -475,30 +475,40 @@ class ResultsTest(unittest.TestCase):
 
         return out
     
-    def _isRepeatedInIngroup(self, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
+    def _isRepeatedInIngroup(self, fwd:Seq, rev:Seq, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
         """does the primer pair have exactly one binding site
 
         Args:
-            fbind (dict[str,dict[str,dict[str,list[int]]]]): _description_
-            rbind (dict[str,dict[str,dict[str,list[int]]]]): _description_
+            fwd (Seq): the forward primer
+            rev (Seq): the reverse primer
+            fbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites for forward primer
+            rbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites for reverse primer
         """
-        fCount = 0
-        rCount = 0
+        # constants
+        FAIL_MSG_A = " has "
+        FAIL_MSG_B = " binding sites in "
+        
+        # for each ingroup genome
         for name in ResultsTest.INGROUP.keys():
+            # count the number of binding sites in the genome for each primer
+            fCount = 0
+            rCount = 0
             for contig in fbind[name].keys():
                 for strand in fbind[name][contig].keys():
                     fCount += len(fbind[name][contig][strand])
                     rCount += len(rbind[name][contig][strand])
         
-        self.assertEqual(fCount, 1)
-        self.assertEqual(rCount, 1)
+            self.assertEqual(rCount, 1, f"{rev}{FAIL_MSG_A}{rCount}{FAIL_MSG_B}{name}")
+            self.assertEqual(fCount, 1, f"{fwd}{FAIL_MSG_A}{fCount}{FAIL_MSG_B}{name}")
     
-    def _onSeparateStrands(self, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
+    def _onSeparateStrands(self, fwd:Seq, rev:Seq, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
         """evaluates if the forward and reverse primers bind on separate strands in the ingroup
 
         Args:
-            fbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites
-            rbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites
+            fwd (Seq): forward primer
+            rev (Seq): reverse primer
+            fbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites for forward primer
+            rbind (dict[str,dict[str,dict[str,list[int]]]]): dictionary produced by _getBindingSites for reverse primer
         """
         # only evaluate for the ingroup
         for name in ResultsTest.INGROUP.keys():
@@ -506,24 +516,24 @@ class ResultsTest(unittest.TestCase):
                 # if the forward primer is on the (+) strand
                 if fbind[name][contig][ResultsTest.PLS] != []:
                     # then the reverse primer should be on the (-) strand
-                    self.assertNotEqual(rbind[name][contig][ResultsTest.MNS], [])
+                    self.assertNotEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is not on opposite strand of {fwd} in {name}|{contig}")
                     
                     # the forward primer should not be on the (-) strand
-                    self.assertEqual(fbind[name][contig][ResultsTest.MNS], [])
+                    self.assertEqual(fbind[name][contig][ResultsTest.MNS], [], f"{fwd} is on both strands in {name}|{contig}")
                     
                     # the reverse primer should not be on the (+) strand
-                    self.assertEqual(rbind[name][contig][ResultsTest.PLS], [])
+                    self.assertEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
                 
                 # if the forward primer is on the (-) strand
                 elif fbind[name][contig][ResultsTest.MNS] != []:
                     # then the reverse primer should be on the (+) strand
-                    self.assertNotEqual(rbind[name][contig][ResultsTest.PLS], [])
+                    self.assertNotEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is ont on opposite strand of {fwd} in {name}|{contig}")
                     
                     # the forward primer should not be on the (+) strand
-                    self.assertEqual(fbind[name][contig][ResultsTest.PLS], [])
+                    self.assertEqual(fbind[name][contig][ResultsTest.PLS], [], f"{fwd} is on both strands in {name}|{contig}")
                     
                     # the reverse primer should not be on the (-) strand
-                    self.assertEqual(rbind[name][contig][ResultsTest.MNS], [])
+                    self.assertEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
     
     def _isProductLengthCorrect(self, fwd:Seq, rev:Seq, fbind:dict[str,dict[str,dict[str,list[int]]]], rbind:dict[str,dict[str,dict[str,list[int]]]]) -> None:
         """determines if the product length is correctly saved
@@ -552,7 +562,7 @@ class ResultsTest(unittest.TestCase):
             truLen = len(self.sequences[name][contig][ResultsTest.PLS]) - fstart - rstart
             
             # make sure the saved length and the true length match
-            self.assertEqual(pcrLen, truLen)
+            self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
         
         # for each outgroup genome
         for name in ResultsTest.OUTGROUP.keys():
@@ -597,138 +607,187 @@ class ResultsTest(unittest.TestCase):
                             tru[contig].add(contigLen - fstart - rstart)
             
             # if the value was "NA", then there should be no saved data
-            if contigs == {"NA"}:
-                self.assertEqual(tru, dict())
+            if contigs == ["NA"]:
+                self.assertEqual(tru, dict(), f"'NA' in {name} but products produced by {fwd},{rev}")
             
             else:
                 # for each contig
                 for contig in res.keys():
                     # the pcr lengths should be equal
-                    self.assertEqual(res[contig], tru[contig])
+                    self.assertEqual(res[contig], tru[contig], f"unexpected sizes in {name} using {fwd}, {rev}")
                     
                     # and the pcr lengths should not be disallowed
                     for plen in tru[contig]:
-                        self.assertNotIn(plen, self.params.disallowedLens)
+                        self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd}, {rev}")
     
     # test cases
     def testA_checkTm(self) -> None:
         """does the Tm match the expected value
         """
+        # constant
+        FAIL_MSG = "wrong tm for "
+        
         # for each pair, make sure the saved Tm matches the expected value
         for fwd,rev in self.results.keys():
-            self.assertEqual(self.results[(fwd,rev)].fwdTm, round(MeltingTemp.Tm_Wallace(fwd), 1))
-            self.assertEqual(self.results[(fwd,rev)].revTm, round(MeltingTemp.Tm_Wallace(rev), 1))
+            self.assertEqual(self.results[(fwd,rev)].fwdTm, round(MeltingTemp.Tm_Wallace(fwd), 1), f"{FAIL_MSG}{fwd}")
+            self.assertEqual(self.results[(fwd,rev)].revTm, round(MeltingTemp.Tm_Wallace(rev), 1), f"{FAIL_MSG}{rev}")
     
     def testB_tmWithinRange(self) -> None:
         """is the Tm within the specified range
         """
+        # constant
+        FAIL_MSG = "tm out of range for "
+        
         # for each pair, make sure the Tms are within the specified ranges
-        for result in self.results.values():
-            self.assertGreaterEqual(result.fwdTm, self.params.minTm)
-            self.assertGreaterEqual(result.revTm, self.params.minTm)
-            self.assertLessEqual(result.fwdTm, self.params.maxTm)
-            self.assertLessEqual(result.revTm, self.params.maxTm)
+        for fwd,rev in self.results.keys():
+            self.assertGreaterEqual(self.results[(fwd,rev)].fwdTm, self.params.minTm, f"{FAIL_MSG}{fwd}")
+            self.assertGreaterEqual(self.results[(fwd,rev)].revTm, self.params.minTm, f"{FAIL_MSG}{rev}")
+            self.assertLessEqual(self.results[(fwd,rev)].fwdTm, self.params.maxTm, f"{FAIL_MSG}{fwd}")
+            self.assertLessEqual(self.results[(fwd,rev)].revTm, self.params.maxTm, f"{FAIL_MSG}{rev}")
     
     def testC_tmDiffWithinRange(self) -> None:
         """is the Tm difference below the specified threshold
         """
         # for each pair, make sure the Tm difference is below the threshold
-        for result in self.results.values():
-            tmDiff = abs(result.fwdTm - result.revTm)
-            self.assertLessEqual(tmDiff, self.params.maxTmDiff)
+        for fwd,rev in self.results.keys():
+            tmDiff = abs(self.results[(fwd,rev)].fwdTm - self.results[(fwd,rev)].revTm)
+            self.assertLessEqual(tmDiff, self.params.maxTmDiff, f"tm diff to large for {fwd}, {rev}")
     
     def testD_checkGcPercent(self) -> None:
         """is the G+C percentage the expected value
         """
+        # constant
+        FAIL_MSG = "GC percent incorrect for "
+        
         # for each pair, make sure the GC percent is accurate
         for fwd,rev in self.results.keys():
-            self.assertEqual(self.results[(fwd,rev)].fwdGc, round(ResultsTest._getGc(fwd), 1))
-            self.assertEqual(self.results[(fwd,rev)].revGc, round(ResultsTest._getGc(rev), 1))
+            self.assertEqual(self.results[(fwd,rev)].fwdGc, round(ResultsTest._getGc(fwd), 1), f"{FAIL_MSG}{fwd}")
+            self.assertEqual(self.results[(fwd,rev)].revGc, round(ResultsTest._getGc(rev), 1), f"{FAIL_MSG}{fwd}")
     
     def testE_gcPercentInRange(self) -> None:
         """is the G+C percentage within the specified range
         """
+        # constant
+        FAIL_MSG = "GC percent out of range for "
+        
         # for each pair, make sure the GC percent is within the specified range
-        for result in self.results.values():
-            self.assertGreaterEqual(result.fwdGc, self.params.minGc)
-            self.assertGreaterEqual(result.revGc, self.params.minGc)
-            self.assertLessEqual(result.fwdGc, self.params.maxGc)
-            self.assertLessEqual(result.revGc, self.params.maxGc)
+        for fwd,rev in self.results.keys():
+            self.assertGreaterEqual(self.results[(fwd,rev)].fwdGc, self.params.minGc, f"{FAIL_MSG}{fwd}")
+            self.assertGreaterEqual(self.results[(fwd,rev)].revGc, self.params.minGc, f"{FAIL_MSG}{rev}")
+            self.assertLessEqual(self.results[(fwd,rev)].fwdGc, self.params.maxGc, f"{FAIL_MSG}{fwd}")
+            self.assertLessEqual(self.results[(fwd,rev)].revGc, self.params.maxGc, f"{FAIL_MSG}{rev}")
     
     def testF_threePrimeIsGc(self) -> None:
         """is the 3' end of the primer a G or C
         """
-        # constant
+        # constants
         GC = ("G", "C")
+        FAIL_MSG = "3' end not G|C in "
         
         # for each pair, make sure the 3' end is a G or a C
         for fwd,rev in self.results.keys():
-            self.assertIn(fwd[-1], GC)
-            self.assertIn(rev[-1], GC)
+            self.assertIn(fwd[-1], GC, f"{FAIL_MSG}{fwd}")
+            self.assertIn(rev[-1], GC, f"{FAIL_MSG}{rev}")
 
     def testG_noHomoPolymers(self) -> None:
         """does the primer contain homopolymers
         """
+        # constant
+        FAIL_MSG = "homopolymers present in "
+        
         # for each pair, make sure there are no homopolymers
         for fwd,rev in self.results.keys():
-            self.assertTrue(ResultsTest._noLongRepeats(fwd))
-            self.assertTrue(ResultsTest._noLongRepeats(rev))
+            self.assertTrue(ResultsTest._noLongRepeats(fwd), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(ResultsTest._noLongRepeats(rev), f"{FAIL_MSG}{rev}")
 
     def testH_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
         """
+        # constants
+        FAIL_MSG_A = "multiple product sizes for "
+        FAIL_MSG_B = " in "
+        
+        # for each pair in the ingroup
         for pair in self.results.keys():
             for name in ResultsTest.INGROUP.keys():
                 # there should be exactly one pcr product size for each ingroup genome
-                self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1)
-                self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1)
+                self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
+                self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
     def testI_ingroupProductsWithinRange(self) -> None:
         """is ingroup pcr product size in the expected range
         """
+        # constants
+        FAIL_MSG_A = "product size out of range for "
+        FAIL_MSG_B = " in "
+        
+        # for each pari in the ingroup
         for pair in self.results.keys():
             for name in ResultsTest.INGROUP.keys():
-                self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr)
-                self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr)
+                # make sure the pcr products are within the allowed range
+                self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
+                self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
     def testJ_outgroupProductsSavedCorrectly(self) -> None:
         """do outgroup pcr products look valid
         """
+        # constants
+        FAIL_MSG_A = "outgroup products saved incorrectly for "
+        FAIL_MSG_B = " in "
+        
+        # for each pair in the outgroup
         for pair in self.results.keys():
             for name in ResultsTest.OUTGROUP.keys():
                 # the length of the contig and pcr size lists should be equal
                 numContigs = len(self.results[pair].additional[name][ResultsTest.CONTIG])
                 numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
-                self.assertEqual(numContigs, numPcrLens)
+                self.assertEqual(numContigs, numPcrLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
     def testK_outgroupProductsNaAreZero(self) -> None:
         """do outgroup products of 0 have NA as the contig and vice-versa
         """
+        # constants
+        FAIL_MSG_1A = "NA is not 0 for "
+        FAIL_MSG_2A = "0 is not NA for "
+        FAIL_MSG_B  = " in "
+        
+        # for each pair in the outgroup
         for pair in self.results.keys():
             for name in ResultsTest.OUTGROUP.keys():
+                # for each pcr product saved
                 for idx in range(len(self.results[pair].additional[name][ResultsTest.CONTIG])):
                     # if the contig is NA, then the pcr size should be zero
                     if self.results[pair].additional[name][ResultsTest.CONTIG][idx] == 'NA':
-                        self.assertEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][idx], 0)
+                        self.assertEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][idx], 0, f"{FAIL_MSG_1A}{pair}{FAIL_MSG_B}{name}")
                     
                     # if the pcr size is zero, then the contig should be NA
                     if self.results[pair].additional[name][ResultsTest.PCRLEN][idx] == 0:
-                        self.assertEqual(self.results[pair].additional[name][ResultsTest.CONTIG][idx], 'NA')
+                        self.assertEqual(self.results[pair].additional[name][ResultsTest.CONTIG][idx], 'NA', f"{FAIL_MSG_2A}{pair}{FAIL_MSG_B}{name}")
                 
     def testL_outgroupProductsNotWithinDisallowedRange(self) -> None:
         """are outgroup pcr products outside the disallowed range
         """
+        # constants
+        FAIL_MSG_A = "outgroup product(s) within the disallowed range for "
+        FAIL_MSG_B = " in "
+        
+        # for each pair in the outgroup
         for pair in self.results.keys():
             for name in ResultsTest.OUTGROUP.keys():
+                # each pcr product size should not be in the disallowed range
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
-                    self.assertNotIn(pcrLen, self.params.disallowedLens)
+                    self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
 
     def testM_sequenceTests(self) -> None:
         """evaluate several additional tests
         """
+        # for each primer pair
         for fwd,rev in self.results.keys():
+            # get the binding sites in all genomes
             fwdSites = self._getBindingSites(fwd)
             revSites = self._getBindingSites(rev)
-            self._isRepeatedInIngroup(fwdSites, revSites)
-            self._onSeparateStrands(fwdSites, revSites)
+            
+            # run tests on the binding sites
+            self._isRepeatedInIngroup(fwd, rev, fwdSites, revSites)
+            self._onSeparateStrands(fwd, rev, fwdSites, revSites)
             self._isProductLengthCorrect(fwd, rev, fwdSites, revSites)
