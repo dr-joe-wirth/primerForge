@@ -5,7 +5,10 @@ from Bio.SeqUtils import MeltingTemp
 class Primer:
     """a class for calculating and storing primer data
     """
-    def __init__(self, seq:Seq, contig:str, start:int, length:int) -> Primer:
+    __PLUS = "+"
+    __MINUS = "-"
+    
+    def __init__(self, seq:Seq, contig:str, start:int, length:int, strand:str) -> Primer:
         """creates a Primer object
 
         Args:
@@ -13,18 +16,29 @@ class Primer:
             contig (str): the contig name
             start (int): the start position on the contig
             length (int): the primer length
+            strand (str): the strand of the contig; "+" or "-"
 
         Returns:
             Primer: the primer
         """
+        # make sure valid strand was passed
+        if strand not in (Primer.__PLUS, Primer.__MINUS):
+            raise ValueError("invalid strand specified")
+        
         # initialize the attributes
         self.seq:Seq = None
         self.start:int = start
         self.end:int = start + length - 1
         self.contig:str = contig
+        self.strand:str = strand
         self.Tm:float = None
         self.gcPer:float = None
         self.__length:int = length
+        
+        # flip start and end if on the minus strand
+        if self.strand == Primer.__MINUS:
+            self.start = self.end
+            self.end = start
         
         # run import methods
         self.__importSeq(seq)
@@ -79,9 +93,13 @@ class Primer:
         Returns:
             Primer: the reverse complement of the calling object
         """
-        new = Primer(self.seq.reverse_complement(), self.contig, self.end, len(self))
-        new.end = self.start
-        
+        # figure out the reverse strand
+        if self.strand == Primer.__PLUS:
+            new = Primer(self.seq.reverse_complement(), self.contig, self.start, len(self), Primer.__MINUS)
+        else:
+            new = Primer(self.seq.reverse_complement(), self.contig, self.end, len(self), Primer.__PLUS)
+            
+        # make the new object
         return new
 
     def getMinimizer(self, lmerSize:int) -> Seq:

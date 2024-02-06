@@ -19,16 +19,18 @@ class PrimerTest(unittest.TestCase):
     RSTR_2 = 666
     REND_1 = 318
     REND_2 = 684
+    PLUS = "+"
+    MINUS = "-"
     
     def setUp(self) -> None:
         # make primer objects
-        self.fwd_1 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_1, PrimerTest.FSTR_1, len(PrimerTest.FWD_SEQ))
-        self.fwd_2 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_2, PrimerTest.FSTR_2, len(PrimerTest.FWD_SEQ))
-        self.rev_1 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_1, PrimerTest.RSTR_1, len(PrimerTest.REV_SEQ))
-        self.rev_2 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_2, PrimerTest.RSTR_2, len(PrimerTest.REV_SEQ))
+        self.fwd_1 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_1, PrimerTest.FSTR_1, len(PrimerTest.FWD_SEQ), PrimerTest.PLUS)
+        self.fwd_2 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_2, PrimerTest.FSTR_2, len(PrimerTest.FWD_SEQ), PrimerTest.MINUS)
+        self.rev_1 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_1, PrimerTest.RSTR_1, len(PrimerTest.REV_SEQ), PrimerTest.MINUS)
+        self.rev_2 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_2, PrimerTest.RSTR_2, len(PrimerTest.REV_SEQ), PrimerTest.PLUS)
     
     def tearDown(self) -> None:
-        pass
+        return super().tearDown()
     
     def _getGc(seq:Seq) -> float:
         seq = str(seq.upper())
@@ -76,8 +78,8 @@ class PrimerTest(unittest.TestCase):
         """
         # make sure the start is stored correctly
         self.assertEqual(self.fwd_1.start, PrimerTest.FSTR_1)
-        self.assertEqual(self.fwd_2.start, PrimerTest.FSTR_2)
-        self.assertEqual(self.rev_1.start, PrimerTest.RSTR_1)
+        self.assertEqual(self.fwd_2.start, PrimerTest.FEND_2)
+        self.assertEqual(self.rev_1.start, PrimerTest.REND_1)
         self.assertEqual(self.rev_2.start, PrimerTest.RSTR_2)
 
     def testF_end(self) -> None:
@@ -85,8 +87,8 @@ class PrimerTest(unittest.TestCase):
         """
         # make sure the end is stored correctly
         self.assertEqual(self.fwd_1.end, PrimerTest.FEND_1)
-        self.assertEqual(self.fwd_2.end, PrimerTest.FEND_2)
-        self.assertEqual(self.rev_1.end, PrimerTest.REND_1)
+        self.assertEqual(self.fwd_2.end, PrimerTest.FSTR_2)
+        self.assertEqual(self.rev_1.end, PrimerTest.RSTR_1)
         self.assertEqual(self.rev_2.end, PrimerTest.REND_2)
     
     def testG_length(self) -> None:
@@ -147,10 +149,10 @@ class PrimerTest(unittest.TestCase):
         """is `str` producing the sequence as a string
         """
         # make sure the string function is working correctly
-        self.assertEqual(str(self.fwd_1), str(PrimerTest.FWD_SEQ))
-        self.assertEqual(str(self.fwd_2), str(PrimerTest.FWD_SEQ))
-        self.assertEqual(str(self.rev_1), str(PrimerTest.REV_SEQ))
-        self.assertEqual(str(self.rev_2), str(PrimerTest.REV_SEQ))
+        self.assertEqual(str(self.fwd_1), str(PrimerTest.FWD_SEQ).upper())
+        self.assertEqual(str(self.fwd_2), str(PrimerTest.FWD_SEQ).upper())
+        self.assertEqual(str(self.rev_1), str(PrimerTest.REV_SEQ).upper())
+        self.assertEqual(str(self.rev_2), str(PrimerTest.REV_SEQ).upper())
 
     def testL_contig(self) -> None:
         """is the contig stored properly
@@ -160,3 +162,62 @@ class PrimerTest(unittest.TestCase):
         self.assertEqual(self.fwd_2.contig, PrimerTest.CNTG_2)
         self.assertEqual(self.rev_1.contig, PrimerTest.CNTG_1)
         self.assertEqual(self.rev_2.contig, PrimerTest.CNTG_2)
+
+    def testM_strand(self) -> None:
+        """is the strand stored properly
+        """
+        self.assertEqual(self.fwd_1.strand, PrimerTest.PLUS)
+        self.assertEqual(self.fwd_2.strand, PrimerTest.MINUS)
+        self.assertEqual(self.rev_1.strand, PrimerTest.MINUS)
+        self.assertEqual(self.rev_2.strand, PrimerTest.PLUS)
+    
+    def testN_revComp(self) -> None:
+        """is reverseComplement method working
+        """
+        # get the reverse complement
+        rc_f1 = self.fwd_1.reverseComplement()
+        rc_f2 = self.fwd_2.reverseComplement()
+        rc_r1 = self.rev_1.reverseComplement()
+        rc_r2 = self.rev_2.reverseComplement()
+        
+        # check strand flipped
+        self.assertEqual(rc_f1.strand, PrimerTest.MINUS)
+        self.assertEqual(rc_f2.strand, PrimerTest.PLUS)
+        self.assertEqual(rc_r1.strand, PrimerTest.PLUS)
+        self.assertEqual(rc_r2.strand, PrimerTest.MINUS)
+
+        # check start
+        self.assertEqual(rc_f1.start, self.fwd_1.end)
+        self.assertEqual(rc_f2.start, self.fwd_2.end)
+        self.assertEqual(rc_r1.start, self.rev_1.end)
+        self.assertEqual(rc_r2.start, self.rev_2.end)
+
+        # check end
+        self.assertEqual(rc_f1.end, self.fwd_1.start)
+        self.assertEqual(rc_f2.end, self.fwd_2.start)
+        self.assertEqual(rc_r1.end, self.rev_1.start)
+        self.assertEqual(rc_r2.end, self.rev_2.start)
+        
+        # check sequence
+        self.assertEqual(rc_f1.seq, self.fwd_1.seq.reverse_complement())
+        self.assertEqual(rc_f2.seq, self.fwd_2.seq.reverse_complement())
+        self.assertEqual(rc_r1.seq, self.rev_1.seq.reverse_complement())
+        self.assertEqual(rc_r2.seq, self.rev_2.seq.reverse_complement())
+        
+        # check Tm
+        self.assertEqual(rc_f1.Tm, self.fwd_1.Tm)
+        self.assertEqual(rc_f2.Tm, self.fwd_2.Tm)
+        self.assertEqual(rc_r1.Tm, self.rev_1.Tm)
+        self.assertEqual(rc_r2.Tm, self.rev_2.Tm)
+        
+        # check GC
+        self.assertEqual(rc_f1.gcPer, self.fwd_1.gcPer)
+        self.assertEqual(rc_f2.gcPer, self.fwd_2.gcPer)
+        self.assertEqual(rc_r1.gcPer, self.rev_1.gcPer)
+        self.assertEqual(rc_r2.gcPer, self.rev_2.gcPer)
+        
+        # check contig
+        self.assertEqual(rc_f1.contig, self.fwd_1.contig)
+        self.assertEqual(rc_f2.contig, self.fwd_2.contig)
+        self.assertEqual(rc_r1.contig, self.rev_1.contig)
+        self.assertEqual(rc_r2.contig, self.rev_2.contig)
