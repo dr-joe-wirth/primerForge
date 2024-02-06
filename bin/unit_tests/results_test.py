@@ -516,7 +516,7 @@ class ResultsTest(unittest.TestCase):
                 pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
                 contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
                 
-                # key results' the product sizes under the contig names
+                # key the product sizes under the contig names
                 res = dict()
                 for idx in range(len(pcrLens)):
                     res[contigs[idx]] = res.get(contigs[idx], set())
@@ -541,16 +541,24 @@ class ResultsTest(unittest.TestCase):
                         # for each fwd/rev pair on the (+)/(-) strands
                         for fstart in fwdPlsStarts:
                             for rstart in revMnsStarts:
-                                # save the pcr length
-                                tru[contig] = tru.get(contig, set())
-                                tru[contig].add(contigLen - fstart - rstart)
+                                # calculate the pcr lengths
+                                pcrLen = contigLen - fstart, rstart
+                                
+                                # save the pcr length if it is positive
+                                if pcrLen > 0:
+                                    tru[contig] = tru.get(contig, set())
+                                    tru[contig].add(pcrLen)
                         
                         # for each fwd/rev pair on the (-)/(+) strands
                         for fstart in fwdMnsStarts:
                             for rstart in revPlsStarts:
-                                # save the pcr length
-                                tru[contig] = tru.get(contig, set())
-                                tru[contig].add(contigLen - fstart - rstart)
+                                # calculate the pcr lengths
+                                pcrLen = contigLen - fstart - rstart
+                                
+                                # only save the pcr length if it is positive
+                                if pcrLen > 0:
+                                    tru[contig] = tru.get(contig, set())
+                                    tru[contig].add(pcrLen)
                 
                 # if the value was "NA", then there should be no saved data
                 if contigs == ["NA"]:
@@ -564,7 +572,7 @@ class ResultsTest(unittest.TestCase):
                         
                         # and the pcr lengths should not be disallowed
                         for plen in tru[contig]:
-                            self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd}, {rev}")
+                            self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
     
     # test cases
     def testA_isSequenceUpper(self) -> None:
