@@ -375,6 +375,7 @@ class Parameters():
                     except:
                         raise ValueError(ERR_MSG_16)
                 
+                # update debug to True if requested
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
                 
