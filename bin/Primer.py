@@ -5,16 +5,16 @@ from Bio.SeqUtils import MeltingTemp
 class Primer:
     """a class for calculating and storing primer data
     """
-    __PLUS = "+"
-    __MINUS = "-"
+    PLUS = "+"
+    MINUS = "-"
     
-    def __init__(self, seq:Seq, contig:str, start:int, length:int, strand:str) -> Primer:
+    def __init__(self, seq:Seq, contig:str, start:int, length:int, strand:str, startIsEnd=False) -> Primer:
         """creates a Primer object
 
         Args:
             seq (Seq): primer sequence
             contig (str): the contig name
-            start (int): the start position on the contig
+            start (int): the start position on the contig's (+) strand
             length (int): the primer length
             strand (str): the strand of the contig; "+" or "-"
 
@@ -22,7 +22,7 @@ class Primer:
             Primer: the primer
         """
         # make sure valid strand was passed
-        if strand not in (Primer.__PLUS, Primer.__MINUS):
+        if strand not in (Primer.PLUS, Primer.MINUS):
             raise ValueError("invalid strand specified")
         
         # initialize the attributes
@@ -36,7 +36,7 @@ class Primer:
         self.__length:int = length
         
         # flip start and end if on the minus strand
-        if self.strand == Primer.__MINUS:
+        if self.strand == Primer.MINUS:
             self.start = self.end
             self.end = start
         
@@ -94,19 +94,20 @@ class Primer:
             Primer: the reverse complement of the calling object
         """
         # figure out the reverse strand
-        if self.strand == Primer.__PLUS:
-            new = Primer(self.seq.reverse_complement(), self.contig, self.start, len(self), Primer.__MINUS)
+        if self.strand == Primer.PLUS:
+            new = Primer(self.seq.reverse_complement(), self.contig, self.start, len(self), Primer.MINUS)
         else:
-            new = Primer(self.seq.reverse_complement(), self.contig, self.end, len(self), Primer.__PLUS)
+            new = Primer(self.seq.reverse_complement(), self.contig, self.end, len(self), Primer.PLUS)
             
         # make the new object
         return new
 
-    def getMinimizer(self, lmerSize:int) -> Seq:
+    def getMinimizer(self, lmerSize:int, strand:str) -> Seq:
         """finds the minimizer for the calling object
 
         Args:
             lmerSize (int): the length of the l-mer
+            strand (str): the strand to evaluate; "+" or "-"
 
         Raises:
             ValueError: primer length must exceed l-mer length
@@ -115,21 +116,32 @@ class Primer:
             Seq: the minimizer sequence
         """
         # constants
-        ERR_MSG = "Window size should be less than or equal to the k-mer length."
+        ERR_MSG_1 = "Window size should be less than or equal to the k-mer length."
+        ERR_MSG_2 = "Invalid strand"
         
         # make sure the lmer is smaller than the primer
         if len(self.seq) < lmerSize:
-            raise ValueError(ERR_MSG)
+            raise ValueError(ERR_MSG_1)
+        
+        # make sure the strand is valid
+        if strand not in (Primer.PLUS, Primer.MINUS):
+            raise ValueError(ERR_MSG_2)
+
+        # get the appropriate sequence
+        if self.strand == strand:
+            seq = self.seq
+        else:
+            seq = self.seq.reverse_complement()
 
         # Initialize the minimizer and its position
-        minimizer = self.seq[:lmerSize]
+        minimizer = seq[:lmerSize]
 
         # Iterate through the k-mer with the sliding window
-        for i in range(1, len(self.seq) - lmerSize + 1):
-            current_window = self.seq[i:i + lmerSize]
+        for i in range(1, len(seq) - lmerSize + 1):
+            currentWindow = seq[i:i + lmerSize]
 
             # Update the minimizer if the current window is lexicographically smaller
-            if current_window < minimizer:
-                minimizer = current_window
+            if currentWindow < minimizer:
+                minimizer = currentWindow
 
         return minimizer

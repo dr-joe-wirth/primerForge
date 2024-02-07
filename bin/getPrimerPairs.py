@@ -17,7 +17,7 @@ def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[
     out = dict()
     
     # for each contig in the dictionary
-    for contig in candidates:
+    for contig in candidates.keys():
         # initialize variables
         currentBin = 0
         prevEnd = None
@@ -25,19 +25,23 @@ def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[
         
         # for each candidate primer in the contig
         for cand in candidates[contig]:
+            # get the current start/end on the (+) strand
+            curStart = min(cand.start, cand.end)
+            curEnd = max(cand.start, cand.end)
+            
             # the first candidate needs to go into its own bin
             if prevEnd is None:
                 out[contig][currentBin] = [cand]
-                prevEnd = cand.end
+                prevEnd = curEnd
             
             # if the candidate overlaps the previous one, then add it to the bin
-            elif cand.start < prevEnd:
-                prevEnd = cand.end
+            elif curStart < prevEnd:
+                prevEnd = curEnd
                 out[contig][currentBin].append(cand)
             
             # otherwise the candidate belongs in a new bin
             else:
-                prevEnd = cand.end
+                prevEnd = curEnd
                 currentBin += 1
                 out[contig][currentBin] = [cand]
     
@@ -58,8 +62,9 @@ def __minimizeOverlaps(bins:dict[str,dict[int,list[Primer]]], minimizerLen:int) 
     def overlapIsTooLong(primers:list[Primer]) -> bool:
         """determines if the overlap covered in the bin is too long"""
         MAX_LEN = 64
-        length = primers[-1].end - primers[0].start
-        return length > MAX_LEN
+        start = min(primers[0].start, primers[0].end)
+        end = max(primers[-1].start, primers[-1].end)
+        return (end - start) > MAX_LEN
     
     # for each contig
     for contig in bins:
@@ -76,8 +81,10 @@ def __minimizeOverlaps(bins:dict[str,dict[int,list[Primer]]], minimizerLen:int) 
                 # cluster each Primer by their minimizer sequence
                 clusters = dict()
                 for primer in primers:
-                    minimizer = primer.getMinimizer(minimizerLen)
+                    # get the minimizers for the plus strand only
+                    minimizer = primer.getMinimizer(minimizerLen, Primer.PLUS)
                     
+                    # store the Primer in a list keyed under minimizer sequence
                     clusters[minimizer] = clusters.get(minimizer, list())
                     clusters[minimizer].append(primer)
                 
@@ -124,7 +131,7 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     # for each contig in the genome
     for contig in binned.keys():
         # sort bins by their start position
-        sortedBins = sorted(binned[contig].keys(), key=lambda x: binned[contig][x][0].start)
+        sortedBins = sorted(binned[contig].keys(), key=lambda x: min(binned[contig][x][0].start, binned[contig][x][0].end))
         
         # go through pairs of bins in order of their start positions
         for idx in range(len(sortedBins)-1):
@@ -235,13 +242,21 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
 
         # for each forward primer
         for fwd in bin1:
+            # make sure the primer is on the plus strand
+            if fwd.strand == Primer.MINUS:
+                fwd = fwd.reverseComplement()
+                
             # only evaluate if the 3' end is GC
             if isThreePrimeGc(fwd):
                 # for each reverse primer
                 for rev in bin2:
+                    # make sure the primer is on the plus strand
+                    if rev.strand == Primer.MINUS:
+                        rev = rev.reverseComplement()
+
                     # only evaluate if the 3' end is GC
                     if isThreePrimeGc(rev, REV):
-                        # save the arguments to the list to evaluate in parallel
+                        # save the pair for evaluation
                         args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff, (contig, num1, num2)))
     
     # evaluate pairs of primers in parallel
@@ -428,14 +443,14 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     # make sure that some candidate pairs were identified
     if allCand == []:
         if params.debug:
-            params.log.initialize(_getPrimerPairs.__name__)
+            params.log.rename(_getPrimerPairs.__name__)
             params.log.error(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
     # make sure that some candidate pairs were universal
     elif out == dict():
         if params.debug:
-            params.log.initialize(_getPrimerPairs.__name__)
+            params.log.rename(_getPrimerPairs.__name__)
             params.log.error(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     

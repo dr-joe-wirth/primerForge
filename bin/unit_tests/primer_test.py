@@ -130,20 +130,34 @@ class PrimerTest(unittest.TestCase):
         """is `getMinimizer` working
         """
         # constants
-        FWD_MIN_10 = Seq('AGAGTTTGAT')
-        FWD_MIN_6  = Seq('AGAGTT')
-        REV_MIN_10 = Seq('ACCTTGTTAC')
-        REV_MIN_6  = Seq('ACCTTG')
+        FWD_MIN_10    = Seq('AGAGTTTGAT')
+        FWD_RC_MIN_10 = Seq('AGCCAGGATC')
+        FWD_MIN_6     = Seq('AGAGTT')
+        FWD_RC_MIN_6  = Seq('AAACTC')
+        REV_MIN_10    = Seq('ACCTTGTTAC')
+        REV_RC_MIN_10 = Seq('AACAAGGTAA')
+        REV_MIN_6     = Seq('ACCTTG')
+        REV_RC_MIN_6  = Seq('AACAAG')
         
         # make sure the minimizer sequences are calculated correctly
-        self.assertEqual(self.fwd_1.getMinimizer(10), FWD_MIN_10)
-        self.assertEqual(self.fwd_2.getMinimizer(10), FWD_MIN_10)
-        self.assertEqual(self.rev_1.getMinimizer(10), REV_MIN_10)
-        self.assertEqual(self.rev_2.getMinimizer(10), REV_MIN_10)
-        self.assertEqual(self.fwd_1.getMinimizer(6),  FWD_MIN_6)
-        self.assertEqual(self.fwd_2.getMinimizer(6),  FWD_MIN_6)
-        self.assertEqual(self.rev_1.getMinimizer(6),  REV_MIN_6)
-        self.assertEqual(self.rev_2.getMinimizer(6),  REV_MIN_6)
+        self.assertEqual(self.fwd_1.getMinimizer(10, self.fwd_1.strand), FWD_MIN_10)
+        self.assertEqual(self.fwd_2.getMinimizer(10, self.fwd_2.strand), FWD_MIN_10)
+        self.assertEqual(self.rev_1.getMinimizer(10, self.rev_1.strand), REV_MIN_10)
+        self.assertEqual(self.rev_2.getMinimizer(10, self.rev_2.strand), REV_MIN_10)
+        self.assertEqual(self.fwd_1.getMinimizer(6,  self.fwd_1.strand), FWD_MIN_6)
+        self.assertEqual(self.fwd_2.getMinimizer(6,  self.fwd_2.strand), FWD_MIN_6)
+        self.assertEqual(self.rev_1.getMinimizer(6,  self.rev_1.strand), REV_MIN_6)
+        self.assertEqual(self.rev_2.getMinimizer(6,  self.rev_2.strand), REV_MIN_6)
+        
+        # make sure the minimizer works on the opposite strands
+        self.assertEqual(self.fwd_1.getMinimizer(10, Primer.MINUS), FWD_RC_MIN_10)
+        self.assertEqual(self.fwd_2.getMinimizer(10, Primer.PLUS),  FWD_RC_MIN_10)
+        self.assertEqual(self.rev_1.getMinimizer(10, Primer.PLUS),  REV_RC_MIN_10)
+        self.assertEqual(self.rev_2.getMinimizer(10, Primer.MINUS), REV_RC_MIN_10)
+        self.assertEqual(self.fwd_1.getMinimizer(6,  Primer.MINUS), FWD_RC_MIN_6)
+        self.assertEqual(self.fwd_2.getMinimizer(6,  Primer.PLUS),  FWD_RC_MIN_6)
+        self.assertEqual(self.rev_1.getMinimizer(6,  Primer.PLUS),  REV_RC_MIN_6)
+        self.assertEqual(self.rev_2.getMinimizer(6,  Primer.MINUS), REV_RC_MIN_6)
     
     def testK_string(self) -> None:
         """is `str` producing the sequence as a string

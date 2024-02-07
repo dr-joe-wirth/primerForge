@@ -126,7 +126,7 @@ def _main(params:Parameters) -> None:
     # only do work if help was not requested
     if not params.helpRequested:
         if params.debug:
-            params.log.initialize(_main.__name__)
+            params.log.rename(_main.__name__)
 
         # read the ingroup sequences into memory
         ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
@@ -139,7 +139,7 @@ def _main(params:Parameters) -> None:
         
         # save the candidates to file if in debug mode
         if params.debug:
-            params.log.initialize(_main.__name__)
+            params.log.rename(_main.__name__)
             params.log.info(f"{DONE} {clock.getTimeString()}")
             params.dumpObj(candidateKmers, CAND_FN, "candidate kmers")
         

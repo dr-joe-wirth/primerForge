@@ -22,7 +22,7 @@ if __name__ == "__main__":
     except Exception as e:
         # save the error message if in debug mode
         if params.debug:
-            params.log.initialize(__name__)
+            params.log.rename(__name__)
             params.log.critical(e)
 
         # terminate        

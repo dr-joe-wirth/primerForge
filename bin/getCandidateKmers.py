@@ -5,95 +5,8 @@ from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.Clock import Clock, _printStart, _printDone
 
-# global constants
-__PLUS  = "+"
-__MINUS = "-"
-
 # functions
-def _kmpSearch(text:str, pattern:str) -> tuple[bool, int]:
-    """implementation of the KMP string search algorithm: O(n+m)
-
-    Args:
-        text (str): text to search
-        pattern (str): pattern to search for
-
-    Returns:
-        tuple[bool, int]: indicates if the pattern is found in the text; the start position of the match
-    """
-
-    # helper function
-    def computeLpsArray(patternLen:int) -> list[int]:
-        """precomputes the longest prefix that is also a suffix array
-
-        Args:
-            patternLen (int): the length of the pattern
-
-        Returns:
-            list[int]: the precomputed lps array
-        """
-        # initialize the lps array
-        lps = [0] * patternLen
-        
-        # initialize the indices; lps[0] always == 0 so start idx at 1
-        matchLen = 0 
-        idx = 1
-        
-        # go through each position in the pattern 
-        while idx < patternLen:
-            # if a match occurs update the match length, store in the array, and move to the next position
-            if pattern[idx] == pattern[matchLen]:
-                matchLen += 1
-                lps[idx] = matchLen
-                idx += 1
-            
-            # if a mismatch
-            else:
-                # if at previous string also did not match, then no lps; move to next position
-                if matchLen == 0:
-                    lps[idx] = 0
-                    idx += 1 
-                
-                # if the previous string matched, we need to start at the beginning of the last match
-                else:
-                    matchLen = lps[matchLen - 1]
-        
-        return lps
-
-    # get the length of the text and the pattern
-    textLen = len(text)
-    patternLen = len(pattern)
-    
-    lps = computeLpsArray(patternLen)
-    
-    # initialize indices
-    idx = 0
-    jdx = 0
-    
-    # keep evaluating the text until at the end
-    while idx < textLen:
-        # keep comparing strings while they match
-        if text[idx] == pattern[jdx]:
-            idx += 1
-            jdx += 1
-        
-        # if a mismatch occurs
-        else:
-            # if at the start of the pattern, cannot reset; move to next text character
-            if jdx == 0:
-                idx += 1
-            
-            # otherwise, move to the previous character as defined by the lps array
-            else:
-                jdx = lps[jdx -1]
-    
-        # match found if at the end of the pattern
-        if jdx == patternLen:
-            return True, (idx - patternLen)
-    
-    return False, -1
-
-
-def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> dict[str,dict[Seq,dict[str,tuple[str,int,int]]]]:
+def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]:
     """gets a collection of kmers from a genome that are:
         * not repeated anywhere in the genome
         * at least one end is a G or C
@@ -105,7 +18,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         name (str): the name of the genome
     
     Returns:
-        dict[str,dict[Seq,dict[str,tuple[str,int,int]]]]: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen
+        dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen, strand
     """
     # constant
     GC = {"G", "C", 'g', 'c'}
@@ -117,12 +30,12 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         return seq[-1] in GC or seq[0] in GC
 
     def isDuplicated(seq:Seq) -> bool:
-        return seq in kmers[__PLUS].keys() or seq in kmers[__MINUS].keys()
+        return seq in kmers[Primer.PLUS].keys() or seq in kmers[Primer.MINUS].keys()
 
     # initialize variables
     kmers = dict()
-    kmers[__PLUS] = dict()
-    kmers[__MINUS] = dict()
+    kmers[Primer.PLUS] = dict()
+    kmers[Primer.MINUS] = dict()
     bad = set()
     krange = range(minLen, maxLen + 1)
     smallest = min(krange)
@@ -163,8 +76,8 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
                     
                     # only save kmers that have GC at one end
                     elif isOneEndGc(fwdKmer):
-                        kmers[__PLUS][fwdKmer]  = {name: (contig.id, start, klen)}
-                        kmers[__MINUS][revKmer] = {name: (contig.id, start, klen)}
+                        kmers[Primer.PLUS][fwdKmer]  = {name: (contig.id, start, klen, Primer.PLUS)}
+                        kmers[Primer.MINUS][revKmer] = {name: (contig.id, start, klen, Primer.MINUS)}
             
             # stop iterating through the contig when we're done with it
             if done:
@@ -172,16 +85,16 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
 
     # discard any sequences that were duplicated
     for seq in bad:
-        try: kmers[__PLUS].pop(seq)
+        try: kmers[Primer.PLUS].pop(seq)
         except KeyError: pass
         
-        try: kmers[__MINUS].pop(seq)
+        try: kmers[Primer.MINUS].pop(seq)
         except KeyError: pass
     
     return kmers
             
 
-def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int]]]:
+def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,str]]]:
     """retrieves all the kmers that are shared between the input genomes
 
     Args:
@@ -193,7 +106,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
         RuntimeError: a single genome has no shared kmers with other genomes
 
     Returns:
-        dict[Seq,dict[str,tuple[str,int,int]]]: key=kmer; val=dict: key=genome name: val=tuple: contig, start, klen
+        dict[Seq,dict[str,tuple[str,int,int,str]]]: key=kmer; val=dict: key=genome name: val=tuple: contig, start, klen, strand
     """
     # messages
     ERR_MSG_1 = 'failed to extract kmers from '
@@ -206,7 +119,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
 
     # set the debugger if required
     if params.debug:
-        params.log.initialize(__getSharedKmers.__name__)
+        params.log.rename(__getSharedKmers.__name__)
 
     # for each genome
     for name in seqs.keys():
@@ -216,19 +129,18 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
         # make sure there are kmers for this genome
         if kmers == dict():
             if params.debug:
-                params.log.initialize(__getSharedKmers.__name__)
                 params.log.error(f"{ERR_MSG_1}{name}")
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
         # keep only the (+) strand kmers if this is the first genome
         if firstGenome:
-            sharedKmers.update(kmers[__PLUS])
+            sharedKmers.update(kmers[Primer.PLUS])
             firstGenome = False
         
         # otherwise keep the shared kmers (both + and -)
         else:
             # get all the kmers for this genome (both + and - strands)
-            thisGenome = set(kmers[__PLUS].keys()).union(kmers[__MINUS].keys())
+            thisGenome = set(kmers[Primer.PLUS].keys()).union(kmers[Primer.MINUS].keys())
             
             # go through each kmer that is currently shared by all processed genomes
             shared = set(sharedKmers.keys())
@@ -237,9 +149,9 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
                 if kmer in thisGenome:
                     # strand information is now lost; try both
                     try:
-                        sharedKmers[kmer].update(kmers[__PLUS][kmer])
+                        sharedKmers[kmer].update(kmers[Primer.PLUS][kmer])
                     except KeyError:
-                        sharedKmers[kmer].update(kmers[__MINUS][kmer])
+                        sharedKmers[kmer].update(kmers[Primer.MINUS][kmer])
                 
                 # remove any kmers that are not shared with this genome
                 else:
@@ -258,7 +170,7 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
     return sharedKmers
 
 
-def __reorganizeDataByPosition(name:str, kmers:dict[Seq,dict[str,tuple[str,int,int]]]) -> dict[str,dict[int,list[tuple[Seq,int]]]]:
+def __reorganizeDataByPosition(name:str, kmers:dict[Seq,dict[str,tuple[str,int,int,str]]]) -> dict[str,dict[int,list[tuple[Seq,int,str]]]]:
     """reorganizes data from __getSharedKmers by its genomic position
 
     Args:
@@ -266,7 +178,7 @@ def __reorganizeDataByPosition(name:str, kmers:dict[Seq,dict[str,tuple[str,int,i
         kmers (dict[Seq,dict[str,tuple[str,int,int]]]): the dictionary produced by __getSharedKmers
 
     Returns:
-        dict[str,dict[int,list[tuple[Seq,int]]]]: key=contig; val=dict: key=start position; val=list of tuples: kmer, klen
+        dict[str,dict[int,list[tuple[Seq,int,str]]]]: key=contig; val=dict: key=start position; val=list of tuples: kmer, klen, strand
     """
     # initialize output
     out = dict()
@@ -274,25 +186,25 @@ def __reorganizeDataByPosition(name:str, kmers:dict[Seq,dict[str,tuple[str,int,i
     # for each kmer
     for kmer in kmers.keys():
         # extract data from the dictionary
-        contig, start, length = kmers[kmer][name]
+        contig, start, length, strand = kmers[kmer][name]
         
         # contig = top level key; start position = second level key; val = list
         out[contig] = out.get(contig, dict())
         out[contig][start] = out[contig].get(start, list())
         
         # add the sequence and its length to the list
-        out[contig][start].append((kmer, length))
+        out[contig][start].append((kmer, length, strand))
     
     return out
 
 
-def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
+def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int,str]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
     """evaluates all the primers at a single position in the genome; designed for parallel calls
 
     Args:
         contig (str): the name of the contig
         start (int): the start position in the sequence
-        posL (list[tuple[Seq,int]]): a list of tuples; kmer, klen
+        posL (list[tuple[Seq,int]]): a list of tuples: kmer, klen, strand
         minGc (float): the minimum percent GC allowed
         maxGc (float): the maximum percent GC allowed
         minTm (float): the minimum melting temperature allowed
@@ -319,7 +231,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
 
         # check for each repeat in the primer
         for repeat in REPEATS:
-            if _kmpSearch(primer.seq, repeat)[0]:
+            if repeat in primer.seq:
                 return False
         return True
 
@@ -335,7 +247,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
         
         for idx in range(len(primer)-MAX_LEN):
             # see if the reverse complement exists downstream
-            if _kmpSearch(primer.seq, revComp[idx:idx+LEN_TO_CHECK])[0]:
+            if revComp[idx:idx+LEN_TO_CHECK] in primer.seq:
                 return False
         
         return True
@@ -346,10 +258,10 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
     # continue to iterate through each primer in the list until a primer is found 
     for idx in range(len(posL)):
         # extract data from the list
-        seq,length = posL[idx]
+        seq,length,strand = posL[idx]
         
         # create a Primer object
-        primer = Primer(seq, contig, start, length)
+        primer = Primer(seq, contig, start, length, strand)
         
         # evaluate the primer's percent GC, Tm, and homology; save if found
         if isGcWithinRange(primer) and isTmWithinRange(primer): # O(1)
@@ -357,8 +269,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int]
                 if noIntraPrimerComplements(primer): # this runtime is the worst O(len(primer)); evaluate last
                     return primer
 
-
-def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int]]]], minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> list[Primer]:
+def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int,str]]]], minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> list[Primer]:
     """evaluates kmers at each position for their suitability as primers
 
     Args:
@@ -392,11 +303,11 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int]]]], minGc:flo
     return [x for x in results if x is not None]
  
 
-def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[Primer]) -> dict[str,dict[str,list[Primer]]]:
+def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int,str]]], candidates:list[Primer]) -> dict[str,dict[str,list[Primer]]]:
     """builds the candidate primer output
 
     Args:
-        kmers (dict[str,dict[Seq,tuple[str,int,int]]]): the dictionary produced by __getSharedKmers
+        kmers (dict[str,dict[Seq,tuple[str,int,int,str]]]): the dictionary produced by __getSharedKmers
         candidates (list[Primer]): the list produced by __evaluateAllKmers
 
     Returns:
@@ -416,12 +327,12 @@ def __buildOutput(kmers:dict[str,dict[Seq,tuple[str,int,int]]], candidates:list[
         # for each genome
         for name in entry.keys():
             # extract the data from the entry
-            contig, start, length = entry[name]
+            contig, start, length, strand = entry[name]
         
             # save a Primer object in this contig's list
             out[name] = out.get(name, dict())
             out[name][contig] = out[name].get(contig, list())
-            out[name][contig].append(Primer(cand.seq, contig, start, length))
+            out[name][contig].append(Primer(cand.seq, contig, start, length, strand))
     
     return out
 
@@ -483,13 +394,14 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     # initialize variables
     clock = Clock()
     numCand = 0
+    firstGenome = True
     shared = set()
     allseen = set()
     out = dict()
     
     # setup debugger
     if params.debug:
-        params.log.initialize(_getAllCandidateKmers.__name__)
+        params.log.rename(_getAllCandidateKmers.__name__)
     
     # get all non-duplicated kmers that are shared in the ingroup
     _printStart(clock, MSG_1)
@@ -498,7 +410,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # move log back to this function
     if params.debug:
-        params.log.initialize(_getAllCandidateKmers.__name__)
+        params.log.rename(_getAllCandidateKmers.__name__)
     
     # make sure that ingroup kmers were identified
     if kmers == dict():
@@ -545,8 +457,9 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
         allseen.update(seen)
         
         # calculate the kmers shared in all genomes
-        if shared == set():
+        if firstGenome:
             shared.update(seen)
+            firstGenome = False
         else:
             shared.intersection_update(seen)
     
@@ -555,11 +468,11 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     
     # for each genome
     for name in out.keys():
-        # for each genome
+        # for each contig
         for contig in out[name].keys():
-            # remove unshared contigs and sort kmers by start position
+            # remove unshared kmers and sort them by start position on the (+) strand
             out[name][contig].difference_update(bad)
-            out[name][contig] = sorted(out[name][contig], key=lambda x: x.start)
+            out[name][contig] = sorted(out[name][contig], key=lambda x: min(x.start, x.end))
             
             # count the number of candidate kmers for the first genome only
             if name == names[0]:

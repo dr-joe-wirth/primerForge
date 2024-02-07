@@ -1,6 +1,5 @@
 from __future__ import annotations
 from bin.Clock import Clock, _printDone, _printStart
-from bin.getCandidateKmers import _kmpSearch as _kmp
 import gzip, os, subprocess, sys, unittest
 from bin.Parameters import Parameters
 from Bio.SeqUtils import MeltingTemp
@@ -328,7 +327,7 @@ class ResultsTest(unittest.TestCase):
 
         # check for each repeat in the primer
         for repeat in REPEATS:
-            if _kmp(seq, repeat)[0]:
+            if repeat in seq:
                 return False
         return True
     

@@ -42,6 +42,14 @@ class Log():
         # start up the logger
         self.__logger = logging.getLogger(name)
     
+    def rename(self, name:str):
+        """renames the logger
+
+        Args:
+            name (str): the new name of the logger
+        """
+        self.__logger = logging.getLogger(name)
+    
     def info(self, msg:str) -> None:
         """writes message as logger.info
 
