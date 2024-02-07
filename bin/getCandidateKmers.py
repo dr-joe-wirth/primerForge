@@ -67,7 +67,12 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
                 else:
                     # extract the kmer sequences
                     fwdKmer = fwdSeq[start:start+klen]
-                    revKmer = revSeq[-(start+klen):-start]
+                    
+                    # handle the first base differently for the (-) strand (special slicing condition)
+                    if start == 0:
+                        revKmer = revSeq[-(start+klen):]
+                    else:
+                        revKmer = revSeq[-(start+klen):-start]
                     
                     # mark duplicate kmers for removal
                     if isDuplicated(fwdKmer):
