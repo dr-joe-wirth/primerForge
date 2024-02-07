@@ -395,8 +395,6 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     clock = Clock()
     numCand = 0
     firstGenome = True
-    shared = set()
-    allseen = set()
     out = dict()
     
     # setup debugger
@@ -433,9 +431,6 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     # go through each genome name
     names = list(next(iter(kmers.values())).keys())
     for name in names:
-        # initialize a set to track the kmers seen in this genome
-        seen = set()
-        
         # get the candidate kmers for the genome
         candidates = __getCandidatesForOneGenome(name, kmers, params)
         
@@ -449,29 +444,12 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
                 # store a set of all the candidates for this contig
                 out[genome][contig] = out[genome].get(contig, set())
                 out[genome][contig].update(candidates[genome][contig])
-                
-                # keep track of the kmers seen in this genome
-                seen.update(candidates[genome][contig])
-        
-        # keep track of all the kmers seen
-        allseen.update(seen)
-        
-        # calculate the kmers shared in all genomes
-        if firstGenome:
-            shared.update(seen)
-            firstGenome = False
-        else:
-            shared.intersection_update(seen)
-    
-    # get all unshared kmers
-    bad = allseen.difference(shared)
     
     # for each genome
     for name in out.keys():
         # for each contig
         for contig in out[name].keys():
-            # remove unshared kmers and sort them by start position on the (+) strand
-            out[name][contig].difference_update(bad)
+            # sort kmers by their start position on the (+) strand
             out[name][contig] = sorted(out[name][contig], key=lambda x: min(x.start, x.end))
             
             # count the number of candidate kmers for the first genome only
