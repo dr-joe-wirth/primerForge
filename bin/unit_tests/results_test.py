@@ -59,10 +59,11 @@ class ResultsTest(unittest.TestCase):
         else:
             _printStart(total, 'getting results for testing', end=' ...\n')
             
-            # download the genomes
-            _printStart(clock, 'downloading genomes')
-            ResultsTest._downloadTestData()
-            _printDone(clock)
+            # download the genomes if necessary
+            if not all(map(os.path.exists, (cls.params.ingroupFns + cls.params.outgroupFns))):
+                _printStart(clock, 'downloading genomes')
+                ResultsTest._downloadTestData()
+                _printDone(clock)
             
             # get the parameters
             cls.params:Parameters = ResultsTest._getParameters()
@@ -273,9 +274,8 @@ class ResultsTest(unittest.TestCase):
         
         # store each contig underneath its name
         for contig in SeqIO.parse(os.path.join(ResultsTest.TEST_DIR, fn), 'genbank'):
-            out[contig.id] = dict()
-            out[contig.id][ResultsTest.PLS] = contig.seq.upper()
-            out[contig.id][ResultsTest.MNS] = contig.seq.reverse_complement().upper()
+            out[contig.id] = {ResultsTest.PLS: contig.seq.upper(),
+                              ResultsTest.MNS: contig.seq.reverse_complement().upper()}
         
         return out
 
