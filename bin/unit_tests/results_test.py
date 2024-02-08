@@ -541,7 +541,7 @@ class ResultsTest(unittest.TestCase):
                         for fstart in fwdPlsStarts:
                             for rstart in revMnsStarts:
                                 # calculate the pcr lengths
-                                pcrLen = contigLen - fstart, rstart
+                                pcrLen = contigLen - fstart - rstart
                                 
                                 # save the pcr length if it is positive
                                 if pcrLen > 0:
