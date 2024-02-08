@@ -59,15 +59,15 @@ class ResultsTest(unittest.TestCase):
         else:
             _printStart(total, 'getting results for testing', end=' ...\n')
             
+            # get the parameters
+            cls.params:Parameters = ResultsTest._getParameters()
+            cls.params.log.initialize(ResultsTest.setUpClass.__name__)
+            
             # download the genomes if necessary
             if not all(map(os.path.exists, (cls.params.ingroupFns + cls.params.outgroupFns))):
                 _printStart(clock, 'downloading genomes')
                 ResultsTest._downloadTestData()
                 _printDone(clock)
-            
-            # get the parameters
-            cls.params:Parameters = ResultsTest._getParameters()
-            cls.params.log.initialize(ResultsTest.setUpClass.__name__)
             
             # run primerForge
             _printStart(clock, 'running primerForge', end=' ...\n')
