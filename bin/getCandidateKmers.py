@@ -274,6 +274,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int,
                 if noIntraPrimerComplements(primer): # this runtime is the worst O(len(primer)); evaluate last
                     return primer
 
+
 def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int,str]]]], minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> list[Primer]:
     """evaluates kmers at each position for their suitability as primers
 
@@ -399,7 +400,6 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     # initialize variables
     clock = Clock()
     numCand = 0
-    firstGenome = True
     out = dict()
     
     # setup debugger
