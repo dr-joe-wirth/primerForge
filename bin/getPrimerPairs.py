@@ -288,24 +288,29 @@ def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Se
     return out
 
 
-def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int,tuple[str,int,int]]], minPcr:int, maxPcr:int) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
+def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int,tuple[str,int,int]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
     """gets all the primer pairs that are shared in all the genomes
 
     Args:
         firstName (str): the name of the genome that has already been evaluated
-        candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate Primers
+        candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate kmers
         candidatePairs (list[tuple[Primer,Primer,int,tuple[str,int,int]]]): the list produced by __evaluateBinPairs
-        minPcr (int): the minimum PCR product length
-        maxPcr (int): the maximum PCR product length
+        params (Parameters): a Parameters object
+
+    Raises:
+        RuntimeError: an untested condition was encountered
 
     Returns:
         dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length, bin pair (contig, bin1, bin2)
     """
+    # message
+    ERR_MSG = "congratulations! you've discovered an untested condition. please create an issue on https://github.com/dr-joe-wirth/primerForge/issues"
+    
     # initialize variables
     k1:Primer
     k2:Primer
     out = dict()
-    allowedLengths = range(minPcr, maxPcr+1)
+    allowedLengths = range(params.minPcr, params.maxPcr+1)
     
     # get a set of genomes that need to be evaluated (the first name has already been evaluated)
     remaining = set(candidateKmers.keys())
@@ -356,6 +361,18 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
                     else:
                         fwd = k2
                         rev = k1
+                    
+                    # strand mismatch is unexpected and requires testing
+                    if fwd.strand != rev.strand:
+                        if params.debug:
+                            params.log.rename(__getAllSharedPrimerPairs.__name__)
+                            params.log.error(ERR_MSG)
+                        raise RuntimeError(ERR_MSG)
+                    
+                    # make sure both primers are on the forward strand before calculating the product length
+                    if fwd.strand == Primer.MINUS:
+                        fwd = fwd.reverseComplement()
+                        rev = rev.reverseComplement()
                     
                     # only save the pair if the length falls within the acceptable range
                     length = rev.end - fwd.start + 1
@@ -431,7 +448,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         candidatePairs = __getCandidatePrimerPairs(binPairs, binnedCandidateKmers, params)
         
         # get the primer pairs that are shared in all genomes
-        pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params.minPcr, params.maxPcr)
+        pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params)
         
         # wittle down the pairs; keep only one pair per bin
         __keepOnePairPerBinPair(pairs, name)
