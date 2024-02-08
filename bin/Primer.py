@@ -8,7 +8,7 @@ class Primer:
     PLUS = "+"
     MINUS = "-"
     
-    def __init__(self, seq:Seq, contig:str, start:int, length:int, strand:str, startIsEnd=False) -> Primer:
+    def __init__(self, seq:Seq, contig:str, start:int, length:int, strand:str) -> Primer:
         """creates a Primer object
 
         Args:
@@ -63,6 +63,9 @@ class Primer:
     
     def __ne__(self, other:Primer) -> bool:
         return not self.seq == other.seq
+    
+    def __format__(self, format_spec, /):
+        return str(self.seq).__format__(format_spec)
     
     # private methods
     def __importSeq(self, seq:Seq) -> None:
