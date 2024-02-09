@@ -303,9 +303,6 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     Returns:
         dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length, bin pair (contig, bin1, bin2)
     """
-    # message
-    ERR_MSG = "congratulations! you've discovered an untested condition. please create an issue on https://github.com/dr-joe-wirth/primerForge/issues"
-    
     # initialize variables
     k1:Primer
     k2:Primer
@@ -362,22 +359,17 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
                         fwd = k2
                         rev = k1
                     
-                    # strand mismatch is unexpected and requires testing
-                    if fwd.strand != rev.strand:
-                        if params.debug:
-                            params.log.rename(__getAllSharedPrimerPairs.__name__)
-                            params.log.error(ERR_MSG)
-                        raise RuntimeError(ERR_MSG)
-                    
-                    # make sure both primers are on the forward strand before calculating the product length
-                    if fwd.strand == Primer.MINUS:
-                        fwd = fwd.reverseComplement()
-                        rev = rev.reverseComplement()
-                    
-                    # only save the pair if the length falls within the acceptable range
-                    length = rev.end - fwd.start + 1
-                    if length in allowedLengths:
-                        out[(p1,p2)][name] = (fwd.contig, length, binPair)
+                    # strand mismatches only occur if primer pairs in firstName are not suitable for the current genome; skip
+                    if fwd.strand == rev.strand:
+                        # make sure both primers are on the (+) strand before calculating the product length
+                        if fwd.strand == Primer.MINUS:
+                            fwd = fwd.reverseComplement()
+                            rev = rev.reverseComplement()
+                        
+                        # only save the pair if the length falls within the acceptable range
+                        length = rev.end - fwd.start + 1
+                        if length in allowedLengths:
+                            out[(p1,p2)][name] = (fwd.contig, length, binPair)
 
     # remove any pairs that are not universally suitable in all genomes
     for pair in set(out.keys()):
