@@ -1,4 +1,5 @@
 from __future__ import annotations
+from Bio import SeqIO
 from bin.Log import Log
 import getopt, glob, os, pickle, sys
 
@@ -49,6 +50,25 @@ class Parameters():
         # initialize a log if debugging
         if self.debug:
             self.log = Log()
+
+    def __checkGenomeFormat(self) -> None:
+        """checks the file format of the input genome files
+
+        Raises:
+            ValueError: empty or improperly formatted file encountered
+        """
+        # error message
+        ERR_MSG = f" is empty or an improperly formatted {self.format} file"
+        
+        # for each genome file
+        for fn in self.ingroupFns + self.outgroupFns:
+            # attempt to extract the first record from the generator
+            try:
+                next(iter(SeqIO.parse(fn, self.format)))
+            
+            # failure indicates empty file or improperly formatted
+            except StopIteration:
+                raise ValueError(f"{fn}{ERR_MSG}")
 
     def __parseArgs(self, author:str, version:str) -> None:
         """parses command line arguments
@@ -393,6 +413,9 @@ class Parameters():
             # make sure an output file was specified
             if self.outFn is None:
                 raise ValueError(ERR_MSG_18)
+            
+            # make sure that all genomes are formatted correctly
+            self.__checkGenomeFormat()
     
     def logRunDetails(self, version) -> None:
         """saves the details for the current instance of the program
