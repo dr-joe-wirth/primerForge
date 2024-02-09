@@ -47,6 +47,21 @@ class ResultsTest(unittest.TestCase):
         total = Clock()
         clock = Clock()
         
+        # make the test directory if it doesn't exist
+        if not os.path.isdir(ResultsTest.TEST_DIR):
+            os.mkdir(ResultsTest.TEST_DIR)
+        
+        # get a list of all the genome files
+        allFiles = list(ResultsTest.INGROUP.keys()) + list(ResultsTest.OUTGROUP.keys())
+        allFiles = map(os.path.join, [ResultsTest.TEST_DIR]*len(allFiles), allFiles)
+        
+        # download genome files if necessary
+        if not all(map(os.path.exists, allFiles)):
+            _printStart(clock, 'downloading genomes')
+            ResultsTest._downloadGenomesForGroup(ResultsTest.INGROUP)
+            ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
+            _printDone(clock)
+        
         # load existing results if present
         if os.path.exists(ResultsTest.RESULT_FN):
             # get the parameters
@@ -63,11 +78,6 @@ class ResultsTest(unittest.TestCase):
             cls.params:Parameters = ResultsTest._getParameters()
             cls.params.log.initialize(ResultsTest.setUpClass.__name__)
             
-            # download the genomes if necessary
-            if not all(map(os.path.exists, (cls.params.ingroupFns + cls.params.outgroupFns))):
-                _printStart(clock, 'downloading genomes')
-                ResultsTest._downloadTestData()
-                _printDone(clock)
             
             # run primerForge
             _printStart(clock, 'running primerForge', end=' ...\n')
@@ -168,16 +178,6 @@ class ResultsTest(unittest.TestCase):
             
             # download the genome
             ResultsTest._downloadOneGenome(ftp, fn)
-    
-    def _downloadTestData() -> None:
-        """downloads all the genomes for testing
-        """
-        # make the test directory if it doesn't exist
-        if not os.path.isdir(ResultsTest.TEST_DIR):
-            os.mkdir(ResultsTest.TEST_DIR)
-        
-        ResultsTest._downloadGenomesForGroup(ResultsTest.INGROUP)
-        ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
 
     def _parseResultsFile(fn:str) -> dict[tuple[Seq,Seq],Result]:
         """parses the results file produced by running primerForge
