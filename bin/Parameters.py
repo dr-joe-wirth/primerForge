@@ -60,14 +60,23 @@ class Parameters():
         # error message
         ERR_MSG = f" is empty or an improperly formatted {self.format} file"
         
+        # initialize boolean to track status
+        fail = False
+        
         # for each genome file
         for fn in self.ingroupFns + self.outgroupFns:
-            # attempt to extract the first record from the generator
-            try:
-                next(iter(SeqIO.parse(fn, self.format)))
+            # open the file
+            with open(fn, 'r') as fh:
+                # attempt to extract the first record from the generator
+                try:
+                    next(iter(SeqIO.parse(fh, self.format)))
+                
+                # failure indicates empty file or improperly formatted
+                except StopIteration:
+                    fail = True
             
-            # failure indicates empty file or improperly formatted
-            except StopIteration:
+            # raise an error only after the file is closed
+            if fail:
                 raise ValueError(f"{fn}{ERR_MSG}")
 
     def __parseArgs(self, author:str, version:str) -> None:
