@@ -1,5 +1,6 @@
 from __future__ import annotations
 from bin.Clock import Clock, _printDone, _printStart
+from bin.getPrimerPairs import _formsDimers
 import gzip, os, subprocess, sys, unittest
 from bin.Parameters import Parameters
 from Bio.SeqUtils import MeltingTemp
@@ -664,7 +665,13 @@ class ResultsTest(unittest.TestCase):
             self.assertTrue(ResultsTest._noLongRepeats(fwd), f"{FAIL_MSG}{fwd}")
             self.assertTrue(ResultsTest._noLongRepeats(rev), f"{FAIL_MSG}{rev}")
 
-    def testI_ingroupHasOneProduct(self) -> None:
+    def testI_noPrimerDimers(self) -> None:
+        """do all pairs not produce primer dimers
+        """
+        for fwd,rev in self.results.keys():
+            self.assertFalse(_formsDimers(fwd,rev))
+
+    def testJ_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
         """
         # constants
@@ -678,7 +685,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testJ_ingroupProductsWithinRange(self) -> None:
+    def testK_ingroupProductsWithinRange(self) -> None:
         """is ingroup pcr product size in the expected range
         """
         # constants
@@ -692,7 +699,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testK_outgroupProductsSavedCorrectly(self) -> None:
+    def testL_outgroupProductsSavedCorrectly(self) -> None:
         """do outgroup pcr products look valid
         """
         # constants
@@ -707,7 +714,7 @@ class ResultsTest(unittest.TestCase):
                 numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
                 self.assertEqual(numContigs, numPcrLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testL_outgroupProductsNaAreZero(self) -> None:
+    def testM_outgroupProductsNaAreZero(self) -> None:
         """do outgroup products of 0 have NA as the contig and vice-versa
         """
         # constants
@@ -728,7 +735,7 @@ class ResultsTest(unittest.TestCase):
                     if self.results[pair].additional[name][ResultsTest.PCRLEN][idx] == 0:
                         self.assertEqual(self.results[pair].additional[name][ResultsTest.CONTIG][idx], 'NA', f"{FAIL_MSG_2A}{pair}{FAIL_MSG_B}{name}")
                 
-    def testM_outgroupProductsNotWithinDisallowedRange(self) -> None:
+    def testN_outgroupProductsNotWithinDisallowedRange(self) -> None:
         """are outgroup pcr products outside the disallowed range
         """
         # constants
@@ -742,7 +749,7 @@ class ResultsTest(unittest.TestCase):
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
                     self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
 
-    def testN_bindingSiteTests(self) -> None:
+    def testO_bindingSiteTests(self) -> None:
         """evaluate several additional tests
         """
         # get all the binding sites for the primers
