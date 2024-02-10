@@ -183,7 +183,7 @@ def _formsDimers(fwd:Primer, rev:Primer) -> bool:
         bot = rev.seq
 
     # get the bottom sequence in 3'-> 5' orientation
-    bot = bot.reverse_complement().complement()
+    bot = bot.complement()
 
     # get the highest Tm possible for the pair
     highestTm = -float('inf')
