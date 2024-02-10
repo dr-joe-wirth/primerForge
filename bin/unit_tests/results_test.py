@@ -97,7 +97,12 @@ class ResultsTest(unittest.TestCase):
         _printStart(clock, 'reading genomic sequences into memory')
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
         _printDone(clock)
-        
+
+        # get all the primer binding sites
+        _printStart(clock, 'calculating primer binding sites in each genome')
+        cls.bindingSites = ResultsTest._getAllBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
+        _printDone(clock)
+    
     # functions for setting up the class
     def _getParameters() -> Parameters:
         """creates a Parameters object for testing
@@ -300,53 +305,19 @@ class ResultsTest(unittest.TestCase):
         
         return out
     
-    # functions for testing
-    def _getGc(seq:Seq) -> float:
-        """gets the percent G+C for the provided sequence
-
-        Args:
-            seq (Seq): the sequence to calculate
-
-        Returns:
-            float: the percent G+C
-        """
-        seq = str(seq.upper())
-        numGc = len(seq.replace('A', '').replace('T', ''))
-        return numGc / len(seq) * 100
-    
-    def _noLongRepeats(seq:Seq) -> bool:
-        """determines if a sequence does not have long homopolymers
-
-        Args:
-            seq (Seq): a sequence to evaluate
-
-        Returns:
-            bool: indicates if the sequences does not have long repeats
-        """
-        # constants
-        MAX_LEN = 4
-        REPEATS = map(Seq, ("A"*MAX_LEN, "T"*MAX_LEN, "C"*MAX_LEN, "G"*MAX_LEN))
-
-        # check for each repeat in the primer
-        for repeat in REPEATS:
-            if repeat in seq:
-                return False
-        return True
-    
-    def _getKmersForOneContig(self, name:str, contig:str, strand:str) -> dict[Seq,list[int]]:
+    def _getKmersForOneContig(seq:Seq, minLen:int, maxLen:int) -> dict[Seq,list[int]]:
         """gets all the kmers for a single contig strand
 
         Args:
-            name (str): the name of the genome
-            contig (str): the name of the contig
-            strand (str): the strand to evaluate
+            seq (Seq): the contig sequence from which to retrieve kmers
+            minLen (int): the minimum kmer length
+            maxLen (int): the maximum kmer length
 
         Returns:
             dict[Seq,list[int]]: key=kmers; val=list of start positions
         """
         # initialize variables
-        krange = range(self.params.minLen, self.params.maxLen + 1)
-        seq = self.sequences[name][contig][strand]
+        krange = range(minLen, maxLen + 1)
         smallest = min(krange)
         seqLen = len(seq)
         done = False
@@ -379,25 +350,31 @@ class ResultsTest(unittest.TestCase):
                 break
         
         return out
-    
-    def _getAllBindingSites(self) -> dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]:
+
+    def _getAllBindingSites(results:dict[tuple[Seq,Seq],Result], sequences:dict[str,dict[str,dict[str,Seq]]], minLen:int, maxLen:int) -> dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]:
         """get all of the primer binding sites in the provided genomes
+
+        Args:
+            results (dict[tuple[Seq,Seq],Result]): the dictionary produced by _parseResultsFile
+            sequences (dict[str,dict[str,dict[str,Seq]]]): the dictionary produced by _loadGenomeSequences
+            minLen (int): the minimum primer size
+            maxLen (int): the maximum primer size
 
         Returns:
             dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]: key=primer; val=dict:key=genome name; val=dict: key=contig; val=dict: key=strand; val=list of start positions
         """
         # initialize variables
         bindingSites = dict()
-        allPrimers = {p for pair in self.results.keys() for p in pair}
+        allPrimers = {p for pair in results.keys() for p in pair}
         
         # for each genome
-        for name in self.sequences.keys():
+        for name in sequences.keys():
             # for each contig
-            for contig in self.sequences[name].keys():
+            for contig in sequences[name].keys():
                 # for each strand
-                for strand in self.sequences[name][contig].keys():
+                for strand in sequences[name][contig].keys():
                     # get the all the kmers
-                    kmers = self._getKmersForOneContig( name, contig, strand)
+                    kmers = ResultsTest._getKmersForOneContig(sequences[name][contig][strand], minLen, maxLen)
 
                     # for each primer
                     for primer in allPrimers:
@@ -415,165 +392,38 @@ class ResultsTest(unittest.TestCase):
         
         return bindingSites
 
-    def _isRepeatedInIngroup(self, bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]) -> None:
-        """does the primer pair have exactly one binding site
+    # functions for testing
+    def _getGc(seq:Seq) -> float:
+        """gets the percent G+C for the provided sequence
 
         Args:
-            bindingSites (dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]): the dictionary produced by _getAllBindingSites
+            seq (Seq): the sequence to calculate
+
+        Returns:
+            float: the percent G+C
+        """
+        seq = str(seq.upper())
+        numGc = len(seq.replace('A', '').replace('T', ''))
+        return numGc / len(seq) * 100
+    
+    def _noLongRepeats(seq:Seq) -> bool:
+        """determines if a sequence does not have long homopolymers
+
+        Args:
+            seq (Seq): a sequence to evaluate
+
+        Returns:
+            bool: indicates if the sequences does not have long repeats
         """
         # constants
-        FAIL_MSG_A = " has "
-        FAIL_MSG_B = " binding sites in "
-        
-        for fwd,rev in self.results.keys():
-            fbind = bindingSites[fwd]
-            rbind = bindingSites[rev]
-            
-            # for each ingroup genome
-            for name in ResultsTest.INGROUP.keys():
-                # count the number of binding sites in the genome for each primer
-                fCount = 0
-                rCount = 0
-                for contig in fbind[name].keys():
-                    fCount += len(fbind[name][contig][ResultsTest.PLS]) + len(fbind[name][contig][ResultsTest.MNS])
-                    rCount += len(rbind[name][contig][ResultsTest.PLS]) + len(rbind[name][contig][ResultsTest.MNS])
-            
-                # each ingroup genome should have exactly one binding site for each primer
-                self.assertEqual(rCount, 1, f"{rev}{FAIL_MSG_A}{rCount}{FAIL_MSG_B}{name}")
-                self.assertEqual(fCount, 1, f"{fwd}{FAIL_MSG_A}{fCount}{FAIL_MSG_B}{name}")
-    
-    def _onSeparateStrandsInIngroup(self, bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]) -> None:
-        """evaluates if the forward and reverse primers bind on separate strands in the ingroup
+        MAX_LEN = 4
+        REPEATS = map(Seq, ("A"*MAX_LEN, "T"*MAX_LEN, "C"*MAX_LEN, "G"*MAX_LEN))
 
-        Args:
-            bindingSites (dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]): the dictionary produced by _getAllBindingSites
-        """
-        # for each primer pair
-        for fwd,rev in self.results.keys():
-            # get the binding sites
-            fbind = bindingSites[fwd]
-            rbind = bindingSites[rev]
-            
-            # only evaluate for the ingroup
-            for name in ResultsTest.INGROUP.keys():
-                for contig in fbind[name].keys():
-                    # if the forward primer is on the (+) strand
-                    if fbind[name][contig][ResultsTest.PLS] != []:
-                        # then the reverse primer should be on the (-) strand
-                        self.assertNotEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is not on opposite strand of {fwd} in {name}|{contig}")
-                        
-                        # the forward primer should not be on the (-) strand
-                        self.assertEqual(fbind[name][contig][ResultsTest.MNS], [], f"{fwd} is on both strands in {name}|{contig}")
-                        
-                        # the reverse primer should not be on the (+) strand
-                        self.assertEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
-                    
-                    # if the forward primer is on the (-) strand
-                    elif fbind[name][contig][ResultsTest.MNS] != []:
-                        # then the reverse primer should be on the (+) strand
-                        self.assertNotEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is ont on opposite strand of {fwd} in {name}|{contig}")
-                        
-                        # the forward primer should not be on the (+) strand
-                        self.assertEqual(fbind[name][contig][ResultsTest.PLS], [], f"{fwd} is on both strands in {name}|{contig}")
-                        
-                        # the reverse primer should not be on the (-) strand
-                        self.assertEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
-    
-    def _isProductLengthCorrect(self, bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]) -> None:
-        """determines if the product length is correctly saved
-
-        Args:
-            bindingSites (dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]): the dictionary produced by _getAllBindingSites
-        """
-        # for each primer pair
-        for fwd,rev in self.results.keys():
-            # extract the binding sites
-            fbind = bindingSites[fwd]
-            rbind = bindingSites[rev]
-            
-            # for each ingroup genome
-            for name in ResultsTest.INGROUP.keys():
-                # extract the stored pcr length and the contig
-                pcrLen = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN][0]
-                contig = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG][0]
-                
-                # find where the forward and reverse primers bind
-                if fbind[name][contig][ResultsTest.PLS] != []:
-                    fstart = fbind[name][contig][ResultsTest.PLS][0]
-                    rstart = rbind[name][contig][ResultsTest.MNS][0]
-                else:
-                    fstart = fbind[name][contig][ResultsTest.MNS][0]
-                    rstart = rbind[name][contig][ResultsTest.PLS][0]
-                
-                # the true length is just the space between the two ends
-                truLen = len(self.sequences[name][contig][ResultsTest.PLS]) - fstart - rstart
-                
-                # make sure the saved length and the true length match
-                self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
-            
-            # for each outgroup genome
-            for name in ResultsTest.OUTGROUP.keys():
-                # get the list of of pcr products and their contigs
-                pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
-                contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
-                
-                # key the product sizes under the contig names
-                res = dict()
-                for idx in range(len(pcrLens)):
-                    res[contigs[idx]] = res.get(contigs[idx], set())
-                    res[contigs[idx]].add(pcrLens[idx])
-
-                # initialize a dictionary to store the true values
-                tru = dict()
-                
-                # for each contig
-                for contig in fbind[name].keys():
-                    # only proceed if the reverse primer also binds to this contig
-                    if contig in rbind[name].keys():
-                        # extrac the forward and reverse binding sites on both strands
-                        fwdPlsStarts = fbind[name][contig][ResultsTest.PLS]
-                        fwdMnsStarts = fbind[name][contig][ResultsTest.MNS]
-                        revPlsStarts = rbind[name][contig][ResultsTest.PLS]
-                        revMnsStarts = rbind[name][contig][ResultsTest.MNS]
-                        
-                        # extract the length of the contig
-                        contigLen = len(self.sequences[name][contig][ResultsTest.PLS])
-                        
-                        # for each fwd/rev pair on the (+)/(-) strands
-                        for fstart in fwdPlsStarts:
-                            for rstart in revMnsStarts:
-                                # calculate the pcr lengths
-                                pcrLen = contigLen - fstart - rstart
-                                
-                                # save the pcr length if it is positive
-                                if pcrLen > 0:
-                                    tru[contig] = tru.get(contig, set())
-                                    tru[contig].add(pcrLen)
-                        
-                        # for each fwd/rev pair on the (-)/(+) strands
-                        for fstart in fwdMnsStarts:
-                            for rstart in revPlsStarts:
-                                # calculate the pcr lengths
-                                pcrLen = contigLen - fstart - rstart
-                                
-                                # only save the pcr length if it is positive
-                                if pcrLen > 0:
-                                    tru[contig] = tru.get(contig, set())
-                                    tru[contig].add(pcrLen)
-                
-                # if the value was "NA", then there should be no saved data
-                if contigs == ["NA"]:
-                    self.assertEqual(tru, dict(), f"'NA' in {name} but products produced by {fwd},{rev}")
-                
-                else:
-                    # for each contig
-                    for contig in res.keys():
-                        # the pcr lengths should be equal
-                        self.assertEqual(res[contig], tru[contig], f"unexpected sizes in {name} using {fwd}, {rev}")
-                        
-                        # and the pcr lengths should not be disallowed
-                        for plen in tru[contig]:
-                            self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
+        # check for each repeat in the primer
+        for repeat in REPEATS:
+            if repeat in seq:
+                return False
+        return True
     
     # test cases
     def testA_isSequenceUpper(self) -> None:
@@ -755,12 +605,153 @@ class ResultsTest(unittest.TestCase):
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
                     self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
 
-    def testO_bindingSiteTests(self) -> None:
-        """evaluate several additional tests
+    def testO_isRepeatedInIngroup(self) -> None:
+        """does the primer pair have exactly one binding site
         """
-        # get all the binding sites for the primers
-        bindingSites = self._getAllBindingSites()
+        # constants
+        FAIL_MSG_A = " has "
+        FAIL_MSG_B = " binding sites in "
         
-        self._isRepeatedInIngroup(bindingSites)
-        self._onSeparateStrandsInIngroup(bindingSites)
-        self._isProductLengthCorrect(bindingSites)
+        for fwd,rev in self.results.keys():
+            fbind = self.bindingSites[fwd]
+            rbind = self.bindingSites[rev]
+            
+            # for each ingroup genome
+            for name in ResultsTest.INGROUP.keys():
+                # count the number of binding sites in the genome for each primer
+                fCount = 0
+                rCount = 0
+                for contig in fbind[name].keys():
+                    fCount += len(fbind[name][contig][ResultsTest.PLS]) + len(fbind[name][contig][ResultsTest.MNS])
+                    rCount += len(rbind[name][contig][ResultsTest.PLS]) + len(rbind[name][contig][ResultsTest.MNS])
+            
+                # each ingroup genome should have exactly one binding site for each primer
+                self.assertEqual(rCount, 1, f"{rev}{FAIL_MSG_A}{rCount}{FAIL_MSG_B}{name}")
+                self.assertEqual(fCount, 1, f"{fwd}{FAIL_MSG_A}{fCount}{FAIL_MSG_B}{name}")
+
+    def testP_onSeparateStrandsInIngroup(self) -> None:
+        """evaluates if the forward and reverse primers bind on separate strands in the ingroup
+        """
+        # for each primer pair
+        for fwd,rev in self.results.keys():
+            # get the binding sites
+            fbind = self.bindingSites[fwd]
+            rbind = self.bindingSites[rev]
+            
+            # only evaluate for the ingroup
+            for name in ResultsTest.INGROUP.keys():
+                for contig in fbind[name].keys():
+                    # if the forward primer is on the (+) strand
+                    if fbind[name][contig][ResultsTest.PLS] != []:
+                        # then the reverse primer should be on the (-) strand
+                        self.assertNotEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is not on opposite strand of {fwd} in {name}|{contig}")
+                        
+                        # the forward primer should not be on the (-) strand
+                        self.assertEqual(fbind[name][contig][ResultsTest.MNS], [], f"{fwd} is on both strands in {name}|{contig}")
+                        
+                        # the reverse primer should not be on the (+) strand
+                        self.assertEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
+                    
+                    # if the forward primer is on the (-) strand
+                    elif fbind[name][contig][ResultsTest.MNS] != []:
+                        # then the reverse primer should be on the (+) strand
+                        self.assertNotEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is ont on opposite strand of {fwd} in {name}|{contig}")
+                        
+                        # the forward primer should not be on the (+) strand
+                        self.assertEqual(fbind[name][contig][ResultsTest.PLS], [], f"{fwd} is on both strands in {name}|{contig}")
+                        
+                        # the reverse primer should not be on the (-) strand
+                        self.assertEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
+    
+    def testQ_isProductLengthCorrect(self) -> None:
+        """determines if the product length is correctly saved
+        """
+        # for each primer pair
+        for fwd,rev in self.results.keys():
+            # extract the binding sites
+            fbind = self.bindingSites[fwd]
+            rbind = self.bindingSites[rev]
+            
+            # for each ingroup genome
+            for name in ResultsTest.INGROUP.keys():
+                # extract the stored pcr length and the contig
+                pcrLen = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN][0]
+                contig = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG][0]
+                
+                # find where the forward and reverse primers bind
+                if fbind[name][contig][ResultsTest.PLS] != []:
+                    fstart = fbind[name][contig][ResultsTest.PLS][0]
+                    rstart = rbind[name][contig][ResultsTest.MNS][0]
+                else:
+                    fstart = fbind[name][contig][ResultsTest.MNS][0]
+                    rstart = rbind[name][contig][ResultsTest.PLS][0]
+                
+                # the true length is just the space between the two ends
+                truLen = len(self.sequences[name][contig][ResultsTest.PLS]) - fstart - rstart
+                
+                # make sure the saved length and the true length match
+                self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
+            
+            # for each outgroup genome
+            for name in ResultsTest.OUTGROUP.keys():
+                # get the list of of pcr products and their contigs
+                pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
+                contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
+                
+                # key the product sizes under the contig names
+                res = dict()
+                for idx in range(len(pcrLens)):
+                    res[contigs[idx]] = res.get(contigs[idx], set())
+                    res[contigs[idx]].add(pcrLens[idx])
+
+                # initialize a dictionary to store the true values
+                tru = dict()
+                
+                # for each contig
+                for contig in fbind[name].keys():
+                    # only proceed if the reverse primer also binds to this contig
+                    if contig in rbind[name].keys():
+                        # extrac the forward and reverse binding sites on both strands
+                        fwdPlsStarts = fbind[name][contig][ResultsTest.PLS]
+                        fwdMnsStarts = fbind[name][contig][ResultsTest.MNS]
+                        revPlsStarts = rbind[name][contig][ResultsTest.PLS]
+                        revMnsStarts = rbind[name][contig][ResultsTest.MNS]
+                        
+                        # extract the length of the contig
+                        contigLen = len(self.sequences[name][contig][ResultsTest.PLS])
+                        
+                        # for each fwd/rev pair on the (+)/(-) strands
+                        for fstart in fwdPlsStarts:
+                            for rstart in revMnsStarts:
+                                # calculate the pcr lengths
+                                pcrLen = contigLen - fstart - rstart
+                                
+                                # save the pcr length if it is positive
+                                if pcrLen > 0:
+                                    tru[contig] = tru.get(contig, set())
+                                    tru[contig].add(pcrLen)
+                        
+                        # for each fwd/rev pair on the (-)/(+) strands
+                        for fstart in fwdMnsStarts:
+                            for rstart in revPlsStarts:
+                                # calculate the pcr lengths
+                                pcrLen = contigLen - fstart - rstart
+                                
+                                # only save the pcr length if it is positive
+                                if pcrLen > 0:
+                                    tru[contig] = tru.get(contig, set())
+                                    tru[contig].add(pcrLen)
+                
+                # if the value was "NA", then there should be no saved data
+                if contigs == ["NA"]:
+                    self.assertEqual(tru, dict(), f"'NA' in {name} but products produced by {fwd},{rev}")
+                
+                else:
+                    # for each contig
+                    for contig in res.keys():
+                        # the pcr lengths should be equal
+                        self.assertEqual(res[contig], tru[contig], f"unexpected sizes in {name} using {fwd}, {rev}")
+                        
+                        # and the pcr lengths should not be disallowed
+                        for plen in tru[contig]:
+                            self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
