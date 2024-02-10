@@ -1,6 +1,8 @@
 import multiprocessing
 from Bio.Seq import Seq
 from bin.Primer import Primer
+from bin.nnTable import NN_TABLE
+from Bio.SeqUtils import MeltingTemp
 from bin.Parameters import Parameters
 
 
@@ -159,6 +161,57 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     return out
 
 
+def _formsDimers(fwd:Primer, rev:Primer) -> bool:
+    """evaluates if two primers may form primer dimers
+
+    Args:
+        fwd (Primer): the forward primer
+        rev (Primer): the reverse primer
+
+    Returns:
+        bool: indicates if primer dimer formation is possible
+    """
+    # constant
+    MAX_DISTANCE = 5
+
+    # put the longest sequence on the bottom
+    if len(fwd) >= len(rev):
+        top = rev.seq
+        bot = fwd.seq
+    else:
+        top = fwd.seq
+        bot = rev.seq
+
+    # get the bottom sequence in 3'-> 5' orientation
+    bot = bot.reverse_complement().complement()
+
+    # get the highest Tm possible for the pair
+    highestTm = -float('inf')
+
+    # for each possible overlap that produces an overhang
+    for shift in range(1,len(top)+1):
+        # extract the overlapping sequences for this window
+        topSub = top[-shift:]
+        botSub = bot[:shift]
+
+        # do not evaluate matches when there is no overhang
+        if botSub == bot:
+            break
+
+        # keep track of highest melting temperature
+        try:
+            tm = MeltingTemp.Tm_NN(topSub, c_seq=botSub, nn_table=NN_TABLE)
+            if tm > highestTm:
+                highestTm = tm
+        
+        # not every possible base mismatch has thermodynamics data
+        except:
+            pass
+    
+    # dimers are possible if the highest Tm is within 5° C of the lowest Tm
+    return highestTm >= min(fwd.Tm, rev.Tm) - MAX_DISTANCE
+
+
 def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float) -> tuple[bool,int]:
     """determines if a pair of primers is suitable for PCR
 
@@ -180,6 +233,9 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     
     # unsuitable if the Tm difference is not within the allowed range
     if not abs(fwd.Tm - rev.Tm) <= maxTmDiff: return False, pcrLen
+
+    # unsuitable if primer dimers can form
+    if _formsDimers(fwd, rev): return False, pcrLen
     
     return True, pcrLen
 
