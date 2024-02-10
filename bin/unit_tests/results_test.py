@@ -5,6 +5,7 @@ import gzip, os, subprocess, sys, unittest
 from bin.Parameters import Parameters
 from Bio.SeqUtils import MeltingTemp
 from Bio.SeqRecord import SeqRecord
+from bin.Primer import Primer
 from bin.main import _main
 from Bio.Seq import Seq
 from bin.Log import Log
@@ -669,7 +670,12 @@ class ResultsTest(unittest.TestCase):
         """do all pairs not produce primer dimers
         """
         for fwd,rev in self.results.keys():
-            self.assertFalse(_formsDimers(fwd,rev))
+            # create mock primers
+            fwd = Primer(fwd, '', 100, len(fwd), Primer.PLUS)
+            rev = Primer(rev, '', 100, len(rev), Primer.MINUS)
+
+            # check for primer dimers; both primers need to be on the same strand
+            self.assertFalse(_formsDimers(fwd,rev.reverseComplement()), f'primer dimers present in {fwd}, {rev}')
 
     def testJ_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
