@@ -127,32 +127,32 @@ class Parameters():
         HELP_FLAGS = ('-h', '--help')
         DEBUG_FLAGS = ("--debug",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
-                    OUT_FLAGS[0][-1] + ":" + \
-                    OUTGROUP_FLAGS[0][-1] + ":" + \
-                    DISALLOW_FLAGS[0][-1] + ":" + \
-                    FMT_FLAGS[0][-1] + ":" + \
-                    PRIMER_LEN_FLAGS[0][-1] + ":" + \
-                    GC_FLAGS[0][-1] + ":" + \
-                    TM_FLAGS[0][-1] + ":" + \
-                    PCR_LEN_FLAGS[0][-1] + ":" + \
-                    TM_DIFF_FLAGS[0][-1] + ":" + \
-                    THREADS_FLAGS[0][-1] + ":" + \
-                    VERSION_FLAGS[0][-1] + \
-                    HELP_FLAGS[0][-1]
+                     OUT_FLAGS[0][-1] + ":" + \
+                     OUTGROUP_FLAGS[0][-1] + ":" + \
+                     DISALLOW_FLAGS[0][-1] + ":" + \
+                     FMT_FLAGS[0][-1] + ":" + \
+                     PRIMER_LEN_FLAGS[0][-1] + ":" + \
+                     GC_FLAGS[0][-1] + ":" + \
+                     TM_FLAGS[0][-1] + ":" + \
+                     PCR_LEN_FLAGS[0][-1] + ":" + \
+                     TM_DIFF_FLAGS[0][-1] + ":" + \
+                     THREADS_FLAGS[0][-1] + ":" + \
+                     VERSION_FLAGS[0][-1] + \
+                     HELP_FLAGS[0][-1]
         LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
-                    OUT_FLAGS[1][2:] + "=",
-                    OUTGROUP_FLAGS[1][2:] + "=",
-                    DISALLOW_FLAGS[1][2:] + "=",
-                    FMT_FLAGS[1][2:] + "=",
-                    PRIMER_LEN_FLAGS[1][2:] + "=",
-                    GC_FLAGS[1][2:] + "=",
-                    TM_FLAGS[1][2:] + "=",
-                    PCR_LEN_FLAGS[1][2:] + "=",
-                    TM_DIFF_FLAGS[1][2:] + "=",
-                    THREADS_FLAGS[1][2:] + "=",
-                    VERSION_FLAGS[1][2:],
-                    HELP_FLAGS[1][2:],
-                    DEBUG_FLAGS[0][2:])
+                     OUT_FLAGS[1][2:] + "=",
+                     OUTGROUP_FLAGS[1][2:] + "=",
+                     DISALLOW_FLAGS[1][2:] + "=",
+                     FMT_FLAGS[1][2:] + "=",
+                     PRIMER_LEN_FLAGS[1][2:] + "=",
+                     GC_FLAGS[1][2:] + "=",
+                     TM_FLAGS[1][2:] + "=",
+                     PCR_LEN_FLAGS[1][2:] + "=",
+                     TM_DIFF_FLAGS[1][2:] + "=",
+                     THREADS_FLAGS[1][2:] + "=",
+                     VERSION_FLAGS[1][2:],
+                     HELP_FLAGS[1][2:],
+                     DEBUG_FLAGS[0][2:])
 
         # messages
         YN = ['y', 'n']
@@ -279,7 +279,7 @@ class Parameters():
                     except:
                         raise ValueError(ERR_MSG_2)
                     
-                    self.outFn = arg
+                    self.outFn = os.path.abspath(arg)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
