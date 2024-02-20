@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Joseph S. Wirth"
 
 from bin.Parameters import Parameters
