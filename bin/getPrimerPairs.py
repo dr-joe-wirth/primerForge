@@ -435,33 +435,6 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
-def __keepOnePairPerBinPair(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], name:str) -> None:
-    """keeps only one primer pair per bin pair
-
-    Args:
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary created by __getAllSharedPrimerPairs
-        name (str): the name of the genome used to bin kmers
-    
-    Returns:
-        does not return; modifies input
-    """
-    # initialize a set to track the pairs that have already been seen
-    seen = set()
-    
-    # go through each pair in the dictionary
-    for pair in set(pairs.keys()):
-        # extract the bin pair for the reference genome
-        binPair = pairs[pair][name][-1]
-        
-        # if the bin pair has already been seen, then remove this primer pair
-        if binPair in seen:
-            pairs.pop(pair)
-        
-        # otherwise mark the bin pair as seen
-        else:
-            seen.add(binPair)
-
-
 def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
     """gets primer pairs found in all the ingroup genomes
 
@@ -498,9 +471,6 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         # get the primer pairs that are shared in all genomes
         pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params)
         
-        # wittle down the pairs; keep only one pair per bin
-        __keepOnePairPerBinPair(pairs, name)
-        
         # keep track of all the candidate pairs and final pairs
         allCand.extend(candidatePairs)
         out.update(pairs)
@@ -520,3 +490,30 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         raise RuntimeError(ERR_MSG_2)
     
     return out
+
+
+def _keepOnePairPerBinPair(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], name:str) -> None:
+    """keeps only one primer pair per bin pair
+
+    Args:
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary created by __getAllSharedPrimerPairs
+        name (str): the name of the genome used to bin kmers
+    
+    Returns:
+        does not return; modifies input
+    """
+    # initialize a set to track the pairs that have already been seen
+    seen = set()
+    
+    # go through each pair in the dictionary
+    for pair in set(pairs.keys()):
+        # extract the bin pair for the reference genome
+        binPair = pairs[pair][name][-1]
+        
+        # if the bin pair has already been seen, then remove this primer pair
+        if binPair in seen and binPair != (): # outgroup binpairs are empty tuples
+            pairs.pop(pair)
+        
+        # otherwise mark the bin pair as seen
+        else:
+            seen.add(binPair)
