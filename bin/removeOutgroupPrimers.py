@@ -2,6 +2,7 @@ from Bio.Seq import Seq
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.Clock import Clock, _printStart, _printDone
 
 # global constant
 __NULL_PRODUCT = ("NA", 0, ())
@@ -162,11 +163,20 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     Raises:
         RuntimeError: all candidate primer pairs were present in the outgroup
     """
-    # message
+    # messages
+    MSG_1   = "removing primer pairs present in the outgroup sequences"
+    MSG_2   = "processing outgroup results"
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
     
-    # initialize a dictionary to store all the PCR products for the outgroup
+    # initialize variables
+    clock = Clock()
     outgroupProducts = dict()
+    
+    # print status; log if debugging
+    _printStart(clock, MSG_1)
+    if params.debug:
+        params.log.rename(_removeOutgroupPrimers.__name__)
+        params.log.info(MSG_1)
     
     # for each outgroup genome
     for name in outgroup.keys():
@@ -207,13 +217,27 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                     if not done:
                         outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
     
+    # print status; log if debugging
+    _printDone(clock)
+    if params.debug:
+        params.log.info(f"done {clock.getTimeString()}")
+    
     # if the pairs dictionary is now empty, then raise an error
     if pairs == dict():
         # save details if debugging
         if params.debug:
-            params.log.rename(_removeOutgroupPrimers.__name__)
             params.log.error(ERR_MSG)
         raise RuntimeError(ERR_MSG)
     
+    # print status; log if debugging
+    _printStart(clock, MSG_2)
+    if params.debug:
+        params.log.info(MSG_2)
+    
     # process the outgroup results and add them to the pairs dictionary
     __processOutgroupResults(outgroupProducts, pairs)
+    
+    # print status; log if debugging
+    _printDone(clock)
+    if params.debug:
+        params.log.info(f"done {clock.getTimeString()}")
