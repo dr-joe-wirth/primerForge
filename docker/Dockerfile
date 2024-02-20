@@ -5,6 +5,9 @@
 # start with ubuntu base
 FROM ubuntu:22.04
 
+# Define a build argument for the version number
+ARG PRIMERFORGE_VERSION=0.2.0
+
 # install wget and python
 RUN apt-get update
 RUN apt-get -y install wget
@@ -15,10 +18,10 @@ RUN pip3 install --upgrade pip
 RUN pip3 install biopython
 
 # install primerForge.py
-RUN wget https://github.com/dr-joe-wirth/primerForge/archive/refs/tags/v0.2.0.tar.gz
-RUN tar xzf v0.2.0.tar.gz
-RUN rm v0.2.0.tar.gz
-RUN mv /primerForge-0.2.0 /primerForge
+RUN wget https://github.com/dr-joe-wirth/primerForge/archive/refs/tags/v${PRIMERFORGE_VERSION}.tar.gz
+RUN tar xzf v${PRIMERFORGE_VERSION}.tar.gz
+RUN rm v${PRIMERFORGE_VERSION}.tar.gz
+RUN mv /primerForge-${PRIMERFORGE_VERSION} /primerForge
 RUN chmod +x /primerForge/primerForge.py
 
 # add executables to the path
