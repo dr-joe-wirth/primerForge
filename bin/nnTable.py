@@ -1,7 +1,8 @@
+import copy
+from Bio.SeqUtils.MeltingTemp import DNA_NN4
+
 """ provides the nearest neighbor thermodynamics data
 """
-from Bio.SeqUtils.MeltingTemp import DNA_NN4
-import copy
 
 # start with the original table
 NN_TABLE = copy.deepcopy(DNA_NN4)

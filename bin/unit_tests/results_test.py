@@ -1,15 +1,15 @@
 from __future__ import annotations
-from bin.Clock import Clock, _printDone, _printStart
-from bin.getPrimerPairs import _formsDimers
-import gzip, os, subprocess, sys, unittest
-from bin.Parameters import Parameters
-from Bio.SeqUtils import MeltingTemp
-from Bio.SeqRecord import SeqRecord
-from bin.Primer import Primer
-from bin.main import _main
+from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Log import Log
-from Bio import SeqIO
+from bin.main import _main
+from bin.Primer import Primer
+from Bio.SeqRecord import SeqRecord
+from Bio.SeqUtils import MeltingTemp
+from bin.Parameters import Parameters
+import gzip, os, subprocess, sys, unittest
+from bin.getPrimerPairs import _formsDimers
+from bin.Clock import Clock, _printDone, _printStart
 
 class Result():
     """class to save results for easy lookup

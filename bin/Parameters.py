@@ -158,7 +158,7 @@ class Parameters():
         YN = ['y', 'n']
         WARN_MSG_A = 'output file ('
         WARN_MSG_B = ") already exists."
-        PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}]"
+        PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}] "
         INVALID_SELECTION = 'invalid selection'
         IGNORE_MSG = 'ignoring unused argument: '
         ERR_MSG_1  = 'invalid or missing ingroup file(s)'

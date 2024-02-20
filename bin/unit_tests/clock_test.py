@@ -1,5 +1,5 @@
-from bin.Clock import Clock
 import time, unittest
+from bin.Clock import Clock
 
 class ClockTest(unittest.TestCase):
     """evaluating the Clock class
