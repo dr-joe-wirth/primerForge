@@ -44,8 +44,12 @@ class Parameters():
         self.helpRequested:bool
         self.log:Log
         
+        # save author and version as private attributes
+        self.__author:str = author
+        self.__version:str = version
+        
         # parse the command line arguments (populates attributes)
-        self.__parseArgs(author, version)
+        self.__parseArgs()
         
         # initialize a log if debugging
         if self.debug:
@@ -79,7 +83,7 @@ class Parameters():
             if fail:
                 raise ValueError(f"{fn}{ERR_MSG}")
 
-    def __parseArgs(self, author:str, version:str) -> None:
+    def __parseArgs(self) -> None:
         """parses command line arguments
 
         Args:
@@ -190,7 +194,7 @@ class Parameters():
             CLOSE = ')'
             WIDTH = 21
             HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
-                       f"{GAP}{author}, 2024{EOL*2}" + \
+                       f"{GAP}{self.__author}, 2024{EOL*2}" + \
                        f"usage:{EOL}" + \
                        f"{GAP}primerForge.py [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
                        f"required arguments:{EOL}" + \
@@ -239,7 +243,7 @@ class Parameters():
         # print the version if requested
         elif VERSION_FLAGS[0] in sys.argv or VERSION_FLAGS[1] in sys.argv:
             self.helpRequested = True
-            print(version)
+            print(self.__version)
         
         # parse command line arguments
         else:
@@ -426,14 +430,14 @@ class Parameters():
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
     
-    def logRunDetails(self, version) -> None:
+    def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
         """
         # constant
         WIDTH = 34
         
         # write the parameters to the log file
-        self.log.debug(f'{"version:":<{WIDTH}}{version}')
+        self.log.debug(f'{"version:":<{WIDTH}}{self.__version}')
         self.log.debug(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
         self.log.debug(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
         self.log.debug(f'{"out filename:":{WIDTH}}{self.outFn}')

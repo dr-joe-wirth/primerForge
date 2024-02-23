@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __author__ = "Joseph S. Wirth"
 
 from bin.Parameters import Parameters
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     # save the run details if debugging
     if params.debug:
         params.log.initialize(__name__)
-        params.logRunDetails(__version__)
+        params.logRunDetails()
     
     # catch all error messages
     try:
