@@ -166,6 +166,10 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     # messages
     MSG_1   = "removing primer pairs present in the outgroup sequences"
     MSG_2   = "processing outgroup results"
+    MSG_3A  = "removed "
+    MSG_3B  = " pairs after processing "
+    MSG_3C  = " ("
+    MSG_3D  = " pairs remaining)"
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
     
     # initialize variables
@@ -180,6 +184,13 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     
     # for each outgroup genome
     for name in outgroup.keys():
+        # save the current number of primer pairs
+        startNumPairs = len(pairs)
+        
+        # stop looping if the number of pairs is 0
+        if startNumPairs == 0:
+            break
+        
         # initialize a dictionary for the current outgroup genome
         outgroupProducts[name] = dict()
         
@@ -216,6 +227,10 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                     # if the pcr product lengths are not disallowed, then save them in the dictionary
                     if not done:
                         outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
+        
+        # log the number of pairs removed and remaining if debugging
+        if params.debug:
+            params.log.debug(f"{MSG_3A}{startNumPairs - len(pairs)}{MSG_3B}{name}{MSG_3C}{len(pairs)}{MSG_3D}")
     
     # print status; log if debugging
     _printDone(clock)
