@@ -1,8 +1,8 @@
 from Bio.Seq import Seq
+from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from bin.Clock import Clock, _printStart, _printDone
 
 # global constant
 __NULL_PRODUCT = ("NA", 0, ())
@@ -177,7 +177,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     outgroupProducts = dict()
     
     # print status; log if debugging
-    _printStart(clock, MSG_1)
+    clock.printStart(MSG_1)
     if params.debug:
         params.log.rename(_removeOutgroupPrimers.__name__)
         params.log.info(MSG_1)
@@ -233,7 +233,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
             params.log.debug(f"{MSG_3A}{startNumPairs - len(pairs)}{MSG_3B}{name}{MSG_3C}{len(pairs)}{MSG_3D}")
     
     # print status; log if debugging
-    _printDone(clock)
+    clock.printDone()
     if params.debug:
         params.log.info(f"done {clock.getTimeString()}")
     
@@ -245,7 +245,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
         raise RuntimeError(ERR_MSG)
     
     # print status; log if debugging
-    _printStart(clock, MSG_2)
+    clock.printStart(MSG_2)
     if params.debug:
         params.log.info(MSG_2)
     
@@ -253,6 +253,6 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     __processOutgroupResults(outgroupProducts, pairs)
     
     # print status; log if debugging
-    _printDone(clock)
+    clock.printDone()
     if params.debug:
         params.log.info(f"done {clock.getTimeString()}")

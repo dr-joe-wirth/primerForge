@@ -4,14 +4,16 @@ import sys, time
 class Clock:
     """ this class is used to easily track durations in a pretty format
     """
+    # overload
     def __init__(self):
-        """ accepts no inputs
+        """ constructor. accepts no inputs
             saves the start time and initializes member variables
         """
         self.__startTime:float = 0.0
         self.__duration:float = 0.0
         self.__start()
     
+    # private methods
     def __start(self) -> None:
         """ accepts no inputs
             saves the start time
@@ -91,6 +93,7 @@ class Clock:
         
         return ":".join([hours,minutes,seconds])
 
+    # public methods
     def getTime(self, decimals:int=2) -> tuple[int,int,float]:
         """gets the elapsed time as a tuple
 
@@ -128,26 +131,20 @@ class Clock:
         """ restarts the clock object
         """
         self.__start()
+    
+    def printStart(self, msg:str, end:str=' ... ') -> None:
+        """prints the start message and restarts the clock
 
-# functions
-def _printStart(clock:Clock, msg:str, end:str=' ... ') -> None:
-    """prints the start messages and restarts the clock
-
-    Args:
-        clock (Clock): a Clock object
-        msg (str): the message to print
-        end (str, optional): the end of the printed message. Defaults to ' ... '.
-    """
-    print(msg, end=end)
-    sys.stdout.flush()
-    clock.restart()
-
-
-def _printDone(clock:Clock) -> None:
-    """prints the end message and the duration
-
-    Args:
-        clock (Clock): a Clock object
-    """
-    print(f"done {clock.getTimeString()}" )
-    sys.stdout.flush()
+        Args:
+            msg (str): the message to print
+            end (str, optional): the end of the printed message. Defaults to ' ... '.
+        """
+        print(msg, end=end)
+        sys.stdout.flush()
+        self.restart()
+    
+    def printDone(self) -> None:
+        """prints the end message and the duration
+        """
+        print(f"done {self.getTimeString()}" )
+        sys.stdout.flush()

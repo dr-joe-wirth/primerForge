@@ -1,9 +1,9 @@
 import multiprocessing
 from Bio.Seq import Seq
+from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from bin.Clock import Clock, _printStart, _printDone
 
 # functions
 def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]:
@@ -407,7 +407,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
         params.log.rename(_getAllCandidateKmers.__name__)
     
     # get all non-duplicated kmers that are shared in the ingroup
-    _printStart(clock, MSG_1)
+    clock.printStart(MSG_1)
     if params.debug: params.log.info(f'{MSG_1}')
     kmers = __getSharedKmers(ingroup, params)
     
@@ -422,7 +422,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
         raise RuntimeError(ERR_MSG_1)
     
     # print status
-    _printDone(clock)
+    clock.printDone()
     
     # save data if debugging
     if params.debug:
@@ -430,7 +430,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
         params.dumpObj(kmers, KMER_FN, "shared kmers")
     
     # print status
-    _printStart(clock, MSG_2)
+    clock.printStart(MSG_2)
     if params.debug: params.log.info(MSG_2)
     
     # go through each genome name
@@ -467,7 +467,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
         raise RuntimeError(ERR_MSG_2)
     
     # print status
-    _printDone(clock)
+    clock.printDone()
     print(f"{MSG_3A}{numCand}{MSG_3B}")
     
     # save data if debugging

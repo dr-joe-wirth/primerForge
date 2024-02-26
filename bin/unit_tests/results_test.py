@@ -3,13 +3,13 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Log import Log
 from bin.main import _main
+from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import MeltingTemp
 from bin.Parameters import Parameters
 import gzip, os, subprocess, sys, unittest
 from bin.getPrimerPairs import _formsDimers
-from bin.Clock import Clock, _printDone, _printStart
 
 class Result():
     """class to save results for easy lookup
@@ -59,10 +59,10 @@ class ResultsTest(unittest.TestCase):
         
         # download genome files if necessary
         if not all(map(os.path.exists, allFiles)):
-            _printStart(clock, 'downloading genomes')
+            clock.printStart('downloading genomes')
             ResultsTest._downloadGenomesForGroup(ResultsTest.INGROUP)
             ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
-            _printDone(clock)
+            clock.printDone()
         
         # load existing results if present
         if os.path.exists(ResultsTest.RESULT_FN):
@@ -74,7 +74,7 @@ class ResultsTest(unittest.TestCase):
         
         # otherwise run primerForge
         else:
-            _printStart(total, 'getting results for testing', end=' ...\n')
+            total.printStart('getting results for testing', end=' ...\n')
             
             # get the parameters
             cls.params:Parameters = ResultsTest._getParameters()
@@ -82,26 +82,26 @@ class ResultsTest(unittest.TestCase):
             
             
             # run primerForge
-            _printStart(clock, 'running primerForge', end=' ...\n')
+            clock.printStart('running primerForge', end=' ...\n')
             _main(cls.params)
-            _printDone(clock)
+            clock.printDone()
             print()
-            _printDone(total)
+            total.printDone()
         
         # load the results file into memory
-        _printStart(clock, 'reading results into memory')
+        clock.printStart('reading results into memory')
         cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.RESULT_FN)
-        _printDone(clock)
+        clock.printDone()
     
         # load the genomic sequences into memory
-        _printStart(clock, 'reading genomic sequences into memory')
+        clock.printStart('reading genomic sequences into memory')
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
-        _printDone(clock)
+        clock.printDone()
 
         # get all the primer binding sites
-        _printStart(clock, 'calculating primer binding sites in each genome')
+        clock.printStart('calculating primer binding sites in each genome')
         cls.bindingSites = ResultsTest._getAllBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
-        _printDone(clock)
+        clock.printDone()
     
     # functions for setting up the class
     def _getParameters() -> Parameters:

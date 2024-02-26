@@ -1,9 +1,9 @@
 import os
 from Bio import SeqIO
+from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from bin.Clock import Clock, _printStart, _printDone
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
@@ -129,12 +129,12 @@ def _main(params:Parameters) -> None:
         ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
 
         # get the candidate kmers for the ingroup
-        _printStart(clock, f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", '\n')
+        clock.printStart(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", '\n')
         if params.debug:
             params.log.rename(_main.__name__)
             params.log.info(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}")
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, params)
-        _printDone(clock)
+        clock.printDone()
         
         # save the candidates to file if in debug mode
         if params.debug:
@@ -143,11 +143,11 @@ def _main(params:Parameters) -> None:
             params.dumpObj(candidateKmers, CAND_FN, "candidate kmers")
         
         # get the suitable primer pairs for the ingroup
-        _printStart(clock, MSG_2)
+        clock.printStart(MSG_2)
         if params.debug:
             params.log.info(MSG_2)
         pairs = _getPrimerPairs(candidateKmers, params)
-        _printDone(clock)
+        clock.printDone()
         
         # remove the candidate kmers to free up memory
         del candidateKmers
@@ -173,23 +173,23 @@ def _main(params:Parameters) -> None:
                 params.dumpObj(pairs, PAIR_2_FN, "filtered pairs")
         
         # only keep one pair per bin pair (only process ingroup bins)
-        _printStart(clock, MSG_4)
+        clock.printStart(MSG_4)
         if params.debug:
             params.log.info(MSG_4)
         for name in map(os.path.basename, params.ingroupFns):
             _keepOnePairPerBinPair(pairs, name)
-        _printDone(clock)
+        clock.printDone()
         if params.debug:
             params.log.info(f"{DONE} {clock.getTimeString()}")
         
         # write results to file
-        _printStart(clock, f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
+        clock.printStart(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
         if params.debug:
             params.log.info(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
         __writePrimerPairs(params.outFn, pairs)
         if params.debug:
             params.log.info(f"{DONE} {clock.getTimeString()}")
-        _printDone(clock)
+        clock.printDone()
         
         # print the total runtime
         print(MSG_6, end='', flush=True)
