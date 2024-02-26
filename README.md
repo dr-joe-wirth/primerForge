@@ -85,7 +85,7 @@ flowchart TB
 
     allSharePair --> D0
     outgroup --> D
-    subgraph D["for each outgroup"]
+    subgraph D["for each outgroup genome"]
         subgraph D0["for each primer pair"]
             ogsize{"PCR size outside
             disallowed range?"}
