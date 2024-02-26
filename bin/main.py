@@ -165,12 +165,12 @@ def _main(params:Parameters) -> None:
         # remove primer pairs that make products in the outgroup
         if params.outgroupFns != []:
             outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
-            _removeOutgroupPrimers(outgroupSeqs, pairs, params)   ######## what is that final parameter??
+            _removeOutgroupPrimers(outgroupSeqs, pairs, params)
             
             # save pairs to file if in debug mode and move 
             if params.debug:
                 params.log.rename(_main.__name__)
-                params.dumpObj(pairs, PAIR_2_FN, "filterd pairs")
+                params.dumpObj(pairs, PAIR_2_FN, "filtered pairs")
         
         # only keep one pair per bin pair (only process ingroup bins)
         _printStart(clock, MSG_4)
