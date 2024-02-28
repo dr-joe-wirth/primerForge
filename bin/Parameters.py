@@ -8,6 +8,8 @@ class Parameters():
     """
     # default values
     _ALLOWED_FORMATS = ('genbank', 'fasta')
+    _DEF_RESULTS_FN = 'results.tsv'
+    _DEF_ANALYSIS_BASENAME = 'distribution'
     _DEF_OUTGROUP = list()
     _DEF_FRMT = _ALLOWED_FORMATS[0]
     _DEF_MIN_LEN = 16
@@ -23,11 +25,17 @@ class Parameters():
     _DEF_DEBUG = False
     _DEF_HELP = False
     
+    # analysis file extensions
+    _PLOT_EXT = "_plot.pdf"
+    _DATA_EXT = "_data.tsv"
+    
     def __init__(self, author:str, version:str) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
-        self.outFn:str
+        self.resultsFn:str
+        self.plotsFn:str
+        self.plotDataFn:str
         self.format:str
         self.minLen:int
         self.maxLen:int
@@ -54,6 +62,47 @@ class Parameters():
         # initialize a log if debugging
         if self.debug:
             self.log = Log()
+
+    def __checkOutputFile(fn:str) -> None:
+        """checks if an output file is valid
+
+        Args:
+            fn (str): the filename to check
+
+        Raises:
+            FileExistsError: file already exists
+            ValueError: file cannot be written to
+        """
+        # constants
+        YN = ['y', 'n']
+        WARN_MSG_A = 'file ('
+        WARN_MSG_B = ") already exists."
+        PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}] "
+        INVALID_SELECTION = 'invalid selection'
+        ERR_MSG  = 'cannot write to '
+        
+        # make sure the file doesn't already exist
+        if os.path.exists(fn):
+            # warn the user and abort if the file already exists
+            print(f"{WARN_MSG_A}{fn}{WARN_MSG_B}")
+            
+            # ask the user if they wish to proceed
+            proceed = input(PROCEED_MSG)
+            while proceed not in YN:
+                print(INVALID_SELECTION)
+                proceed = input(PROCEED_MSG)
+            
+            # if the user declined, then abort
+            if proceed == YN[1]:
+                raise FileExistsError(f"{WARN_MSG_A}{fn}{WARN_MSG_B}")
+        
+        # make sure the file can be written
+        try:
+            fh = open(fn, 'w')
+            fh.close()
+            os.remove(fn)
+        except:
+            raise ValueError(f"{ERR_MSG}{fn}")
 
     def __checkGenomeFormat(self) -> None:
         """checks the file format of the input genome files
@@ -86,17 +135,12 @@ class Parameters():
     def __parseArgs(self) -> None:
         """parses command line arguments
 
-        Args:
-            author (str): the author of the program
-            version (str): the version of the program
-
         Raises:
             ValueError: invalid/missing ingroup files
             ValueError: invalid/missing ingroup files
-            ValueError: cannot write to output file
             ValueError: invalid/missing outgroup files
             ValueError: invalid/missing outgroup files
-            ValueError: invalid disallowed sizes: not two value
+            ValueError: invalid disallowed sizes: not two values
             ValueError: invalid disallowed sizes: not int
             ValueError: invalid file format
             ValueError: invalid primer length: wrong num arguments
@@ -110,7 +154,6 @@ class Parameters():
             ValueError: Tm difference is not numeric
             ValueError: num threads not an integer
             ValueError: ingroup file argument is missing
-            ValueError: output file argument is missing
         """
         # constants
         SEP = ","
@@ -118,6 +161,7 @@ class Parameters():
         # flags
         INGROUP_FLAGS = ('-i', '--ingroup')
         OUT_FLAGS = ('-o', '--out')
+        ANAL_FLAGS = ('-a', '--analysis')
         OUTGROUP_FLAGS = ('-u', '--outgroup')
         DISALLOW_FLAGS = ("-b", "--bad_sizes")
         FMT_FLAGS = ('-f', '--format')
@@ -132,6 +176,7 @@ class Parameters():
         DEBUG_FLAGS = ("--debug",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                      OUT_FLAGS[0][-1] + ":" + \
+                     ANAL_FLAGS[0][1] + ":" + \
                      OUTGROUP_FLAGS[0][-1] + ":" + \
                      DISALLOW_FLAGS[0][-1] + ":" + \
                      FMT_FLAGS[0][-1] + ":" + \
@@ -145,6 +190,7 @@ class Parameters():
                      HELP_FLAGS[0][-1]
         LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
                      OUT_FLAGS[1][2:] + "=",
+                     ANAL_FLAGS[1][2:] + "=",
                      OUTGROUP_FLAGS[1][2:] + "=",
                      DISALLOW_FLAGS[1][2:] + "=",
                      FMT_FLAGS[1][2:] + "=",
@@ -159,30 +205,22 @@ class Parameters():
                      DEBUG_FLAGS[0][2:])
 
         # messages
-        YN = ['y', 'n']
-        WARN_MSG_A = 'output file ('
-        WARN_MSG_B = ") already exists."
-        PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}] "
-        INVALID_SELECTION = 'invalid selection'
-        IGNORE_MSG = 'ignoring unused argument: '
         ERR_MSG_1  = 'invalid or missing ingroup file(s)'
-        ERR_MSG_2  = 'cannot write to output file'
-        ERR_MSG_3  = 'invalid or missing outgroup file(s)'
-        ERR_MSG_4  = 'must specify exactly two integers for bad outgroup PCR product length'
-        ERR_MSG_5  = 'bad outgroup PCR product lengths are not integers'
-        ERR_MSG_6  = 'invalid format'
-        ERR_MSG_7  = 'can only specify one primer length or a range (min,max)'
-        ERR_MSG_8  = 'primer lengths are not integers'
-        ERR_MSG_9  = 'must specify a range of GC values (min,max)'
-        ERR_MSG_10 = 'gc values are not numeric'
-        ERR_MSG_11 = 'must specify a range of Tm values (min, max)'
-        ERR_MSG_12 = 'Tm values are not numeric'
-        ERR_MSG_13 = 'can only specify one PCR product length or a range (min,max)'
-        ERR_MSG_14 = 'PCR product lengths are not integers'
-        ERR_MSG_15 = 'max Tm difference is not numeric'
-        ERR_MSG_16 = 'num threads is not an integer'
-        ERR_MSG_17 = 'must specify one or more ingroup files'
-        ERR_MSG_18 = 'must specify an output file'
+        ERR_MSG_2  = 'invalid or missing outgroup file(s)'
+        ERR_MSG_3  = 'must specify exactly two integers for bad outgroup PCR product length'
+        ERR_MSG_4  = 'bad outgroup PCR product lengths are not integers'
+        ERR_MSG_5  = 'invalid format'
+        ERR_MSG_6  = 'can only specify one primer length or a range (min,max)'
+        ERR_MSG_7  = 'primer lengths are not integers'
+        ERR_MSG_8  = 'must specify a range of GC values (min,max)'
+        ERR_MSG_9  = 'gc values are not numeric'
+        ERR_MSG_10 = 'must specify a range of Tm values (min, max)'
+        ERR_MSG_11 = 'Tm values are not numeric'
+        ERR_MSG_12 = 'can only specify one PCR product length or a range (min,max)'
+        ERR_MSG_13 = 'PCR product lengths are not integers'
+        ERR_MSG_14 = 'max Tm difference is not numeric'
+        ERR_MSG_15 = 'num threads is not an integer'
+        ERR_MSG_16 = 'must specify one or more ingroup files'
 
         def printHelp():
             GAP = " "*4
@@ -198,9 +236,10 @@ class Parameters():
                        f"usage:{EOL}" + \
                        f"{GAP}primerForge.py [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
                        f"required arguments:{EOL}" + \
-                       f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
-                       f"{GAP}{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename{EOL*2}" + \
+                       f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL*2}' + \
                        f"optional arguments: {EOL}" + \
+                       f"{GAP}{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename for primer pair data{DEF_OPEN}{Parameters._DEF_RESULTS_FN}{CLOSE}{EOL}" + \
+                       f"{GAP}{ANAL_FLAGS[0] + SEP_1 + ANAL_FLAGS[1]:<{WIDTH}}[file] output basename for primer analysis data{DEF_OPEN}{Parameters._DEF_ANALYSIS_BASENAME}{CLOSE}{EOL}" + \
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
                        f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters._ALLOWED_FORMATS[0]}{SEP_2}{Parameters._ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
@@ -218,7 +257,9 @@ class Parameters():
             
         # set default values
         self.ingroupFns = None
-        self.outFn = None
+        self.resultsFn = os.path.join(os.getcwd(), Parameters._DEF_RESULTS_FN)
+        self.plotsFn = os.path.join(os.getcwd(), Parameters._DEF_ANALYSIS_BASENAME + Parameters._PLOT_EXT)
+        self.plotDataFn = os.path.join(os.getcwd(), Parameters._DEF_ANALYSIS_BASENAME + Parameters._DATA_EXT)
         self.outgroupFns = Parameters._DEF_OUTGROUP
         self.disallowedLens = None # start as None; update at the end
         self.format = Parameters._DEF_FRMT
@@ -260,39 +301,30 @@ class Parameters():
                 
                 # get output filename
                 elif opt in OUT_FLAGS:
-                    # make sure the file doesn't already exist
-                    if os.path.exists(arg):
-                        # warn the user and abort if the file already exists
-                        print(f"{WARN_MSG_A}{arg}{WARN_MSG_B}")
-                        
-                        # ask the user if they wish to proceed
-                        proceed = input(PROCEED_MSG)
-                        while proceed not in YN:
-                            print(INVALID_SELECTION)
-                            proceed = input(PROCEED_MSG)
-                        
-                        # if the user declined, then abort
-                        if proceed == YN[1]:
-                            raise FileExistsError(f"{WARN_MSG_A}{arg}{WARN_MSG_B}")
-                        
-                    # make sure the file can be written
-                    try:
-                        fh = open(arg, 'w')
-                        fh.close()
-                        os.remove(arg)
-                    except:
-                        raise ValueError(ERR_MSG_2)
+                    # check for existing files
+                    Parameters.__checkOutputFile(arg)
                     
-                    self.outFn = os.path.abspath(arg)
+                    self.resultsFn = os.path.abspath(arg)
+                    
+                # get analysis filenames
+                elif opt in ANAL_FLAGS:
+                    plotFn = arg + Parameters._PLOT_EXT
+                    dataFn = arg + Parameters._DATA_EXT
+                    
+                    Parameters.__checkOutputFile(plotFn)
+                    Parameters.__checkOutputFile(dataFn)
+                    
+                    self.plotsFn = os.path.abspath(arg)
+                    self.plotDataFn = os.path.abspath(arg)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
                     self.outgroupFns = glob.glob(arg)
                     for fn in self.outgroupFns:
                         if not os.path.isfile(fn):
-                            raise ValueError(ERR_MSG_3)
+                            raise ValueError(ERR_MSG_2)
                     if self.outgroupFns == []:
-                        raise ValueError(ERR_MSG_3)
+                        raise ValueError(ERR_MSG_2)
                 
                 # get the disallowed outgroup pcr product lengths
                 elif opt in DISALLOW_FLAGS:
@@ -301,13 +333,13 @@ class Parameters():
                     
                     # make sure exactly two values provided
                     if len(disallowed) != 2:
-                        raise ValueError(ERR_MSG_4)
+                        raise ValueError(ERR_MSG_3)
                     
                     # coerce lengths to ints
                     try:
                         disallowed = [int(x) for x in disallowed]
                     except:
-                        raise ValueError(ERR_MSG_5)
+                        raise ValueError(ERR_MSG_4)
                     
                     # save the values
                     self.disallowedLens = range(min(disallowed), max(disallowed)+1)
@@ -315,7 +347,7 @@ class Parameters():
                 # get the file format
                 elif opt in FMT_FLAGS:
                     if arg not in Parameters._ALLOWED_FORMATS:
-                        raise ValueError(ERR_MSG_6)
+                        raise ValueError(ERR_MSG_5)
                     self.format = arg
                 
                 # get the primer lengths
@@ -325,13 +357,13 @@ class Parameters():
                     
                     # make sure at one or two primers specified
                     if len(primerRange) not in {1,2}:
-                        raise ValueError(ERR_MSG_7)
+                        raise ValueError(ERR_MSG_6)
                     
                     # coerce to lengths to ints
                     try:
                         primerRange = [int(x) for x in primerRange]
                     except:
-                        raise ValueError(ERR_MSG_8)
+                        raise ValueError(ERR_MSG_7)
                     
                     # save values
                     self.minLen = min(primerRange)
@@ -342,13 +374,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     gcRange = arg.split(SEP)
                     if len(gcRange) != 2:
-                        raise ValueError(ERR_MSG_9)
+                        raise ValueError(ERR_MSG_8)
                     
                     # make sure the values are numeric
                     try:
                         gcRange = [float(x) for x in gcRange]
                     except:
-                        raise ValueError(ERR_MSG_10)
+                        raise ValueError(ERR_MSG_9)
                 
                     # save values
                     self.minGc = min(gcRange)
@@ -359,13 +391,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     tmRange = arg.split(SEP)
                     if len(tmRange) != 2:
-                        raise ValueError(ERR_MSG_11)
+                        raise ValueError(ERR_MSG_10)
                 
                     # make sure the values are numeric
                     try:
                         tmRange = [float(x) for x in tmRange]
                     except:
-                        raise ValueError(ERR_MSG_12)
+                        raise ValueError(ERR_MSG_11)
                 
                     # save values
                     self.minTm = min(tmRange)
@@ -376,13 +408,13 @@ class Parameters():
                     # expecting one or two values
                     pcrRange = arg.split(SEP)
                     if len(pcrRange) not in {1,2}:
-                        raise ValueError(ERR_MSG_13)
+                        raise ValueError(ERR_MSG_12)
                     
                     # coerce to integers
                     try:
                         pcrRange = [int(x) for x in pcrRange]
                     except:
-                        raise ValueError(ERR_MSG_14)
+                        raise ValueError(ERR_MSG_13)
                 
                     # save values
                     self.minPcr = min(pcrRange)
@@ -398,7 +430,7 @@ class Parameters():
                     try:
                         self.maxTmDiff = float(arg)
                     except:
-                        raise ValueError(ERR_MSG_15)
+                        raise ValueError(ERR_MSG_14)
                 
                 # get the number of threads to use
                 elif opt in THREADS_FLAGS:
@@ -406,14 +438,11 @@ class Parameters():
                     try:
                         self.numThreads = int(arg)
                     except:
-                        raise ValueError(ERR_MSG_16)
+                        raise ValueError(ERR_MSG_15)
                 
                 # update debug to True if requested
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
-                
-                else:
-                    print(IGNORE_MSG + opt + " " + arg)
             
             # update disallowed to match pcr parameters unless it was already specified
             if self.disallowedLens is None:
@@ -421,11 +450,7 @@ class Parameters():
             
             # make sure an input file was specified
             if self.ingroupFns is None:
-                raise ValueError(ERR_MSG_17)
-            
-            # make sure an output file was specified
-            if self.outFn is None:
-                raise ValueError(ERR_MSG_18)
+                raise ValueError(ERR_MSG_16)
             
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
@@ -440,7 +465,9 @@ class Parameters():
         self.log.debug(f'{"version:":<{WIDTH}}{self.__version}')
         self.log.debug(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
         self.log.debug(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
-        self.log.debug(f'{"out filename:":{WIDTH}}{self.outFn}')
+        self.log.debug(f'{"results filename:":{WIDTH}}{self.resultsFn}')
+        self.log.debug(f'{"plots filename:":{WIDTH}}{self.plotsFn}')
+        self.log.debug(f'{"plots data filename:":{WIDTH}}{self.plotDataFn}')
         self.log.debug(f'{"file format:":{WIDTH}}{self.format}')
         self.log.debug(f'{"min kmer len:":{WIDTH}}{self.minLen}')
         self.log.debug(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
