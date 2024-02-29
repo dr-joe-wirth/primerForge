@@ -1,9 +1,11 @@
-import os
+import numpy, os
 from Bio import SeqIO
 from Bio.Seq import Seq
+from bin.Clock import Clock
 from matplotlib import pyplot
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
+from scipy.stats import gaussian_kde
 from bin.Parameters import Parameters
 from bin.AnalysisData import AnalysisData, Level
 from matplotlib.backends.backend_pdf import PdfPages
@@ -207,17 +209,15 @@ def __makeOnePlot(plotData:dict[int,int], boundaries:dict[str,tuple[int,int]], t
     PLOT_HEIGHT = 8
     LINE_WIDTH  = 0.4
     LINE_STYLE  = '-'
-    
-    # initialize lists for the x and y data
-    positions = list()
-    counts = list()
-    
-    # for each position and count; update the lists
-    for pos,cnt in plotData.items():
-        positions.append(pos)
-        counts.append(cnt)
+    NUM_SPACE = 120
+    RAW = " raw"
+    DENSITY = " density"
 
-    # create a line plot 
+    # get arrays of the positions and their counts
+    positions = numpy.array(list(plotData.keys()))
+    counts = numpy.array(list(plotData.values()))
+    
+    # plot the raw values
     pyplot.figure(figsize=(PLOT_WIDTH,PLOT_HEIGHT))
     pyplot.plot(positions, counts, linestyle=LINE_STYLE, linewidth=LINE_WIDTH)
     
@@ -228,7 +228,28 @@ def __makeOnePlot(plotData:dict[int,int], boundaries:dict[str,tuple[int,int]], t
     # add labels 
     pyplot.xlabel('Position')
     pyplot.ylabel('Count')
-    pyplot.title(title)
+    pyplot.title(f"{title}{RAW}")
+    
+    # write the plot to file
+    pdf.savefig()
+    pyplot.close()
+    
+    # calculate the density
+    x = numpy.linspace(min(positions), max(positions), NUM_SPACE)
+    kde = gaussian_kde(numpy.repeat(positions, counts))
+
+    # plot the density
+    pyplot.figure(figsize=(PLOT_WIDTH,PLOT_HEIGHT))
+    pyplot.plot(x, kde(x))
+    
+    # plot the edge of each contig
+    for shift,edge in boundaries.values():
+        pyplot.axvline(x=edge, color='red', linestyle=LINE_STYLE, linewidth=LINE_WIDTH)
+    
+    # add labels
+    pyplot.xlabel('Position')
+    pyplot.ylabel('Density')
+    pyplot.title(f'{title}{DENSITY}')
     
     # write the plot to file
     pdf.savefig()
@@ -276,6 +297,7 @@ def __writeAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], contigBr
     SEP = "\t"
     GENOME_COORD = "genome coord"
     PLOT_COORD = "plot coord"
+    NA = "NA"
     
     # build the header
     header = ["kmer", "dataset"]
@@ -299,13 +321,19 @@ def __writeAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], contigBr
             # for each genome
             for name in names:
                 # extract the contig name, entry, and shift
-                contig, entry = outData[(kmer,level)][name]
-                shift,edge = contigBreaks[name][contig]
+                try:
+                    contig, entry = outData[(kmer,level)][name]
+                    shift,edge = contigBreaks[name][contig]
+                    
+                    # get the genomic and plot coordinates
+                    gCoord = f"{contig} ({entry.primer.start}, {entry.primer.end})"
+                    pCoord = f"({entry.primer.start + shift}, {entry.primer.end + shift})"
                 
-                # get the genomic and plot coordinates
-                gCoord = f"{contig} ({entry.primer.start}, {entry.primer.end})"
-                pCoord = f"({entry.primer.start + shift}, {entry.primer.end + shift})"
-                
+                # if the genome doesn't have this kmer (rev-comp) then add filler data
+                except KeyError:
+                    gCoord = NA
+                    pCoord = NA
+            
                 # save them to the row
                 row.append(gCoord)
                 row.append(pCoord)
@@ -321,20 +349,61 @@ def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Par
         analysisData (dict[tuple[Seq,str],AnalysisData]): the dictionary produced by _initializeAnalysisData and modified by __updateAnalysisData
         params (Parameters): a Parameters object
     """
+    # messages
+    GAP = 4 * ' '
+    DONE = "done"
+    MSG_1 = GAP + 'preparing data for plotting'
+    MSG_2 = GAP + 'plotting data for '
+    MSG_3 = GAP + 'writing raw plot data to file'
+    
+    # initialize the clock
+    clock = Clock()
+    
+    # print the status
+    clock.printStart(MSG_1)
+    if params.debug:
+        params.log.rename(_plotAnalysisData.__name__)
+        params.log.info(MSG_1)
+    
     # count the positions
     counts = __countPositions(analysisData, params)
     
     # concatenate contigs
     counts, contigBreaks = __concatenateContigCounts(counts)
     
+    # print status
+    clock.printDone()
+    if params.debug:
+        params.log.info(f"{DONE}{clock.getTimeString()}")
+    
     # open the pdf
     with PdfPages(params.plotsFn) as pdf:
         # for each genome
         for name in counts.keys():
+            # print the status
+            clock.printStart(f"{MSG_2}{name}")
+            if params.debug:
+                params.log.info(f"{MSG_2}{name}")
+            
             # for each level
             for level in counts[name].keys():
-                # make a plot
+                # make the plots
                 __makeOnePlot(counts[name][level], contigBreaks[name], f"{name} ({level})", pdf)
+            
+            # print the status
+            clock.printDone()
+            if params.debug:
+                params.log.info(f"{DONE} {clock.getTimeString()}")
+    
+    # print status
+    clock.printStart(MSG_3)
+    if params.debug:
+        params.log.info(MSG_3)
     
     # write the analysis data
     __writeAnalysisData(analysisData, contigBreaks, params.plotDataFn)
+
+    # print status
+    clock.printDone()
+    if params.debug:
+        params.log.info(f"{DONE} {clock.getTimeString()}")
