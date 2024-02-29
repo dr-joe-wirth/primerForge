@@ -221,6 +221,14 @@ class Level():
         """
         return self == other or self < other
 
+    def setLevel(self, level:str) -> None:
+        ERR_MSG = f"invalid level '{level}'"
+        
+        try:
+            self.__num = Level.__NUM_TO_STR[level]
+        except KeyError:
+            raise ValueError(ERR_MSG)
+
 
 class AnalysisData():
     """class for storing data for downstream analysis of kmer distribution
@@ -294,15 +302,45 @@ class AnalysisData():
         return list(self.__pair)
     
     def incrementLevel(self) -> None:
+        """increments the level of the calling object by 1
+
+        Raises:
+            Exception: cannot increment further
+        """
+        # message
         ERR_MSG = "cannot increment data set"
         
+        # make sure we are not exceeding the bounds
         if self.__level == max(AnalysisData.LEVELS):
             raise Exception(ERR_MSG)
         
+        # increment the level
         self.__level += 1
     
-    def getLevel(self) -> str:
+    def getLevel(self) -> Level:
+        """retrieves the level of the calling object
+
+        Returns:
+            Level: the level of the calling object
+        """
         return self.__level
 
+    def setLevel(self, level) -> None:
+        """sets the level of the calling object
+
+        Args:
+            level (Any): the level to set (str or Level)
+        """
+        # coerce levels to strings
+        if type(level) is Level:
+            level = str(Level)
+        
+        self.__level.setLevel(level)
+
     def getIndex(self) -> int:
+        """retrieves the index of the calling object
+
+        Returns:
+            int: the index of the calling object
+        """
         return self.__index
