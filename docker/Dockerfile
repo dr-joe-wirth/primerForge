@@ -6,7 +6,7 @@
 FROM ubuntu:22.04
 
 # Define a build argument for the version number
-ARG PRIMERFORGE_VERSION=0.4.2
+ARG PRIMERFORGE_VERSION=0.5.0
 
 # install wget and python
 RUN apt-get update
