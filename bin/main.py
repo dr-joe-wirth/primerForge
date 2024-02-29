@@ -7,6 +7,7 @@ from bin.Parameters import Parameters
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
+from bin.analysis import _initializeAnalysisData, _updateAnalysisData, _plotAnalysisData
 
 
 def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
@@ -106,6 +107,7 @@ def _main(params:Parameters) -> None:
     CAND_FN = "candidates.p"
     PAIR_1_FN = "pairs.p"
     PAIR_2_FN = "pairs_noOutgroup.p"
+    ANAL_FN = 'analysis.p'
     DONE = "done"
     
     # messages
@@ -117,7 +119,8 @@ def _main(params:Parameters) -> None:
     MSG_4  = "keeping one primer pair per locus"
     MSG_5A = "writing "
     MSG_5B = " primer pairs to "
-    MSG_6  = '\ntotal runtime: '
+    MSG_6  = "plotting kmer distributions"
+    MSG_7  = '\ntotal runtime: '
     
     # start the timers
     totalClock = Clock()
@@ -136,6 +139,9 @@ def _main(params:Parameters) -> None:
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, params)
         clock.printDone()
         
+        # initialize the analysis data
+        analysisData = _initializeAnalysisData(candidateKmers)
+        
         # save the candidates to file if in debug mode
         if params.debug:
             params.log.rename(_main.__name__)
@@ -152,6 +158,9 @@ def _main(params:Parameters) -> None:
         # remove the candidate kmers to free up memory
         del candidateKmers
         
+        # update the analysis data
+        _updateAnalysisData(analysisData, pairs.keys())
+        
         # save the pairs to file if in debug mode
         if params.debug:
             params.log.info(f"{DONE} {clock.getTimeString()}")
@@ -167,10 +176,13 @@ def _main(params:Parameters) -> None:
             outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
             _removeOutgroupPrimers(outgroupSeqs, pairs, params)
             
-            # save pairs to file if in debug mode and move 
+            # save pairs to file if in debug mode and move log
             if params.debug:
                 params.log.rename(_main.__name__)
                 params.dumpObj(pairs, PAIR_2_FN, "filtered pairs")
+        
+        # update analysis data
+        _updateAnalysisData(analysisData, pairs.keys())
         
         # only keep one pair per bin pair (only process ingroup bins)
         clock.printStart(MSG_4)
@@ -182,17 +194,29 @@ def _main(params:Parameters) -> None:
         if params.debug:
             params.log.info(f"{DONE} {clock.getTimeString()}")
         
-        # write results to file
-        clock.printStart(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
+        # update analysis data
+        _updateAnalysisData(analysisData, pairs.keys())
+        
+        # write pair results to file
+        clock.printStart(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.resultsFn}")
         if params.debug:
-            params.log.info(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.outFn}")
-        __writePrimerPairs(params.outFn, pairs)
+            params.log.info(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.resultsFn}")
+        __writePrimerPairs(params.resultsFn, pairs)
         if params.debug:
             params.log.info(f"{DONE} {clock.getTimeString()}")
         clock.printDone()
         
+        # save analysis data to file if in debug mode
+        if params.debug:
+            params.dumpObj(analysisData, ANAL_FN, 'analysisData')
+        
+        # make analysis plots
+        clock.printStart(MSG_6)
+        _plotAnalysisData(analysisData, params)
+        clock.printDone()
+        
         # print the total runtime
-        print(MSG_6, end='', flush=True)
+        print(MSG_7, end='', flush=True)
         totalClock.printTime()
         if params.debug:
-            params.log.info(f"{MSG_6} {totalClock.getTimeString()}")
+            params.log.info(f"{MSG_7} {totalClock.getTimeString()}")
