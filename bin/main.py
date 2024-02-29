@@ -132,7 +132,7 @@ def _main(params:Parameters) -> None:
         ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
 
         # get the candidate kmers for the ingroup
-        clock.printStart(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", '\n')
+        clock.printStart(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", end='\n', spin=False)
         if params.debug:
             params.log.rename(_main.__name__)
             params.log.info(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}")
@@ -211,9 +211,14 @@ def _main(params:Parameters) -> None:
             params.dumpObj(analysisData, ANAL_FN, 'analysisData')
         
         # make analysis plots
-        clock.printStart(MSG_6)
+        clock.printStart(MSG_6, end=' ...\n', spin=False)
+        if params.debug:
+            params.log.info(MSG_6)
         _plotAnalysisData(analysisData, params)
         clock.printDone()
+        if params.debug:
+            params.log.rename(_main.__name__)
+            params.log.info(f"{DONE} {clock.getTimeString()}")
         
         # print the total runtime
         print(MSG_7, end='', flush=True)
