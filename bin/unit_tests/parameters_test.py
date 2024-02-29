@@ -160,7 +160,7 @@ class ParametersTest(unittest.TestCase):
             self.assertIn(fn, params.ingroupFns)
         
         # make sure the outfile is correct
-        self.assertEqual(params.outFn, ParametersTest.OUT_FN)
+        self.assertEqual(params.resultsFn, ParametersTest.OUT_FN)
         
         # check optional arguments match default values
         self.assertEqual(params.outgroupFns, Parameters._DEF_OUTGROUP)
@@ -222,7 +222,7 @@ class ParametersTest(unittest.TestCase):
         badSizes = range(m,n+1)
         
         # make sure the parameters are correct
-        self.assertEqual(params.outFn, ParametersTest.OUT_FN)
+        self.assertEqual(params.resultsFn, ParametersTest.OUT_FN)
         self.assertEqual(params.format, frmt)
         self.assertEqual(params.minLen, minLen)
         self.assertEqual(params.maxLen, maxLen)

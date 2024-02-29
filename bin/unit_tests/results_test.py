@@ -124,7 +124,7 @@ class ResultsTest(unittest.TestCase):
         if os.path.exists(ResultsTest.RESULT_FN):
             sys.argv[-2] = 'fakefile'
             params = Parameters('', '')
-            params.outFn = ResultsTest.RESULT_FN
+            params.resultsFn = ResultsTest.RESULT_FN
         
         # proceed like normal if the file doesn not yet exist
         else:
