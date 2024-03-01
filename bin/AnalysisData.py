@@ -47,31 +47,6 @@ class Level():
         """
         return str(self).__hash__()
     
-    def __iadd__(self, other:int) -> Level:
-        """increments the calling object
-
-        Args:
-            other (int): the integer to add
-
-        Returns:
-            Level: the modified calling object
-        """
-        self.__num += other
-        return self
-    
-    def __isub__(self, other:int) -> Level:
-        """decrements the calling object
-
-        Args:
-            other (int): the integer to subtract
-
-        Returns:
-            Level: the modified calling object
-        """
-        # use += operater on negative input
-        self += -other
-        return self
-    
     def __add__(self, other:int) -> Level:
         """creates a new Level object by adding to it
 
@@ -87,6 +62,10 @@ class Level():
         # messages
         ERR_MSG_A = "cannot add "
         ERR_MSG_B = " to "
+        
+        # make sure the input is an integer or level
+        if not type(other) is int:
+            raise TypeError(f"{ERR_MSG_A} {type(other)} {ERR_MSG_B} {type(self)}")
         
         # create a new Level object at the specified position
         out = Level()
@@ -108,6 +87,34 @@ class Level():
         """
         # use the + operator on the negative input
         return self + -other
+
+    def __iadd__(self, other:int) -> Level:
+        """increments the calling object
+
+        Args:
+            other (int): the integer to add
+
+        Returns:
+            Level: the modified calling object
+        """
+        # make a new level; udpate calling object
+        new = self + other
+        self.__num = new.__num
+        
+        return self
+    
+    def __isub__(self, other:int) -> Level:
+        """decrements the calling object
+
+        Args:
+            other (int): the integer to subtract
+
+        Returns:
+            Level: the modified calling object
+        """
+        # use += operater on negative input
+        self += -other
+        return self
 
     def __eq__(self, other) -> bool:
         """== operator
@@ -131,7 +138,7 @@ class Level():
         
         # raise if neither string nor Level
         else:
-            raise ValueError(f"cannot compare '{type(other)}' objects to {Level.__name__}")
+            raise TypeError(f"cannot compare '{type(other)}' objects to {Level.__name__}")
         
         # equivalence based on the number
         return self.__num == otherNum
@@ -158,7 +165,7 @@ class Level():
 
         # raise error if neither string nor Level        
         else:
-            raise ValueError(f"cannot compare '{type(other)}' objects to {Level.__name__}")
+            raise TypeError(f"cannot compare '{type(other)}' objects to {Level.__name__}")
         
         return self.__num > otherNum
     
@@ -184,7 +191,7 @@ class Level():
         
         # raise if not string nor Level
         else:
-            raise ValueError(f"cannot compare '{type(other)}' objects to {Level.__name__}")
+            raise TypeError(f"cannot compare '{type(other)}' objects to {Level.__name__}")
         
         return self.__num < otherNum
     
@@ -222,8 +229,18 @@ class Level():
         return self == other or self < other
 
     def setLevel(self, level:str) -> None:
+        """sets the level
+
+        Args:
+            level (str): a string indicating which level to set
+
+        Raises:
+            ValueError: invalid input string
+        """
+        # constant
         ERR_MSG = f"invalid level '{level}'"
         
+        # attempt to update the level; raise error if it failed
         try:
             self.__num = Level.__STR_TO_NUM[level]
         except KeyError:
