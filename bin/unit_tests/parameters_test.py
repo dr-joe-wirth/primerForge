@@ -45,6 +45,9 @@ class ParametersTest(unittest.TestCase):
         # make the dummy files needed for testing
         ParametersTest._makeDummyFiles()
         
+        # save the directory
+        self.dir = os.getcwd()
+        
         # sys.argv for default values using short args
         self.basic1 = ['primerForge.py',
                        '-i', ParametersTest.IG_PATTERN_GB,
@@ -120,7 +123,7 @@ class ParametersTest(unittest.TestCase):
         self.debug1 = self.basic1 + ['--debug']
         self.debug2 = self.basic2 + ['--debug']
         self.debug3 = self.short1 + ['--debug']
-        self.debug4 = self.long1 + ['--debug']
+        self.debug4 = self.long1  + ['--debug']
     
     def tearDown(self) -> None:
         """tear downs after each test
@@ -160,7 +163,7 @@ class ParametersTest(unittest.TestCase):
             self.assertIn(fn, params.ingroupFns)
         
         # make sure the outfile is correct
-        self.assertEqual(params.resultsFn, ParametersTest.OUT_FN)
+        self.assertEqual(params.resultsFn, os.path.join(self.dir, ParametersTest.OUT_FN))
         
         # check optional arguments match default values
         self.assertEqual(params.outgroupFns, Parameters._DEF_OUTGROUP)
@@ -178,6 +181,8 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.helpRequested, Parameters._DEF_HELP)
         self.assertEqual(params.debug, Parameters._DEF_DEBUG)
         self.assertEqual(params.disallowedLens, range(Parameters._DEF_MIN_PCR, Parameters._DEF_MAX_PCR+1))
+        self.assertEqual(params.plotDataFn, os.path.join(self.dir, Parameters._DEF_ANALYSIS_BASENAME + Parameters._DATA_EXT))
+        self.assertEqual(params.plotsFn, os.path.join(self.dir, Parameters._DEF_ANALYSIS_BASENAME + Parameters._PLOT_EXT))
 
     def _checkGenomeFilesPresent(self, params:Parameters, frmt:str) -> None:
         """checks if the genome files are present
@@ -222,7 +227,7 @@ class ParametersTest(unittest.TestCase):
         badSizes = range(m,n+1)
         
         # make sure the parameters are correct
-        self.assertEqual(params.resultsFn, ParametersTest.OUT_FN)
+        self.assertEqual(params.resultsFn, os.path.join(self.dir, ParametersTest.OUT_FN))
         self.assertEqual(params.format, frmt)
         self.assertEqual(params.minLen, minLen)
         self.assertEqual(params.maxLen, maxLen)
