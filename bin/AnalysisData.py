@@ -225,7 +225,7 @@ class Level():
         ERR_MSG = f"invalid level '{level}'"
         
         try:
-            self.__num = Level.__NUM_TO_STR[level]
+            self.__num = Level.__STR_TO_NUM[level]
         except KeyError:
             raise ValueError(ERR_MSG)
 
