@@ -15,12 +15,10 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          environment-file: environment.yml
       - name: Conda info
         shell: bash -el {0}
         run: conda info
-      - name: create environment
-        run: conda env create -f environment.yml
-        shell: bash -el {0}
       - name: Conda env list
         shell: bash -el {0}
         run: |
