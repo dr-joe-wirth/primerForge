@@ -1,5 +1,5 @@
-# Joseph S. Wirth, 2023
-## provides a conda environment for running the python scripts found in this folder
+# Joseph S. Wirth, 2024
+## provides a conda environment for running primerForge
 ## commands:
 ##        $ conda env create -f environment.yml
 ##        $ conda activate misc-python
@@ -16,4 +16,3 @@ dependencies:
   - numpy
   - matplotlib==3.7.2
   - scipy==1.10.1
-
