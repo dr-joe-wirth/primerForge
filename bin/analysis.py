@@ -234,26 +234,31 @@ def __makeOnePlot(plotData:dict[int,int], boundaries:dict[str,tuple[int,int]], t
     pdf.savefig()
     pyplot.close()
     
-    # calculate the density
-    x = numpy.linspace(min(positions), max(positions), NUM_SPACE)
-    kde = gaussian_kde(numpy.repeat(positions, counts))
+    # calculate the density (can fail with empty data)
+    try:
+        x = numpy.linspace(min(positions), max(positions), NUM_SPACE)
+        kde = gaussian_kde(numpy.repeat(positions, counts))
+        y = kde(x)
 
-    # plot the density
-    pyplot.figure(figsize=(PLOT_WIDTH,PLOT_HEIGHT))
-    pyplot.plot(x, kde(x))
+        # plot the density
+        pyplot.figure(figsize=(PLOT_WIDTH,PLOT_HEIGHT))
+        pyplot.plot(x, y)
+        
+        # plot the edge of each contig
+        for shift,edge in boundaries.values():
+            pyplot.axvline(x=edge, color='red', linestyle=LINE_STYLE, linewidth=LINE_WIDTH)
+        
+        # add labels
+        pyplot.xlabel('Position')
+        pyplot.ylabel('Density')
+        pyplot.title(f'{title}{DENSITY}')
+        
+        # write the plot to file
+        pdf.savefig()
+        pyplot.close()
     
-    # plot the edge of each contig
-    for shift,edge in boundaries.values():
-        pyplot.axvline(x=edge, color='red', linestyle=LINE_STYLE, linewidth=LINE_WIDTH)
-    
-    # add labels
-    pyplot.xlabel('Position')
-    pyplot.ylabel('Density')
-    pyplot.title(f'{title}{DENSITY}')
-    
-    # write the plot to file
-    pdf.savefig()
-    pyplot.close()
+    except:
+        pass
 
 
 def __restructureAnalysisDataForWriting(analysisData:dict[tuple[Seq,str],AnalysisData]) -> dict[tuple[Seq,Level], dict[str,tuple[str,AnalysisData]]]:
