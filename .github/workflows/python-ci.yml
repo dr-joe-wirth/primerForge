@@ -29,8 +29,6 @@ jobs:
         shell: bash -el {0}  
         run: |
           which python
-          ls
-          echo
-          ls -F *
+          python primerForge.py --help
 
           
