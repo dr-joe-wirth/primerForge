@@ -2,7 +2,7 @@
 ## provides a conda environment for running primerForge
 ## commands:
 ##        $ conda env create -f environment.yml
-##        $ conda activate misc-python
+##        $ conda activate primerforge
 
 name: primerforge
 channels:
