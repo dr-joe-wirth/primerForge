@@ -3,7 +3,7 @@ name: basic python
 
 jobs:
   example-1:
-    name: Ex1 (${{ matrix.python-version }}, ${{ matrix.os }})
+    name: (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -24,11 +24,10 @@ jobs:
         shell: bash -el {0}
         run: |
           conda env list
-          conda activate primerforge
+          conda list
       - name: basic usage
         shell: bash -el {0}  
         run: |
-          conda activate primerforge
           which python
           ls
           echo
