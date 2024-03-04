@@ -19,7 +19,7 @@ jobs:
         shell: bash -el {0}
         run: conda info
       - name: create environment
-        run: conda env create -f env/environment.yml
+        run: conda env create -f environment.yml
         shell: bash -el {0}
       - name: Conda env list
         shell: bash -el {0}
