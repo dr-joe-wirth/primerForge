@@ -1,4 +1,5 @@
 on: push
+name: basic python
 
 jobs:
   example-1:
@@ -18,7 +19,7 @@ jobs:
         shell: bash -el {0}
         run: conda info
       - name: create environment
-        run: mamba env create -f env/environment.yml
+        run: conda env create -f env/environment.yml
         shell: bash -el {0}
       - name: Conda env list
         shell: bash -el {0}
