@@ -1,7 +1,50 @@
 # primerForge
+
 software to identify primers that can distinguish genomes
 
+## Installation
+
+### Conda installation
+
+> [!NOTE]
+> This might take up to ten minutes.
+
+```shell
+conda env create -f env/environment.yml
+conda activate primerforge
+```
+
+### Docker Installation
+
+A Docker image has been made available under the docker folder
+
+## Usage
+
+```text
+usage:
+    primerForge.py [-ioubfpgtrdnvh]
+
+required arguments:
+    -i, --ingroup        [file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff")
+    -o, --out            [file] output filename
+
+optional arguments: 
+    -u, --outgroup       [file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff")
+    -b, --bad_sizes      [int,int] a range of PCR product lengths that the outgroup cannot produce (default: same as '--pcr_prod')
+    -f, --format         [str] file format of the ingroup and outgroup genbank|fasta (default: genbank)
+    -p, --primer_len     [int(s)] a single primer length or a range specified as 'min,max' (default: 16,20)
+    -g, --gc_range       [float,float] a min and max percent GC specified as a comma separated list (default: 40.0,60.0)
+    -t, --tm_range       [float,float] a min and max melting temp (Tm) specified as a comma separated list (default: 55.0,68.0)
+    -r, --pcr_prod       [int(s)] a single PCR product length or a range specified as 'min,max' (default: 120,2400)
+    -d, --tm_diff        [float] the maximum allowable Tm difference between a pair of primers (default: 5.0)
+    -n, --num_threads    [int] the number of threads for parallel processing (default: 1)
+    -v, --version        print the version
+    -h, --help           print this message
+    --debug              run in debug mode
+```
+
 ## Workflow
+
 ```mermaid
 flowchart TB
     ingroup[/"ingroup genomes"/]
