@@ -1,0 +1,37 @@
+on: push
+
+jobs:
+  example-1:
+    name: Ex1 (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.7", "3.11"]
+    steps:
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+      - name: Conda info
+        shell: bash -el {0}
+        run: conda info
+      - name: create environment
+        run: mamba env create -f env/environment.yml
+        shell: bash -el {0}
+      - name: Conda env list
+        shell: bash -el {0}
+        run: |
+          conda env list
+          conda activate primerforge
+      - name: basic usage
+        shell: bash -el {0}  
+        run: |
+          conda activate primerforge
+          which python
+          ls
+          echo
+          ls -F *
+
+          
