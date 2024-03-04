@@ -1,6 +1,6 @@
 from __future__ import annotations
 import sys, time
-from threading import Thread
+from multiprocessing import Process, Event
 
 
 class Wheel:
@@ -19,17 +19,17 @@ class Wheel:
         Returns:
             Wheel: a Wheel object
         """
-        # initialize attributes
-        self.__spinning:bool = True
-        self.__msg:str = ''
-        self.__thread:Thread
+        # type hint attributes
+        self.__msg:str
+        self.__process:Process
+        self.__event = Event()
 
     # private methods
     def __spin(self) -> None:
         """spinning function
         """
         # keep spinning until it is time to stop
-        while self.__spinning:
+        while not self.__event.is_set():
             # print each character in the wheel then pause
             for char in Wheel.__CHARS:
                 sys.stdout.write('\r' + self.__msg + char)
@@ -43,23 +43,19 @@ class Wheel:
         Args:
             msg (str): the message to preceed the wheel
         """
-        # initialize all values
+        # initialize attributes
         self.__msg = msg
-        self.__spinning = True
-        self.__thread = Thread(target=self.__spin, daemon=True)
+        self.__process = Process(target=self.__spin)
         
         # start spinning the wheel
-        self.__thread.start()
+        self.__process.start()
     
     def stop(self) -> None:
         """stops spinning the wheel
         """
         # stop spinning the wheel
-        self.__spinning = False
-        
-        # wait for the thread to terminate
-        while self.__thread.is_alive():
-            time.sleep(0.001)
+        self.__event.set()
+        self.__process.join()
         
         # remove the wheel character
         sys.stdout.write('\r' + self.__msg)
