@@ -30,10 +30,6 @@ def _initializeAnalysisData(candKmers:dict[str,dict[str,list[Primer]]]) -> dict[
         for contig in candKmers[name].keys():
             # for each kmer
             for kmer in candKmers[name][contig]:
-                # make sure all kmers are on the plus strand
-                if kmer.strand == Primer.MINUS:
-                    kmer = kmer.reverseComplement()
-                
                 # save the kmer analysis data
                 out[(kmer.seq,contig)] = AnalysisData(kmer, index, name)
                 
@@ -52,43 +48,49 @@ def _updateAnalysisData(analysis:dict[tuple[Seq,str],AnalysisData], pairs:list[t
     """
     # initialize variables
     seen = set()
-    fwdFlipped = False
-    revFlipped = False
+    allKmers = {k for k,c in analysis.keys()}
+    allContigs = {c for k,c in analysis.keys()}
     
     # for each pair of primers
     for fwd,rev in pairs:
-        # make sure all primers are on the plus strand
-        if fwd.strand == Primer.MINUS:
+        # make sure all primers match the existing entries
+        if not fwd.seq in allKmers:
             fwd = fwd.reverseComplement()
-            fwdFlipped = True
-            
-        if rev.strand == Primer.MINUS:
+        if not rev.seq in allKmers:
             rev = rev.reverseComplement()
-            revFlipped = True
+        
+        # store the contigs for this pair of primers
+        contigsThisPair = set()
+        
+        # for each contig
+        for contig in allContigs:
+            try:
+                # extract the indices of the pair
+                fIdx = analysis[(fwd.seq, contig)].getIndex()
+                rIdx = analysis[(rev.seq, contig)].getIndex()
+
+                # link the records by their indices
+                analysis[(fwd.seq, contig)].updatePairs(rIdx)
+                analysis[(rev.seq, contig)].updatePairs(fIdx)
+                
+                # keep the contigs for this pair
+                contigsThisPair.add(contig)
+            
+            # only one contig per genome will be represented
+            except KeyError:
+                pass
         
         # only increment forward once
-        if (fwd.seq, fwd.contig) not in seen:
-            seen.add((fwd.seq, fwd.contig))
-            analysis[(fwd.seq, fwd.contig)].incrementLevel()    
+        if fwd not in seen:
+            seen.add(fwd)
+            for contig in contigsThisPair:
+                analysis[(fwd.seq, contig)].incrementLevel() 
             
         # only increment reverse once
-        if (rev.seq, rev.contig) not in seen:
-            seen.add((rev.seq, rev.contig))
-            analysis[(rev.seq, rev.contig)].incrementLevel()
-        
-        # extract the indices of the pair
-        fIdx = analysis[(fwd.seq, fwd.contig)].getIndex()
-        rIdx = analysis[(rev.seq, rev.contig)].getIndex()
-        
-        # make the primer on the minus strand have a negative index
-        if fwdFlipped:
-            fIdx = -fIdx
-        elif revFlipped:
-            rIdx = -rIdx
-        
-        # link the records by their indices
-        analysis[(fwd.seq, fwd.contig)].updatePairs(rIdx)
-        analysis[(rev.seq, rev.contig)].updatePairs(fIdx)
+        if rev not in seen:
+            seen.add(rev)
+            for contig in contigsThisPair:
+                analysis[(rev.seq, contig)].incrementLevel()
 
 
 def __initializeCounts(files:list[str], frmt:str) -> dict[str,dict[str,dict[int,dict[Level,int]]]]:
@@ -142,8 +144,12 @@ def __countPositions(entries:dict[tuple[Seq,str],AnalysisData], params:Parameter
         for level in AnalysisData.LEVELS:
             # only count if the kmer is within this level
             if entry.getLevel() >= level:
+                # get the start and end in order
+                start = min(entry.primer.start, entry.primer.end)
+                end   = max(entry.primer.start, entry.primer.end)
+                
                 # count each position in the kmer
-                for pos in range(entry.primer.start, entry.primer.end+1):
+                for pos in range(start, end+1):
                     out[entry.name][contig][pos][level] += 1
     
     return out
