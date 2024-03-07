@@ -8,8 +8,9 @@ from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import MeltingTemp
 from bin.Parameters import Parameters
-import gzip, os, subprocess, sys, unittest
+from bin.AnalysisData import AnalysisData
 from bin.getPrimerPairs import _formsDimers
+import gzip, os, pickle, re, subprocess, sys, unittest
 
 class Result():
     """class to save results for easy lookup
@@ -31,6 +32,9 @@ class ResultsTest(unittest.TestCase):
     NUM_THREADS = 24
     TEST_DIR = os.path.join(os.getcwd(), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
+    ANALYSIS_BASENAME = os.path.join(TEST_DIR, "distribution")
+    FAKE_FN = 'fakefile'
+    BINDING_SITES_FN = os.path.join(TEST_DIR, "bindingSites.p")
     INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
                 'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
                 'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
@@ -38,8 +42,6 @@ class ResultsTest(unittest.TestCase):
                 'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
     PCRLEN = "length"
     CONTIG = "contig"
-    PLS = "+"
-    MNS = "-"
     
     @classmethod
     def setUpClass(cls) -> None:
@@ -64,33 +66,33 @@ class ResultsTest(unittest.TestCase):
             ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
             clock.printDone()
         
-        # load existing results if present
-        if os.path.exists(ResultsTest.RESULT_FN):
-            # get the parameters
-            cls.params:Parameters = ResultsTest._getParameters()
-            cls.params.log.initialize(ResultsTest.setUpClass.__name__)
-            
-            print(f'running tests on existing results file: {ResultsTest.RESULT_FN}')
+        # get the parameters
+        cls.params:Parameters = ResultsTest._getParameters()
+        cls.params.log.initialize(ResultsTest.setUpClass.__name__)
         
-        # otherwise run primerForge
-        else:
-            total.printStart('getting results for testing', end=' ...\n')
-            
-            # get the parameters
-            cls.params:Parameters = ResultsTest._getParameters()
-            cls.params.log.initialize(ResultsTest.setUpClass.__name__)
-            
+        # run primerForge if results file does not exist
+        if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.plotDataFn):
+            total.printStart('getting results for testing', end=' ...\n', spin=False)    
             
             # run primerForge
-            clock.printStart('running primerForge', end=' ...\n')
+            clock.printStart('running primerForge', end=' ...\n', spin=False)
             _main(cls.params)
             clock.printDone()
             print()
             total.printDone()
         
+        # otherwise using existing file
+        else:
+            print('running tests on existing files')
+        
         # load the results file into memory
         clock.printStart('reading results into memory')
-        cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.RESULT_FN)
+        cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.params.resultsFn)
+        clock.printDone()
+        
+        # load the analysis file into memory
+        clock.printStart('reading analysis data into memory')
+        cls.analysis:dict[tuple[Seq,str],AnalysisData] = ResultsTest._parseAnalysisData(ResultsTest.params.plotDataFn)
         clock.printDone()
     
         # load the genomic sequences into memory
@@ -98,10 +100,25 @@ class ResultsTest(unittest.TestCase):
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
         clock.printDone()
 
-        # get all the primer binding sites
-        clock.printStart('calculating primer binding sites in each genome')
-        cls.bindingSites = ResultsTest._getAllBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
-        clock.printDone()
+        # load the binding sites if the file already exists
+        if os.path.exists(ResultsTest.BINDING_SITES_FN):
+            clock.printStart('loading binding sites from file')
+            with open(ResultsTest.BINDING_SITES_FN, 'rb') as fh:
+                cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = pickle.load(fh)
+            clock.printDone()
+        
+        # otherwise calculate and dump the binding sites
+        else:
+            # calculate the binding sites
+            clock.printStart('getting binding sites for all kmers and primers', end='...\n', spin=False)
+            cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = ResultsTest._getKmerBindingSites(cls.results, cls.analysis, cls.sequences, cls.params.minLen, cls.params.maxLen)
+            clock.printDone()
+            
+            # dump the binding sites
+            clock.printStart('dumping binding sites to file')
+            with open(ResultsTest.BINDING_SITES_FN, 'wb') as fh:
+                pickle.dump(cls.bindingSites, fh)
+            clock.printDone()
     
     # functions for setting up the class
     def _getParameters() -> Parameters:
@@ -118,15 +135,19 @@ class ResultsTest(unittest.TestCase):
                     '-b', '45,150',
                     '-n', ResultsTest.NUM_THREADS,
                     '-o', ResultsTest.RESULT_FN,
+                    '-a', ResultsTest.ANALYSIS_BASENAME,
                     '--debug']
         
-        # don't overwrite an existing results file
+        # don't overwrite existing results or analysis files
         if os.path.exists(ResultsTest.RESULT_FN):
-            sys.argv[-2] = 'fakefile'
+            sys.argv[12] = ResultsTest.FAKE_FN
+            sys.argv[14] = ResultsTest.FAKE_FN
             params = Parameters('', '')
+            params.plotDataFn = ResultsTest.ANALYSIS_BASENAME + Parameters._DATA_EXT
+            params.plotsFn = ResultsTest.ANALYSIS_BASENAME + Parameters._PLOT_EXT
             params.resultsFn = ResultsTest.RESULT_FN
         
-        # proceed like normal if the file doesn not yet exist
+        # proceed like normal if the files do not yet exist
         else:
             params = Parameters('', '')
         
@@ -216,7 +237,7 @@ class ResultsTest(unittest.TestCase):
         # go through each line in the file
         with open(fn, 'r') as fh:
             for line in fh:
-                # conver the line to a row of columns
+                # convert the line to a row of columns
                 line = line.rstrip()
                 row = line.split(SEP_1)
                 
@@ -266,6 +287,78 @@ class ResultsTest(unittest.TestCase):
         
         return out
 
+    def _parseAnalysisData(fn:str) -> dict[tuple[Seq,str], AnalysisData]:
+        """parses an analysis data file
+
+        Args:
+            fn (str): the file to parse
+
+        Returns:
+            dict[tuple[Seq,str], AnalysisData]: key=(kmer seq, contig name); val=corresponding AnalysisData object
+        """
+        # constants
+        SEP = "\t"
+        G_COORD = 'genome coord'
+        GREP_FIND = r'^(.+) \((\d+), (\d+)\)$'
+        GREP_REPL = r'\1\t\2\t\3'
+        
+        # initialize variables
+        header = True
+        indices = dict()
+        recNum = 0
+        out = dict()
+        
+        # for each line in the file
+        with open(fn, 'r') as fh:
+            for line in fh:
+                # convert to a row of columns
+                line = line.rstrip()
+                row = line.split(SEP)
+                
+                # save the index for each genome's kmer coordinates
+                if header:
+                    # key = index; val = genome name
+                    indices = {idx:row[idx][:-len(G_COORD)].rstrip() for idx in range(2, len(row)) if G_COORD in row[idx]}
+                    header  = False
+                
+                # process data rows
+                else:
+                    # extract the sequence and the level
+                    seq = Seq(row[0])
+                    level = row[1]
+
+                    # for each genome
+                    for idx in indices.keys():
+                        # get the name
+                        name = indices[idx]
+
+                        # extract the positional data
+                        contig, start, end = re.sub(GREP_FIND, GREP_REPL, row[idx]).split(SEP)
+                        
+                        # cast coordinates as integers
+                        start = int(start)
+                        end = int(end)
+                        
+                        # determine the strand; `start` needs to be lowest value
+                        if start < end:
+                            strand = Primer.PLUS
+                        else:
+                            start = end
+                            strand = Primer.MINUS
+                        
+                        # create a primer object
+                        primer = Primer(seq, contig, start, len(seq), strand)
+                        
+                        # create and save an analysis data object; use the row as the index
+                        data = AnalysisData(primer, recNum, name)
+                        data.setLevel(level)
+                        out[(seq,contig)] = data
+                        
+                        # update the record number for the next entry
+                        recNum += 1
+        
+        return out
+
     def _loadOneGenomeSequence(fn:str) -> dict[str,dict[str,Seq]]:
         """loads a single genome sequence into memory
 
@@ -281,8 +374,8 @@ class ResultsTest(unittest.TestCase):
         
         # store each contig underneath its name
         for contig in SeqIO.parse(os.path.join(ResultsTest.TEST_DIR, fn), 'genbank'):
-            out[contig.id] = {ResultsTest.PLS: contig.seq.upper(),
-                              ResultsTest.MNS: contig.seq.reverse_complement().upper()}
+            out[contig.id] = {Primer.PLUS:  contig.seq.upper(),
+                              Primer.MINUS: contig.seq.reverse_complement().upper()}
         
         return out
 
@@ -305,23 +398,24 @@ class ResultsTest(unittest.TestCase):
         
         return out
     
-    def _getKmersForOneContig(seq:Seq, minLen:int, maxLen:int) -> dict[Seq,list[int]]:
-        """gets all the kmers for a single contig strand
+    def _getKmersForOneContig(seq:dict[str,Seq], minLen:int, maxLen:int) -> dict[str,dict[Seq,list[int]]]:
+        """gets all the kmers for a single contig
 
         Args:
-            seq (Seq): the contig sequence from which to retrieve kmers
+            seq (dict[str,Seq]): key=strand; val=contig sequence
             minLen (int): the minimum kmer length
             maxLen (int): the maximum kmer length
 
         Returns:
-            dict[Seq,list[int]]: key=kmers; val=list of start positions
+            dict[str,dict[Seq,list[int]]]: key=strand; val=dict: key=kmers; val=list of start positions
         """
         # initialize variables
         krange = range(minLen, maxLen + 1)
         smallest = min(krange)
-        seqLen = len(seq)
+        seqLen = len(seq[Primer.PLUS])
         done = False
-        out = dict()
+        out = {Primer.PLUS:  dict(),
+               Primer.MINUS: dict()}
         
         # get every possible kmer start position
         for start in range(seqLen):
@@ -338,12 +432,25 @@ class ResultsTest(unittest.TestCase):
             
                 # proceed if the extracted kmer length is good
                 else:
-                    # extract the kmer sequences
-                    kmer = seq[start:start+klen]
+                    # calculate the end
+                    end = start + klen
                     
-                    # create dictionaries stored under this kmer
-                    out[kmer] = out.get(kmer, list())
-                    out[kmer].append(start)
+                    # extract the forward sequence
+                    fKmer = seq[Primer.PLUS][start:end]
+                    
+                    # extract the reverse sequence
+                    if start == 0:
+                        rKmer = seq[Primer.MINUS][-end:]
+                    else:
+                        rKmer = seq[Primer.MINUS][-end:-start]
+                    
+                    # initialize lists stored under the kmers
+                    out[Primer.PLUS][fKmer] = out[Primer.PLUS].get(fKmer, list())
+                    out[Primer.MINUS][rKmer] = out[Primer.MINUS].get(rKmer, list())
+                    
+                    # save the start positions
+                    out[Primer.PLUS][fKmer].append(start)
+                    out[Primer.MINUS][rKmer].append(end-1)
             
             # stop iterating through the contig when we're done with it
             if done:
@@ -351,7 +458,7 @@ class ResultsTest(unittest.TestCase):
         
         return out
 
-    def _getAllBindingSites(results:dict[tuple[Seq,Seq],Result], sequences:dict[str,dict[str,dict[str,Seq]]], minLen:int, maxLen:int) -> dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]:
+    def _getKmerBindingSites(results:dict[tuple[Seq,Seq],Result], analysis:dict[tuple[Seq,str],AnalysisData], sequences:dict[str,dict[str,dict[str,Seq]]], minLen:int, maxLen:int) -> dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]:
         """get all of the primer binding sites in the provided genomes
 
         Args:
@@ -366,29 +473,54 @@ class ResultsTest(unittest.TestCase):
         # initialize variables
         bindingSites = dict()
         allPrimers = {p for pair in results.keys() for p in pair}
+        savedKmers = {k for k,c in analysis.keys()}
+        savedKmers.update(allPrimers)
+        clock = Clock()
         
         # for each genome
         for name in sequences.keys():
+            # print status
+            clock.printStart(f'    getting kmer binding sites for {name}')
+            
             # for each contig
             for contig in sequences[name].keys():
-                # for each strand
-                for strand in sequences[name][contig].keys():
-                    # get the all the kmers
-                    kmers = ResultsTest._getKmersForOneContig(sequences[name][contig][strand], minLen, maxLen)
+                # get the all the kmers
+                kmers = ResultsTest._getKmersForOneContig(sequences[name][contig], minLen, maxLen)
 
-                    # for each primer
-                    for primer in allPrimers:
-                        # build the data structure: seq, name, contig, strand, list of start positions
-                        bindingSites[primer] = bindingSites.get(primer, dict())
-                        bindingSites[primer][name] = bindingSites[primer].get(name, dict())
-                        bindingSites[primer][name][contig] = bindingSites[primer][name].get(contig, dict())
-                        bindingSites[primer][name][contig][strand] = bindingSites[primer][name][contig].get(strand, list())
+                # determine which kmers actually need to be evaluated
+                relevantKmers = set(kmers[Primer.PLUS])
+                relevantKmers.update(set(kmers[Primer.MINUS]))                
+                relevantKmers.intersection_update(savedKmers)
+                
+                # for each kmer
+                for kmer in relevantKmers:
+                    # build the data structure: seq, name, contig, strand, list of start positions
+                    bindingSites[kmer] = bindingSites.get(kmer, dict())
+                    bindingSites[kmer][name] = bindingSites[kmer].get(name, dict())
+                    bindingSites[kmer][name][contig] = bindingSites[kmer][name].get(contig, dict())
+                    bindingSites[kmer][name][contig][Primer.PLUS] = bindingSites[kmer][name][contig].get(Primer.PLUS, list())
+                    bindingSites[kmer][name][contig][Primer.MINUS] = bindingSites[kmer][name][contig].get(Primer.MINUS, list())
+                    
+                    # extract the start positions for this kmer
+                    try:
+                        starts = kmers[Primer.PLUS][kmer]
+                        strand = Primer.PLUS
+                    
+                    # it may be on the minus strand
+                    except KeyError:
+                        starts = kmers[Primer.MINUS][kmer]
+                        strand = Primer.MINUS
                         
-                        # only save data for the primers present in the results
-                        try:
-                            bindingSites[primer][name][contig][strand].extend(kmers[primer])
-                        except KeyError:
-                            pass
+                    # save the start positions for this kmer
+                    try:
+                        bindingSites[kmer][name][contig][strand].extend(starts)
+                    
+                    # the kmers will not necessarily be present in every contig
+                    except KeyError:
+                        pass
+            
+            # print status
+            clock.printDone()
         
         return bindingSites
 
@@ -622,8 +754,8 @@ class ResultsTest(unittest.TestCase):
                 fCount = 0
                 rCount = 0
                 for contig in fbind[name].keys():
-                    fCount += len(fbind[name][contig][ResultsTest.PLS]) + len(fbind[name][contig][ResultsTest.MNS])
-                    rCount += len(rbind[name][contig][ResultsTest.PLS]) + len(rbind[name][contig][ResultsTest.MNS])
+                    fCount += len(fbind[name][contig][Primer.PLUS]) + len(fbind[name][contig][Primer.MINUS])
+                    rCount += len(rbind[name][contig][Primer.PLUS]) + len(rbind[name][contig][Primer.MINUS])
             
                 # each ingroup genome should have exactly one binding site for each primer
                 self.assertEqual(rCount, 1, f"{rev}{FAIL_MSG_A}{rCount}{FAIL_MSG_B}{name}")
@@ -642,26 +774,26 @@ class ResultsTest(unittest.TestCase):
             for name in ResultsTest.INGROUP.keys():
                 for contig in fbind[name].keys():
                     # if the forward primer is on the (+) strand
-                    if fbind[name][contig][ResultsTest.PLS] != []:
+                    if fbind[name][contig][Primer.PLUS] != []:
                         # then the reverse primer should be on the (-) strand
-                        self.assertNotEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is not on opposite strand of {fwd} in {name}|{contig}")
+                        self.assertNotEqual(rbind[name][contig][Primer.MINUS], [], f"{rev} is not on opposite strand of {fwd} in {name}|{contig}")
                         
                         # the forward primer should not be on the (-) strand
-                        self.assertEqual(fbind[name][contig][ResultsTest.MNS], [], f"{fwd} is on both strands in {name}|{contig}")
+                        self.assertEqual(fbind[name][contig][Primer.MINUS], [], f"{fwd} is on both strands in {name}|{contig}")
                         
                         # the reverse primer should not be on the (+) strand
-                        self.assertEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
+                        self.assertEqual(rbind[name][contig][Primer.PLUS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
                     
                     # if the forward primer is on the (-) strand
-                    elif fbind[name][contig][ResultsTest.MNS] != []:
+                    elif fbind[name][contig][Primer.MINUS] != []:
                         # then the reverse primer should be on the (+) strand
-                        self.assertNotEqual(rbind[name][contig][ResultsTest.PLS], [], f"{rev} is ont on opposite strand of {fwd} in {name}|{contig}")
+                        self.assertNotEqual(rbind[name][contig][Primer.PLUS], [], f"{rev} is ont on opposite strand of {fwd} in {name}|{contig}")
                         
                         # the forward primer should not be on the (+) strand
-                        self.assertEqual(fbind[name][contig][ResultsTest.PLS], [], f"{fwd} is on both strands in {name}|{contig}")
+                        self.assertEqual(fbind[name][contig][Primer.PLUS], [], f"{fwd} is on both strands in {name}|{contig}")
                         
                         # the reverse primer should not be on the (-) strand
-                        self.assertEqual(rbind[name][contig][ResultsTest.MNS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
+                        self.assertEqual(rbind[name][contig][Primer.MINUS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
     
     def testQ_isProductLengthCorrect(self) -> None:
         """determines if the product length is correctly saved
@@ -679,15 +811,15 @@ class ResultsTest(unittest.TestCase):
                 contig = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG][0]
                 
                 # find where the forward and reverse primers bind
-                if fbind[name][contig][ResultsTest.PLS] != []:
-                    fstart = fbind[name][contig][ResultsTest.PLS][0]
-                    rstart = rbind[name][contig][ResultsTest.MNS][0]
+                if fbind[name][contig][Primer.PLUS] != []:
+                    fstart = fbind[name][contig][Primer.PLUS][0]
+                    rstart = rbind[name][contig][Primer.MINUS][0]
                 else:
-                    fstart = fbind[name][contig][ResultsTest.MNS][0]
-                    rstart = rbind[name][contig][ResultsTest.PLS][0]
+                    fstart = fbind[name][contig][Primer.MINUS][0]
+                    rstart = rbind[name][contig][Primer.PLUS][0]
                 
                 # the true length is just the space between the two ends
-                truLen = len(self.sequences[name][contig][ResultsTest.PLS]) - fstart - rstart
+                truLen = len(self.sequences[name][contig][Primer.PLUS]) - fstart - rstart
                 
                 # make sure the saved length and the true length match
                 self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
@@ -711,14 +843,14 @@ class ResultsTest(unittest.TestCase):
                 for contig in fbind[name].keys():
                     # only proceed if the reverse primer also binds to this contig
                     if contig in rbind[name].keys():
-                        # extrac the forward and reverse binding sites on both strands
-                        fwdPlsStarts = fbind[name][contig][ResultsTest.PLS]
-                        fwdMnsStarts = fbind[name][contig][ResultsTest.MNS]
-                        revPlsStarts = rbind[name][contig][ResultsTest.PLS]
-                        revMnsStarts = rbind[name][contig][ResultsTest.MNS]
+                        # extract the forward and reverse binding sites on both strands
+                        fwdPlsStarts = fbind[name][contig][Primer.PLUS]
+                        fwdMnsStarts = fbind[name][contig][Primer.MINUS]
+                        revPlsStarts = rbind[name][contig][Primer.PLUS]
+                        revMnsStarts = rbind[name][contig][Primer.MINUS]
                         
                         # extract the length of the contig
-                        contigLen = len(self.sequences[name][contig][ResultsTest.PLS])
+                        contigLen = len(self.sequences[name][contig][Primer.PLUS])
                         
                         # for each fwd/rev pair on the (+)/(-) strands
                         for fstart in fwdPlsStarts:
@@ -755,3 +887,66 @@ class ResultsTest(unittest.TestCase):
                         # and the pcr lengths should not be disallowed
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
+    
+    def testR_analysisDataMatchesKmerPositions(self) -> None:
+        """check that the analysis data are congruent with the binding sites
+        """
+        # for each kmer in the analysis file
+        for (kmer,contig),analysis in self.analysis.items():
+            # make sure the kmer is present in the genomes
+            self.assertIn(kmer, self.bindingSites.keys())
+            
+            # make sure the kmer binds exactly one strand
+            bindsPlus  = self.bindingSites[kmer][analysis.name][contig][Primer.PLUS]  != []
+            bindsMinus = self.bindingSites[kmer][analysis.name][contig][Primer.MINUS] != []
+            
+            self.assertFalse(bindsPlus and bindsMinus, f"{kmer} binds multiple strands")
+            self.assertTrue(bindsPlus  or  bindsMinus, f'{kmer} does not bind either strand')
+        
+            # extract the start position of the kmer
+            if bindsPlus:
+                starts = self.bindingSites[kmer][analysis.name][contig][Primer.PLUS]
+            elif bindsMinus:
+                starts = self.bindingSites[kmer][analysis.name][contig][Primer.MINUS]
+            
+            # should have at least one start position
+            self.assertNotEqual(starts, [], f"{(kmer,contig)} has no start positions")
+            
+            # only one start position should exist for all kmers
+            self.assertEqual(len(starts), 1, f"{(kmer,contig)} has multiple binding sites")
+            
+            # the start positions should match
+            self.assertEqual(analysis.primer.start, starts[0], f"{(kmer,contig)}: start position does not match")
+    
+    def testS_resultsMatchesAnalysis(self) -> None:
+        """checks that the results data and the analysis data are congruent
+        """
+        # track seen kmers to prevent redundant work
+        seen = set()
+        
+        # for each pair
+        for pair in self.results.keys():
+            # for each genome
+            for name in self.results[pair].additional.keys():
+                # for each contig
+                for contig in self.results[pair].additional[name][ResultsTest.CONTIG]:
+                    # for each kmer in the pair
+                    for kmer in pair:
+                        # only process each kmer once
+                        if kmer not in seen:
+                            # mark the kmer as seen
+                            seen.add(kmer)
+                            
+                            # the kmer (or its rev comp) should be in analysis data
+                            try:
+                                analysis = self.analysis[(kmer, contig)]
+                                
+                            except KeyError:
+                                try:
+                                    analysis = self.analysis[(kmer.reverse_complement(), contig)]
+                                
+                                except KeyError:
+                                    self.fail(f'{(kmer, contig)} from {pair} not in analysis data')
+
+                            # everything in the results should have the maximum level
+                            self.assertEqual(analysis.getLevel(), max(AnalysisData.LEVELS))
