@@ -314,8 +314,8 @@ class Parameters():
                     Parameters.__checkOutputFile(plotFn)
                     Parameters.__checkOutputFile(dataFn)
                     
-                    self.plotsFn = os.path.abspath(arg)
-                    self.plotDataFn = os.path.abspath(arg)
+                    self.plotsFn = os.path.abspath(plotFn)
+                    self.plotDataFn = os.path.abspath(dataFn)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
