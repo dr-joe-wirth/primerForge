@@ -493,7 +493,7 @@ class ResultsTest(unittest.TestCase):
                 relevantKmers.intersection_update(savedKmers)
                 
                 # for each kmer
-                for kmer in relevantKmers:
+                for kmer in savedKmers:
                     # build the data structure: seq, name, contig, strand, list of start positions
                     bindingSites[kmer] = bindingSites.get(kmer, dict())
                     bindingSites[kmer][name] = bindingSites[kmer].get(name, dict())
@@ -501,24 +501,26 @@ class ResultsTest(unittest.TestCase):
                     bindingSites[kmer][name][contig][Primer.PLUS] = bindingSites[kmer][name][contig].get(Primer.PLUS, list())
                     bindingSites[kmer][name][contig][Primer.MINUS] = bindingSites[kmer][name][contig].get(Primer.MINUS, list())
                     
-                    # extract the start positions for this kmer
-                    try:
-                        starts = kmers[Primer.PLUS][kmer]
-                        strand = Primer.PLUS
-                    
-                    # it may be on the minus strand
-                    except KeyError:
-                        starts = kmers[Primer.MINUS][kmer]
-                        strand = Primer.MINUS
+                    # only add start positions for kmers in this contig
+                    if kmer in relevantKmers:
+                        # extract the start positions for this kmer
+                        try:
+                            starts = kmers[Primer.PLUS][kmer]
+                            strand = Primer.PLUS
                         
-                    # save the start positions for this kmer
-                    try:
-                        bindingSites[kmer][name][contig][strand].extend(starts)
-                    
-                    # the kmers will not necessarily be present in every contig
-                    except KeyError:
-                        pass
-            
+                        # it may be on the minus strand
+                        except KeyError:
+                            starts = kmers[Primer.MINUS][kmer]
+                            strand = Primer.MINUS
+                            
+                        # save the start positions for this kmer
+                        try:
+                            bindingSites[kmer][name][contig][strand].extend(starts)
+                        
+                        # the kmers will not necessarily be present in every contig
+                        except KeyError:
+                            pass
+                
             # print status
             clock.printDone()
         
@@ -814,12 +816,17 @@ class ResultsTest(unittest.TestCase):
                 if fbind[name][contig][Primer.PLUS] != []:
                     fstart = fbind[name][contig][Primer.PLUS][0]
                     rstart = rbind[name][contig][Primer.MINUS][0]
+                    plus = True
                 else:
                     fstart = fbind[name][contig][Primer.MINUS][0]
                     rstart = rbind[name][contig][Primer.PLUS][0]
+                    plus = False
                 
                 # the true length is just the space between the two ends
-                truLen = len(self.sequences[name][contig][Primer.PLUS]) - fstart - rstart
+                if plus:
+                    truLen = rstart - fstart + 1
+                else:
+                    truLen = fstart - rstart + 1
                 
                 # make sure the saved length and the true length match
                 self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
@@ -842,21 +849,22 @@ class ResultsTest(unittest.TestCase):
                 # for each contig
                 for contig in fbind[name].keys():
                     # only proceed if the reverse primer also binds to this contig
-                    if contig in rbind[name].keys():
+                    
+                    
+                    # if contig in rbind[name].keys():
+                    
+                    
                         # extract the forward and reverse binding sites on both strands
                         fwdPlsStarts = fbind[name][contig][Primer.PLUS]
                         fwdMnsStarts = fbind[name][contig][Primer.MINUS]
                         revPlsStarts = rbind[name][contig][Primer.PLUS]
                         revMnsStarts = rbind[name][contig][Primer.MINUS]
                         
-                        # extract the length of the contig
-                        contigLen = len(self.sequences[name][contig][Primer.PLUS])
-                        
                         # for each fwd/rev pair on the (+)/(-) strands
                         for fstart in fwdPlsStarts:
                             for rstart in revMnsStarts:
                                 # calculate the pcr lengths
-                                pcrLen = contigLen - fstart - rstart
+                                pcrLen = rstart - fstart + 1
                                 
                                 # save the pcr length if it is positive
                                 if pcrLen > 0:
@@ -867,7 +875,7 @@ class ResultsTest(unittest.TestCase):
                         for fstart in fwdMnsStarts:
                             for rstart in revPlsStarts:
                                 # calculate the pcr lengths
-                                pcrLen = contigLen - fstart - rstart
+                                pcrLen = fstart - rstart + 1
                                 
                                 # only save the pcr length if it is positive
                                 if pcrLen > 0:
