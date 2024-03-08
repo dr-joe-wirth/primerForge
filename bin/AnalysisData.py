@@ -47,6 +47,14 @@ class Level():
         """
         return str(self).__hash__()
     
+    def __int__(self) -> int:
+        """casts the level as an integer
+
+        Returns:
+            int: the integer representation of the level
+        """
+        return self.__num
+    
     def __add__(self, other:int) -> Level:
         """creates a new Level object by adding to it
 
@@ -228,6 +236,7 @@ class Level():
         """
         return self == other or self < other
 
+    # public methods
     def setLevel(self, level:str) -> None:
         """sets the level
 
