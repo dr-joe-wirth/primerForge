@@ -353,6 +353,41 @@ def __writeAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], contigBr
             fh.write(SEP.join(map(str,row)) + EOL)
 
 
+def __writeBedFiles(counts:dict[str,dict[str,dict[int,dict[Level,int]]]], params:Parameters) -> None:
+    # constants
+    SEP = "\t"
+    EOL = "\n"
+    MSG = "    writing BED file for "
+    
+    clock = Clock()
+    
+    # for each genome
+    for name in counts.keys():
+        # print status
+        clock.printStart(MSG + name)
+        
+        # open the bed file
+        with open(params.bedFns[name], 'w') as fh:
+            # go through each contig
+            for contig in counts[name].keys():
+                # go through each position
+                for position in counts[name][contig].keys():
+                    # create the row
+                    row = [contig, position, position + 1]
+                    
+                    # convert to a list of counts for each level: low to high
+                    curCount = list()
+                    for level in AnalysisData.LEVELS:
+                        curCount.append(str(counts[name][contig][position][level]))
+                    
+                    # add the counts to the row before writing
+                    row.append(",".join(curCount))
+                    fh.write(SEP.join(map(str,row)) + EOL)
+        
+        # print status
+        clock.printDone()
+
+
 def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Parameters) -> None:
     """plots and writes the analysis data
 
@@ -380,26 +415,31 @@ def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Par
     counts = __countPositions(analysisData, params)
     
     # concatenate contigs
-    counts, contigBreaks = __concatenateContigCounts(counts)
+    catCounts, contigBreaks = __concatenateContigCounts(counts)
     
     # print status
     clock.printDone()
     if params.debug:
         params.log.info(f"{DONE}{clock.getTimeString()}")
     
+    # make the bed files
+    clock.printStart('writing bed files', end=' ...\n', spin=False)
+    __writeBedFiles(counts, params)
+    clock.printDone()
+    
     # open the pdf
     with PdfPages(params.plotsFn) as pdf:
         # for each genome
-        for name in counts.keys():
+        for name in catCounts.keys():
             # print the status
             clock.printStart(f"{MSG_2}{name}")
             if params.debug:
                 params.log.info(f"{MSG_2}{name}")
             
             # for each level
-            for level in counts[name].keys():
+            for level in catCounts[name].keys():
                 # make the plots
-                __makeOnePlot(counts[name][level], contigBreaks[name], f"{name} ({level})", pdf)
+                __makeOnePlot(catCounts[name][level], contigBreaks[name], f"{name} ({level})", pdf)
             
             # print the status
             clock.printDone()
