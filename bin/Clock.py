@@ -1,16 +1,84 @@
+from __future__ import annotations
 import sys, time
+from multiprocessing import Process, Event
 
-# class definition
+
+class Wheel:
+    """provides a wheel spinning
+    """
+    # public attribute
+    PAUSE = 0.12
+    
+    # priave attribute
+    __CHARS = "-\|/"
+    
+    # overloads
+    def __init__(self) -> Wheel:
+        """constructor
+
+        Returns:
+            Wheel: a Wheel object
+        """
+        # type hint attributes
+        self.__msg:str
+        self.__process:Process
+        self.__event = Event()
+
+    # private methods
+    def __spin(self) -> None:
+        """spinning function
+        """
+        # keep spinning until it is time to stop
+        while not self.__event.is_set():
+            # print each character in the wheel then pause
+            for char in Wheel.__CHARS:
+                sys.stdout.write('\r' + self.__msg + char)
+                sys.stdout.flush()
+                time.sleep(Wheel.PAUSE)
+    
+    # public methods
+    def start(self, msg:str) -> None:
+        """starts the wheel spinning
+
+        Args:
+            msg (str): the message to preceed the wheel
+        """
+        # initialize attributes
+        self.__msg = msg
+        self.__process = Process(target=self.__spin)
+        
+        # start spinning the wheel
+        self.__process.start()
+    
+    def stop(self) -> None:
+        """stops spinning the wheel
+        """
+        # stop spinning the wheel
+        self.__event.set()
+        self.__process.join()
+        
+        # remove the wheel character
+        sys.stdout.write('\r' + self.__msg)
+        sys.stdout.flush()
+
+
 class Clock:
     """ this class is used to easily track durations in a pretty format
     """
     # overload
-    def __init__(self):
+    def __init__(self) -> Clock:
         """ constructor. accepts no inputs
             saves the start time and initializes member variables
         """
+        # initialize attributes
         self.__startTime:float = 0.0
         self.__duration:float = 0.0
+        
+        # type hint other attributes
+        self.__spin:bool
+        self.__wheel:Wheel
+        
+        # start the clock
         self.__start()
     
     # private methods
@@ -132,19 +200,37 @@ class Clock:
         """
         self.__start()
     
-    def printStart(self, msg:str, end:str=' ... ') -> None:
+    def printStart(self, msg:str, end:str=' ... ', spin:bool=True) -> None:
         """prints the start message and restarts the clock
 
         Args:
             msg (str): the message to print
             end (str, optional): the end of the printed message. Defaults to ' ... '.
+            spin (bool, optional): indicates if the wheel should spin. Defaults to True.
         """
-        print(msg, end=end)
-        sys.stdout.flush()
+        # save the spin status
+        self.__spin = spin
+        
+        # spin the wheel if requested; wheel handles printing
+        if self.__spin:
+            self.__wheel = Wheel()
+            self.__wheel.start(msg + end)
+        
+        # otherwise print the message 
+        else:
+            print(msg, end=end)
+            sys.stdout.flush()
+        
+        # restart the clock
         self.restart()
     
     def printDone(self) -> None:
         """prints the end message and the duration
         """
-        print(f"done {self.getTimeString()}" )
+        # stop spinning the wheel if necessary
+        if self.__spin:
+            self.__wheel.stop()
+            
+        # print the done string
+        print(f"done {self.getTimeString()}")
         sys.stdout.flush()

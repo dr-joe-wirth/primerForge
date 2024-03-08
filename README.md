@@ -91,11 +91,13 @@ flowchart TB
 
         %% evaluate one kmer pair
         subgraph C0["for each bin pair"]
-            prime{"is 3' end
-            G or C?"}
             size{"is PCR
             size ok?"}
-            prime --> size
+            subgraph C4["for each primer pair"]
+                prime{"is 3' end
+                G or C?"}
+            end
+            size --> C4
         end
 
 
@@ -106,10 +108,9 @@ flowchart TB
             end
         end
 
-
         bin1 --> bin2
         bin2 --> C0
-        size --> candPair
+        prime --> candPair
         candPair --> C2
         pcr --> sharePair
     end
@@ -150,6 +151,8 @@ flowchart TB
     keep --> final
 
     write[/"write pairs to file"/]
+    plots[/"make plots"/]
 
     final --> write
+    final --> plots
 ```

@@ -353,9 +353,6 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
         candidatePairs (list[tuple[Primer,Primer,int,tuple[str,int,int]]]): the list produced by __evaluateBinPairs
         params (Parameters): a Parameters object
 
-    Raises:
-        RuntimeError: an untested condition was encountered
-
     Returns:
         dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length, bin pair (contig, bin1, bin2)
     """
