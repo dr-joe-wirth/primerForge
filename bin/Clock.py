@@ -11,7 +11,8 @@ class Wheel:
     
     # priave attribute
     __CHARS = "-\|/"
-    
+    __EVENT = Event()
+        
     # overloads
     def __init__(self) -> Wheel:
         """constructor
@@ -19,17 +20,16 @@ class Wheel:
         Returns:
             Wheel: a Wheel object
         """
-        # type hint attributes
-        self.__msg:str
+        # initialize attributes
+        self.__msg:str = ''
         self.__process:Process
-        self.__event = Event()
 
     # private methods
     def __spin(self) -> None:
         """spinning function
         """
         # keep spinning until it is time to stop
-        while not self.__event.is_set():
+        while not self.__EVENT.is_set():
             # print each character in the wheel then pause
             for char in Wheel.__CHARS:
                 sys.stdout.write('\r' + self.__msg + char)
@@ -46,6 +46,7 @@ class Wheel:
         # initialize attributes
         self.__msg = msg
         self.__process = Process(target=self.__spin)
+        self.__EVENT.clear()
         
         # start spinning the wheel
         self.__process.start()
@@ -54,7 +55,7 @@ class Wheel:
         """stops spinning the wheel
         """
         # stop spinning the wheel
-        self.__event.set()
+        self.__EVENT.set()
         self.__process.join()
         
         # remove the wheel character
@@ -65,6 +66,9 @@ class Wheel:
 class Clock:
     """ this class is used to easily track durations in a pretty format
     """
+    # private attributes; share a single wheel (easier to kill)
+    __WHEEL = Wheel()
+    
     # overload
     def __init__(self) -> Clock:
         """ constructor. accepts no inputs
@@ -73,10 +77,7 @@ class Clock:
         # initialize attributes
         self.__startTime:float = 0.0
         self.__duration:float = 0.0
-        
-        # type hint other attributes
-        self.__spin:bool
-        self.__wheel:Wheel
+        self.__spin:bool = True
         
         # start the clock
         self.__start()
@@ -213,8 +214,7 @@ class Clock:
         
         # spin the wheel if requested; wheel handles printing
         if self.__spin:
-            self.__wheel = Wheel()
-            self.__wheel.start(msg + end)
+            self.__WHEEL.start(msg + end)
         
         # otherwise print the message 
         else:
@@ -229,7 +229,7 @@ class Clock:
         """
         # stop spinning the wheel if necessary
         if self.__spin:
-            self.__wheel.stop()
+            self.__WHEEL.stop()
             
         # print the done string
         print(f"done {self.getTimeString()}")
