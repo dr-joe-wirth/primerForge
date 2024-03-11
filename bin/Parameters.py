@@ -515,7 +515,7 @@ class Parameters():
         fn = os.path.join(self.log.debugDir, fn)
         
         # determine which filename to print
-        printedFn = fn[len(os.getcwd()):]
+        printedFn = fn[len(os.getcwd())+1:]
         
         # print status
         self.log.info(MSG_1A + objName + MSG_1B + printedFn)
@@ -528,7 +528,7 @@ class Parameters():
         # print status
         clock.printDone()
         self.log.info(f'done {clock.getTimeString()}')
-    
+
     def loadObj(self, fn:str):
         """loads an object from a pickle file
 
@@ -543,7 +543,7 @@ class Parameters():
         MSG_1B = "'"
         
         # determine which filename to print
-        printedFn = fn[len(os.getcwd()):]
+        printedFn = fn[len(os.getcwd())+1:]
         
         # start clock
         clock = Clock()
