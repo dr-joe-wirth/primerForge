@@ -517,6 +517,14 @@ class Parameters():
         self.log.info(f'done {clock.getTimeString()}')
 
     def loadObj(self, fn:str):
+        """loads an object from a pickle file
+
+        Args:
+            fn (str): a pickle filename
+
+        Returns:
+            any: the unpickled object
+        """
         # constants
         MSG_1A = "loading pickle from '"
         MSG_1B = "'"
