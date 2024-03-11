@@ -385,34 +385,97 @@ def _main(params:Parameters) -> None:
         * writes data to file
     """
     # messages
-    MSG_3  = '\ntotal runtime: '
+    MSG  = '\ntotal runtime: '
     
     # start the timers
     totalClock = Clock()
     clock = Clock()
     
+    # start the logger
+    params.log.rename(_main.__name__)
+    
     # get the checkpoint status
     sharedExists, candExists, unfiltExists, filtExists, finalExists, analExists = __getCheckpoint(params)
     
-    # get the candidate kmers for the ingroup
-    candidateKmers = __getCandidates(params, sharedExists, clock)
+    # jump straight to the end if possible
+    if finalExists and analExists:
+        # load data
+        pairs = params.loadObj(params.pickles[__PAIR_3_NUM])
+        analysisData = params.loadObj(params.pickles[__ANAL_NUM])
+        
+        # plot and write data
+        __plotAndWrite(params, pairs, analysisData, clock)
     
-    # initialize the analysis data
-    analysisData = __initializeAnalysis(params, candidateKmers, clock)
+    # otherwise jump to final pair retrieval if possible
+    elif filtExists and analExists:
+        # load data
+        pairs = params.loadObj(params.pickles[__PAIR_2_NUM])
+        analysisData = params.loadObj(params.pickles[__ANAL_NUM])
+        
+        # get final pairs
+        __getFinalPairs(params, pairs, analysisData, clock)
+        
+        # plot and write data
+        __plotAndWrite(params, pairs, analysisData, clock)
     
-    # get the pairs shared in the ingroup
-    pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
+    # otherwise jump to outgroup removal if possible
+    elif unfiltExists and analExists:
+        # load data
+        pairs = params.loadObj(params.pickles[__PAIR_1_NUM])
+        analysisData = params.loadObj(params.pickles[__ANAL_NUM])
+        
+        # remove outgroup
+        __removeOutgroup(params, pairs, analysisData, clock)
+        
+        # get final pairs
+        __getFinalPairs(params, pairs, analysisData, clock)
+        
+        # plot and write data
+        __plotAndWrite(params, pairs, analysisData, clock)
     
-    # remove primer pairs that make products in the outgroup
-    __removeOutgroup(params, pairs, analysisData, clock)
+    # otherwise jump to pair retrieval
+    elif candExists:
+        # load data
+        candidateKmers = params.loadObj(params.pickles[__CAND_NUM])
+        
+        # get analysis data
+        if analExists:
+            analysisData = params.loadObj(params.pickles[__ANAL_NUM])
+        else:
+            analysisData = __initializeAnalysis(params, candidateKmers, clock)
+        
+        # get unfiltered pairs
+        pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
+        
+        # remove outgroup
+        __removeOutgroup(params, pairs, analysisData, clock)
+        
+        # get final pairs
+        __getFinalPairs(params, pairs, analysisData, clock)
+        
+        # plot and write data
+        __plotAndWrite(params, pairs, analysisData, clock)
     
-    # keep one pair per bin pair
-    __getFinalPairs(params, pairs, analysisData, clock)
-    
-    # make plots and write data
-    __plotAndWrite(params, pairs, analysisData, clock)
+    # otherwise run from the beginning (_getAllCandidates handles sharedExists)
+    else:
+        # get the candidate kmers for the ingroup
+        candidateKmers = __getCandidates(params, sharedExists, clock)
+        
+        # initialize the analysis data
+        analysisData = __initializeAnalysis(params, candidateKmers, clock)
+        
+        # get the pairs shared in the ingroup
+        pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
+        
+        # remove primer pairs that make products in the outgroup
+        __removeOutgroup(params, pairs, analysisData, clock)
+        
+        # keep one pair per bin pair
+        __getFinalPairs(params, pairs, analysisData, clock)
+        
+        # make plots and write data
+        __plotAndWrite(params, pairs, analysisData, clock)
     
     # print the total runtime
-    print(MSG_3, end='', flush=True)
-    totalClock.printTime()
-    params.log.info(f"{MSG_3} {totalClock.getTimeString()}\n\n")
+    print(f"{MSG}{totalClock.getTimeString()}\n")
+    params.log.info(f"{MSG}{totalClock.getTimeString()}\n\n")
