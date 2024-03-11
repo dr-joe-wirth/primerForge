@@ -360,19 +360,13 @@ def __getCandidatesForOneGenome(name:str, kmers:dict[Seq,dict[str,tuple[str,int,
     return __buildOutput(kmers, candidates)
 
 
-def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
-    """gets all the candidate kmer sequences for a given ingroup with respect to a given outgroup
+def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, sharedExists:bool) -> dict[str,dict[str,list[Primer]]]:
+    """gets all the candidate kmer sequences for a given ingroup
 
     Args:
-        ingroup (dict[str,list[SeqRecord]]): the ingroup sequences: key=genome name; val=contigs as SeqRecords
-        minLen (int): minimum primer length
-        maxLen (int): maximum primer length
-        minGc (float): minimum primer G+C percent
-        maxGc (float): maximum primer G+C percent
-        minTm (float): minimum primer melting temp
-        maxTm (float): maximum primer melting temp
-        numThreads (int): number threads available for parallel processing
-        debug (bool, optional): indicates if it should run in debug mode. Defaults to False.
+        ingroup (dict[str,list[SeqRecord]]): key=genome name; val=contigs as a list of SeqRecord
+        params (Parameters): a Parameters object
+        sharedExists (bool): indicates if the shared kmers are already pickled
 
     Raises:
         RuntimeError: no shared ingroup kmers
@@ -381,9 +375,9 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     Returns:
         dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
-    # constant for debugging
-    KMER_FN = "sharedKmers.p"
-
+    # constants
+    SHARED_KMER_NUM = 0
+    
     # messages
     GAP = " "*4
     MSG_1 = f"{GAP}getting shared ingroup kmers that appear once in each genome"
@@ -401,23 +395,28 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters) 
     # setup debugger
     params.log.rename(_getAllCandidateKmers.__name__)
     
-    # get all non-duplicated kmers that are shared in the ingroup
-    params.log.info(f'{MSG_1}')
-    clock.printStart(MSG_1)
-    kmers = __getSharedKmers(ingroup, params)
-    clock.printDone()
+    if sharedExists:
+        kmers = params.loadObj(params.pickles[SHARED_KMER_NUM])
     
-    # move log back to this function
-    params.log.rename(_getAllCandidateKmers.__name__)
-    params.log.info(f'{GAP}done {clock.getTimeString()}')
+        
+    else:
+        # get all non-duplicated kmers that are shared in the ingroup
+        params.log.info(MSG_1)
+        clock.printStart(MSG_1)
+        kmers = __getSharedKmers(ingroup, params)
+        clock.printDone()
+        
+        # move log back to this function
+        params.log.rename(_getAllCandidateKmers.__name__)
+        params.log.info(f'{GAP}done {clock.getTimeString()}')
     
-    # make sure that ingroup kmers were identified
-    if kmers == dict():
-        params.log.error(ERR_MSG_1)
-        raise RuntimeError(ERR_MSG_1)
-    
-    # dump the shared kmers to file
-    params.dumpObj(kmers, KMER_FN, "shared kmers")
+        # make sure that ingroup kmers were identified
+        if kmers == dict():
+            params.log.error(ERR_MSG_1)
+            raise RuntimeError(ERR_MSG_1)
+        
+        # dump the shared kmers to file
+        params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers")
     
     # print status
     clock.printStart(MSG_2)
