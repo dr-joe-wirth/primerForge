@@ -517,8 +517,9 @@ class Parameters():
             objName (str): the name of the dumped object
         """
         # messages
-        MSG_1A = "dumping "
-        MSG_1B = " to "
+        MSG_A = "dumping "
+        MSG_B = " to '"
+        MSG_C = "'"
         
         # start the timer
         clock = Clock()
@@ -530,8 +531,8 @@ class Parameters():
         printedFn = fn[len(os.getcwd())+1:]
         
         # print status
-        self.log.info(MSG_1A + objName + MSG_1B + printedFn)
-        clock.printStart(MSG_1A + objName + MSG_1B + printedFn)
+        self.log.info(MSG_A + objName + MSG_B + printedFn + MSG_C)
+        clock.printStart(MSG_A + objName + MSG_B + printedFn + MSG_C)
         
         # dump the object to file
         with open(fn, 'wb') as fh:
@@ -551,8 +552,8 @@ class Parameters():
             any: the unpickled object
         """
         # constants
-        MSG_1A = "loading pickle from '"
-        MSG_1B = "'"
+        MSG_A = "loading pickle from '"
+        MSG_B = "'"
         
         # determine which filename to print
         printedFn = fn[len(os.getcwd())+1:]
@@ -561,8 +562,8 @@ class Parameters():
         clock = Clock()
         
         # print status
-        self.log.info(MSG_1A + printedFn + MSG_1B)
-        clock.printStart(MSG_1A + printedFn + MSG_1B)
+        self.log.info(MSG_A + printedFn + MSG_B)
+        clock.printStart(MSG_A + printedFn + MSG_B)
         
         # load the pickle
         with open(fn, 'rb') as fh:
