@@ -331,7 +331,7 @@ class Parameters():
                 # get analysis filenames
                 elif opt in ANAL_FLAGS:
                     self.plotsFn = os.path.abspath(arg + Parameters._PLOT_EXT)
-                    self.plotDataFn = os.path.abspath(dataFn = arg + Parameters._DATA_EXT)
+                    self.plotDataFn = os.path.abspath(arg + Parameters._DATA_EXT)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
