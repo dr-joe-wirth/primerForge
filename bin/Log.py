@@ -5,7 +5,6 @@ class Log():
     """class for interacting with the logger 
     """
     # global constants
-    __LOG_DIR = "_debug"
     __LOG_FN = "primerForge.log"
     
     def __init__(self, debugDir:str='', debug:bool=False) -> Log:
@@ -18,11 +17,6 @@ class Log():
         Returns:
             Log: _description_
         """
-        # creates a Log object
-
-        # Returns:
-        #     Log: a Log object
-        # 
         # type hint attributes
         self.__logger:logging.Logger
         

@@ -468,6 +468,7 @@ class Parameters():
             Parameters.__checkOutputFile(self.resultsFn)
             Parameters.__checkOutputFile(self.plotDataFn)
             Parameters.__checkOutputFile(self.plotsFn)
+            print()
     
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
@@ -503,19 +504,31 @@ class Parameters():
             fn (str): the filename where object will be dumped
             objName (str): the name of the dumped object
         """
+        # messages
         MSG_1A = "dumping "
         MSG_1B = " to "
         
+        # start the timer
         clock = Clock()
+        
+        # get the filename
         fn = os.path.join(self.log.debugDir, fn)
         
-        self.log.info(MSG_1A + objName + MSG_1B + fn)
-        clock.printStart(MSG_1A + objName + MSG_1B + fn)
+        # determine which filename to print
+        printedFn = fn[len(os.getcwd()):]
+        
+        # print status
+        self.log.info(MSG_1A + objName + MSG_1B + printedFn)
+        clock.printStart(MSG_1A + objName + MSG_1B + printedFn)
+        
+        # dump the object to file
         with open(fn, 'wb') as fh:
             pickle.dump(obj, fh)
+        
+        # print status
         clock.printDone()
         self.log.info(f'done {clock.getTimeString()}')
-
+    
     def loadObj(self, fn:str):
         """loads an object from a pickle file
 
@@ -529,12 +542,15 @@ class Parameters():
         MSG_1A = "loading pickle from '"
         MSG_1B = "'"
         
+        # determine which filename to print
+        printedFn = fn[len(os.getcwd()):]
+        
         # start clock
         clock = Clock()
         
         # print status
-        self.log.info(MSG_1A + fn + MSG_1B)
-        clock.printStart(MSG_1A + fn + MSG_1B)
+        self.log.info(MSG_1A + printedFn + MSG_1B)
+        clock.printStart(MSG_1A + printedFn + MSG_1B)
         
         # load the pickle
         with open(fn, 'rb') as fh:
