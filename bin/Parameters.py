@@ -16,7 +16,8 @@ class Parameters():
                     1: "candidates.p",
                     2: "pairs.p",
                     3: "pairs_noOutgroup.p",
-                    4: 'analysis.p'}
+                    4: "pairs_final.p",
+                    5: 'analysis.p'}
     
     # default values
     _DEF_RESULTS_FN = 'results.tsv'
