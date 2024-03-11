@@ -5,42 +5,39 @@ class Log():
     """class for interacting with the logger 
     """
     # global constants
-    __LOG_DIR = "_debug"
     __LOG_FN = "primerForge.log"
     
-    def __init__(self, debugDir:str='') -> Log:
+    def __init__(self, debugDir:str='', debug:bool=False) -> Log:
         """creates a Log object
 
+        Args:
+            debugDir (str, optional): the directory for debugging. Defaults to ''.
+            debug (bool, optional): indicates if logging is debug level. Defaults to False.
+
         Returns:
-            Log: a Log object
+            Log: _description_
         """
         # type hint attributes
         self.__logger:logging.Logger
         
         # set the debug directory
         if debugDir == '':
-            self.debugDir:str = os.path.join(os.getcwd(), Log.__LOG_DIR)
+            self.debugDir:str = os.getcwd()
         else:
             self.debugDir = debugDir
         
-        # set the log file
-        self.logFn:str = os.path.join(self.debugDir, Log.__LOG_FN)
-    
-    def initialize(self, name:str) -> None:
-        """initializes the log
-
-        Args:
-            name (str): the name of the logger
-        """
         # make sure debug directory exists
         if not os.path.isdir(self.debugDir):
             os.mkdir(self.debugDir)
         
-        # point the log at the log file; level is debug
-        logging.basicConfig(filename=self.logFn, level=logging.DEBUG)
+        # set the log file
+        self.logFn:str = os.path.join(self.debugDir, Log.__LOG_FN)
         
-        # start up the logger
-        self.__logger = logging.getLogger(name)
+        # point the log at the log file; level is DEBUG or INFO
+        if debug:
+            logging.basicConfig(filename=self.logFn, level=logging.DEBUG)
+        else:
+            logging.basicConfig(filename=self.logFn, level=logging.INFO)
     
     def rename(self, name:str):
         """renames the logger

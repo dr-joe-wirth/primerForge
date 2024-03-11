@@ -176,11 +176,10 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     clock = Clock()
     outgroupProducts = dict()
     
-    # print status; log if debugging
+    # print status and log
+    params.log.rename(_removeOutgroupPrimers.__name__)
+    params.log.info(MSG_1)
     clock.printStart(MSG_1)
-    if params.debug:
-        params.log.rename(_removeOutgroupPrimers.__name__)
-        params.log.info(MSG_1)
     
     # for each outgroup genome
     for name in outgroup.keys():
@@ -229,30 +228,24 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                         outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
         
         # log the number of pairs removed and remaining if debugging
-        if params.debug:
-            params.log.debug(f"{MSG_3A}{startNumPairs - len(pairs)}{MSG_3B}{name}{MSG_3C}{len(pairs)}{MSG_3D}")
+        params.log.debug(f"{MSG_3A}{startNumPairs - len(pairs)}{MSG_3B}{name}{MSG_3C}{len(pairs)}{MSG_3D}")
     
     # print status; log if debugging
     clock.printDone()
-    if params.debug:
-        params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(f"done {clock.getTimeString()}")
     
     # if the pairs dictionary is now empty, then raise an error
     if pairs == dict():
-        # save details if debugging
-        if params.debug:
-            params.log.error(ERR_MSG)
+        params.log.error(ERR_MSG)
         raise RuntimeError(ERR_MSG)
     
-    # print status; log if debugging
+    # print status and log
+    params.log.info(MSG_2)
     clock.printStart(MSG_2)
-    if params.debug:
-        params.log.info(MSG_2)
     
     # process the outgroup results and add them to the pairs dictionary
     __processOutgroupResults(outgroupProducts, pairs)
     
     # print status; log if debugging
     clock.printDone()
-    if params.debug:
-        params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(f"done {clock.getTimeString()}")

@@ -1,17 +1,30 @@
 from __future__ import annotations
 from Bio import SeqIO
 from bin.Log import Log
+from bin.Clock import Clock
 import getopt, glob, os, pickle, sys
 
 class Parameters():
     """class to store arguments and debug utilities
     """
+    # constants
+    _PLOT_EXT = "_plot.pdf"
+    _DATA_EXT = "_data.tsv"
+    _BED_EXT  = "_kmers.bed"
+    __ALLOWED_FORMATS = ('genbank', 'fasta')
+    __PICKLE_DIR = "_pickles"
+    __PICKLE_FNS = {0: "sharedKmers.p",
+                    1: "candidates.p",
+                    2: "pairs.p",
+                    3: "pairs_noOutgroup.p",
+                    4: "pairs_final.p",
+                    5: 'analysis.p'}
+    
     # default values
-    _ALLOWED_FORMATS = ('genbank', 'fasta')
     _DEF_RESULTS_FN = 'results.tsv'
     _DEF_ANALYSIS_BASENAME = 'distribution'
     _DEF_OUTGROUP = list()
-    _DEF_FRMT = _ALLOWED_FORMATS[0]
+    _DEF_FRMT = __ALLOWED_FORMATS[0]
     _DEF_MIN_LEN = 16
     _DEF_MAX_LEN = 20
     _DEF_MIN_GC = 40.0
@@ -22,13 +35,9 @@ class Parameters():
     _DEF_MAX_PCR = 2400
     _DEF_MAX_TM_DIFF = 5.0
     _DEF_NUM_THREADS = 1
+    _DEF_KEEP = False
     _DEF_DEBUG = False
     _DEF_HELP = False
-    
-    # analysis file extensions
-    _PLOT_EXT = "_plot.pdf"
-    _DATA_EXT = "_data.tsv"
-    _BED_EXT  = "_kmers.bed"
     
     def __init__(self, author:str, version:str) -> Parameters:
         # type hint attributes
@@ -53,6 +62,8 @@ class Parameters():
         self.debug:bool
         self.helpRequested:bool
         self.log:Log
+        self.pickles:dict[int,str]
+        self.keepPickles:bool
         
         # save author and version as private attributes
         self.__author:str = author
@@ -61,9 +72,18 @@ class Parameters():
         # parse the command line arguments (populates attributes)
         self.__parseArgs()
         
-        # initialize a log if debugging
-        if self.debug:
-            self.log = Log()
+        # handle a few upkeep tasks if running
+        if not self.helpRequested:
+            # initialize a logger
+            self.log = Log(debug=self.debug)
+            
+            # create the pickle directory
+            pickleDir = os.path.join(os.getcwd(), Parameters.__PICKLE_DIR)
+            if not os.path.exists(pickleDir):
+                os.mkdir(pickleDir)
+            
+            # get the pickle filenames
+            self.pickles = {x:os.path.join(pickleDir, y) for x,y in self.__PICKLE_FNS.items()}
 
     def __checkOutputFile(fn:str) -> None:
         """checks if an output file is valid
@@ -77,8 +97,8 @@ class Parameters():
         """
         # constants
         YN = ['y', 'n']
-        WARN_MSG_A = 'file ('
-        WARN_MSG_B = ") already exists."
+        WARN_MSG_A = "\nfile '"
+        WARN_MSG_B = "' already exists."
         PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}] "
         INVALID_SELECTION = 'invalid selection'
         ERR_MSG  = 'cannot write to '
@@ -191,6 +211,7 @@ class Parameters():
         THREADS_FLAGS = ('-n', '--num_threads')
         PCR_LEN_FLAGS = ('-r', '--pcr_prod')
         TM_DIFF_FLAGS = ('-d', '--tm_diff')
+        KEEP_FLAGS = ('-k', '--keep')
         VERSION_FLAGS = ('-v', '--version')
         HELP_FLAGS = ('-h', '--help')
         DEBUG_FLAGS = ("--debug",)
@@ -205,6 +226,7 @@ class Parameters():
                      TM_FLAGS[0][-1] + ":" + \
                      PCR_LEN_FLAGS[0][-1] + ":" + \
                      TM_DIFF_FLAGS[0][-1] + ":" + \
+                     KEEP_FLAGS[0][-1] + ":" + \
                      THREADS_FLAGS[0][-1] + ":" + \
                      VERSION_FLAGS[0][-1] + \
                      HELP_FLAGS[0][-1]
@@ -219,6 +241,7 @@ class Parameters():
                      TM_FLAGS[1][2:] + "=",
                      PCR_LEN_FLAGS[1][2:] + "=",
                      TM_DIFF_FLAGS[1][2:] + "=",
+                     KEEP_FLAGS[1][2:],
                      THREADS_FLAGS[1][2:] + "=",
                      VERSION_FLAGS[1][2:],
                      HELP_FLAGS[1][2:],
@@ -262,16 +285,17 @@ class Parameters():
                        f"{GAP}{ANAL_FLAGS[0] + SEP_1 + ANAL_FLAGS[1]:<{WIDTH}}[file] output basename for primer analysis data{DEF_OPEN}{Parameters._DEF_ANALYSIS_BASENAME}{CLOSE}{EOL}" + \
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
-                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters._ALLOWED_FORMATS[0]}{SEP_2}{Parameters._ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
+                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters.__ALLOWED_FORMATS[0]}{SEP_2}{Parameters.__ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
                        f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
                        f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_GC}{SEP_3}{Parameters._DEF_MAX_GC}{CLOSE}{EOL}" + \
                        f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_TM}{SEP_3}{Parameters._DEF_MAX_TM}{CLOSE}{EOL}" + \
                        f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_PCR}{SEP_3}{Parameters._DEF_MAX_PCR}{CLOSE}{EOL}" + \
                        f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{Parameters._DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
                        f"{GAP}{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{Parameters._DEF_NUM_THREADS}{CLOSE}{EOL}" + \
+                       f"{GAP}{KEEP_FLAGS[0] + SEP_1 + KEEP_FLAGS[1]:<{WIDTH}}keep intermediate files{DEF_OPEN}{Parameters._DEF_KEEP}{CLOSE}{EOL}" + \
                        f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
                        f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
-                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{EOL*2}"
+                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{DEF_OPEN}{Parameters._DEF_DEBUG}{CLOSE}{EOL*2}"
             
             print(HELP_MSG)
             
@@ -293,6 +317,7 @@ class Parameters():
         self.maxPcr = Parameters._DEF_MAX_PCR
         self.maxTmDiff = Parameters._DEF_MAX_TM_DIFF
         self.numThreads = Parameters._DEF_NUM_THREADS
+        self.keepPickles = Parameters._DEF_KEEP
         self.debug = Parameters._DEF_DEBUG
         self.helpRequested = Parameters._DEF_HELP
         
@@ -320,22 +345,13 @@ class Parameters():
                         raise ValueError(ERR_MSG_1)
                 
                 # get output filename
-                elif opt in OUT_FLAGS:
-                    # check for existing files
-                    Parameters.__checkOutputFile(arg)
-                    
+                elif opt in OUT_FLAGS:                    
                     self.resultsFn = os.path.abspath(arg)
                     
                 # get analysis filenames
                 elif opt in ANAL_FLAGS:
-                    plotFn = arg + Parameters._PLOT_EXT
-                    dataFn = arg + Parameters._DATA_EXT
-                    
-                    Parameters.__checkOutputFile(plotFn)
-                    Parameters.__checkOutputFile(dataFn)
-                    
-                    self.plotsFn = os.path.abspath(plotFn)
-                    self.plotDataFn = os.path.abspath(dataFn)
+                    self.plotsFn = os.path.abspath(arg + Parameters._PLOT_EXT)
+                    self.plotDataFn = os.path.abspath(dataFn = arg + Parameters._DATA_EXT)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
@@ -366,7 +382,7 @@ class Parameters():
                 
                 # get the file format
                 elif opt in FMT_FLAGS:
-                    if arg not in Parameters._ALLOWED_FORMATS:
+                    if arg not in Parameters.__ALLOWED_FORMATS:
                         raise ValueError(ERR_MSG_5)
                     self.format = arg
                 
@@ -460,9 +476,14 @@ class Parameters():
                     except:
                         raise ValueError(ERR_MSG_15)
                 
+                # update keep to True if requested
+                if opt in KEEP_FLAGS:
+                    self.keepPickles = True
+                
                 # update debug to True if requested
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
+                    self.keepPickles = True
             
             # update disallowed to match pcr parameters unless it was already specified
             if self.disallowedLens is None:
@@ -477,6 +498,12 @@ class Parameters():
             
             # create and save a list of bed files
             self.__getBedFilenames()
+            
+            # check for existing files
+            Parameters.__checkOutputFile(self.resultsFn)
+            Parameters.__checkOutputFile(self.plotDataFn)
+            Parameters.__checkOutputFile(self.plotsFn)
+            print()
     
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
@@ -485,24 +512,24 @@ class Parameters():
         WIDTH = 34
         
         # write the parameters to the log file
-        self.log.debug(f'{"version:":<{WIDTH}}{self.__version}')
-        self.log.debug(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
-        self.log.debug(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
-        self.log.debug(f'{"results filename:":{WIDTH}}{self.resultsFn}')
-        self.log.debug(f'{"plots filename:":{WIDTH}}{self.plotsFn}')
-        self.log.debug(f'{"plots data filename:":{WIDTH}}{self.plotDataFn}')
-        self.log.debug(f'{"file format:":{WIDTH}}{self.format}')
-        self.log.debug(f'{"min kmer len:":{WIDTH}}{self.minLen}')
-        self.log.debug(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
-        self.log.debug(f'{"min % G+C":<{WIDTH}}{self.minGc}')
-        self.log.debug(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
-        self.log.debug(f'{"min Tm:":<{WIDTH}}{self.minTm}')
-        self.log.debug(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
-        self.log.debug(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
-        self.log.debug(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
-        self.log.debug(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
-        self.log.debug(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
-        self.log.debug(f'{"num threads:":<{WIDTH}}{self.numThreads}')
+        self.log.info(f'{"version:":<{WIDTH}}{self.__version}')
+        self.log.info(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
+        self.log.info(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
+        self.log.info(f'{"results filename:":{WIDTH}}{self.resultsFn}')
+        self.log.info(f'{"plots filename:":{WIDTH}}{self.plotsFn}')
+        self.log.info(f'{"plots data filename:":{WIDTH}}{self.plotDataFn}')
+        self.log.info(f'{"file format:":{WIDTH}}{self.format}')
+        self.log.info(f'{"min kmer len:":{WIDTH}}{self.minLen}')
+        self.log.info(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
+        self.log.info(f'{"min % G+C":<{WIDTH}}{self.minGc}')
+        self.log.info(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
+        self.log.info(f'{"min Tm:":<{WIDTH}}{self.minTm}')
+        self.log.info(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
+        self.log.info(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
+        self.log.info(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
+        self.log.info(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
+        self.log.info(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
+        self.log.info(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
     def dumpObj(self, obj:any, fn:str, objName:str) -> None:
         """dumps an object in memory to file as a pickle
@@ -512,8 +539,61 @@ class Parameters():
             fn (str): the filename where object will be dumped
             objName (str): the name of the dumped object
         """
+        # messages
+        MSG_A = "dumping "
+        MSG_B = " to '"
+        MSG_C = "'"
+        
+        # start the timer
+        clock = Clock()
+        
+        # get the filename
         fn = os.path.join(self.log.debugDir, fn)
+        
+        # determine which filename to print
+        printedFn = fn[len(os.getcwd())+1:]
+        
+        # print status
+        self.log.info(MSG_A + objName + MSG_B + printedFn + MSG_C)
+        clock.printStart(MSG_A + objName + MSG_B + printedFn + MSG_C)
+        
+        # dump the object to file
         with open(fn, 'wb') as fh:
             pickle.dump(obj, fh)
         
-        self.log.debug(f"dumped {objName} to {fn}")
+        # print status
+        clock.printDone()
+        self.log.info(f'done {clock.getTimeString()}')
+
+    def loadObj(self, fn:str):
+        """loads an object from a pickle file
+
+        Args:
+            fn (str): a pickle filename
+
+        Returns:
+            any: the unpickled object
+        """
+        # constants
+        MSG_A = "loading pickle from '"
+        MSG_B = "'"
+        
+        # determine which filename to print
+        printedFn = fn[len(os.getcwd())+1:]
+        
+        # start clock
+        clock = Clock()
+        
+        # print status
+        self.log.info(MSG_A + printedFn + MSG_B)
+        clock.printStart(MSG_A + printedFn + MSG_B)
+        
+        # load the pickle
+        with open(fn, 'rb') as fh:
+            out = pickle.load(fh)
+            
+        # print status
+        clock.printDone()
+        self.log.info('done ' + clock.getTimeString())
+        
+        return out

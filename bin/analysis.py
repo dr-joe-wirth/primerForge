@@ -405,11 +405,10 @@ def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Par
     # initialize the clock
     clock = Clock()
     
-    # print the status
+    # print the status and log
+    params.log.rename(_plotAnalysisData.__name__)
+    params.log.info(MSG_1)
     clock.printStart(MSG_1)
-    if params.debug:
-        params.log.rename(_plotAnalysisData.__name__)
-        params.log.info(MSG_1)
     
     # count the positions
     counts = __countPositions(analysisData, params)
@@ -419,8 +418,7 @@ def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Par
     
     # print status
     clock.printDone()
-    if params.debug:
-        params.log.info(f"{DONE}{clock.getTimeString()}")
+    params.log.info(f"{DONE} {clock.getTimeString()}")
     
     # make the bed files
     clock.printStart('writing bed files', end=' ...\n', spin=False)
@@ -432,9 +430,8 @@ def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Par
         # for each genome
         for name in catCounts.keys():
             # print the status
+            params.log.info(f"{MSG_2}{name}")
             clock.printStart(f"{MSG_2}{name}")
-            if params.debug:
-                params.log.info(f"{MSG_2}{name}")
             
             # for each level
             for level in catCounts[name].keys():
@@ -443,18 +440,15 @@ def _plotAnalysisData(analysisData:dict[tuple[Seq,str],AnalysisData], params:Par
             
             # print the status
             clock.printDone()
-            if params.debug:
-                params.log.info(f"{DONE} {clock.getTimeString()}")
+            params.log.info(f"{DONE} {clock.getTimeString()}")
     
     # print status
     clock.printStart(MSG_3)
-    if params.debug:
-        params.log.info(MSG_3)
+    params.log.info(MSG_3)
     
     # write the analysis data
     __writeAnalysisData(analysisData, contigBreaks, params.plotDataFn)
 
     # print status
     clock.printDone()
-    if params.debug:
-        params.log.info(f"{DONE} {clock.getTimeString()}")
+    params.log.info(f"{DONE} {clock.getTimeString()}")
