@@ -7,12 +7,22 @@ import getopt, glob, os, pickle, sys
 class Parameters():
     """class to store arguments and debug utilities
     """
+    # constants
+    _PLOT_EXT = "_plot.pdf"
+    _DATA_EXT = "_data.tsv"
+    __ALLOWED_FORMATS = ('genbank', 'fasta')
+    __PICKLE_DIR = "_pickles"
+    __PICKLE_FNS = {0: "sharedKmers.p",
+                    1: "candidates.p",
+                    2: "pairs.p",
+                    3: "pairs_noOutgroup.p",
+                    4: 'analysis.p'}
+    
     # default values
-    _ALLOWED_FORMATS = ('genbank', 'fasta')
     _DEF_RESULTS_FN = 'results.tsv'
     _DEF_ANALYSIS_BASENAME = 'distribution'
     _DEF_OUTGROUP = list()
-    _DEF_FRMT = _ALLOWED_FORMATS[0]
+    _DEF_FRMT = __ALLOWED_FORMATS[0]
     _DEF_MIN_LEN = 16
     _DEF_MAX_LEN = 20
     _DEF_MIN_GC = 40.0
@@ -25,10 +35,6 @@ class Parameters():
     _DEF_NUM_THREADS = 1
     _DEF_DEBUG = False
     _DEF_HELP = False
-    
-    # analysis file extensions
-    _PLOT_EXT = "_plot.pdf"
-    _DATA_EXT = "_data.tsv"
     
     def __init__(self, author:str, version:str) -> Parameters:
         # type hint attributes
@@ -52,6 +58,7 @@ class Parameters():
         self.debug:bool
         self.helpRequested:bool
         self.log:Log
+        self.pickles:dict[int,str]
         
         # save author and version as private attributes
         self.__author:str = author
@@ -60,8 +67,18 @@ class Parameters():
         # parse the command line arguments (populates attributes)
         self.__parseArgs()
         
-        # initialize a log if debugging
-        self.log = Log(debug=self.debug)
+        # handle a few upkeep tasks if running
+        if not self.helpRequested:
+            # initialize a logger
+            self.log = Log(debug=self.debug)
+            
+            # create the pickle directory
+            pickleDir = os.path.join(os.getcwd(), Parameters.__PICKLE_DIR)
+            if not os.path.exists(pickleDir):
+                os.mkdir(pickleDir)
+            
+            # get the pickle filenames
+            self.pickles = {x:os.path.join(pickleDir, y) for x,y in self.__PICKLE_FNS.items()}
 
     def __checkOutputFile(fn:str) -> None:
         """checks if an output file is valid
@@ -242,7 +259,7 @@ class Parameters():
                        f"{GAP}{ANAL_FLAGS[0] + SEP_1 + ANAL_FLAGS[1]:<{WIDTH}}[file] output basename for primer analysis data{DEF_OPEN}{Parameters._DEF_ANALYSIS_BASENAME}{CLOSE}{EOL}" + \
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
-                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters._ALLOWED_FORMATS[0]}{SEP_2}{Parameters._ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
+                       f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters.__ALLOWED_FORMATS[0]}{SEP_2}{Parameters.__ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
                        f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
                        f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_GC}{SEP_3}{Parameters._DEF_MAX_GC}{CLOSE}{EOL}" + \
                        f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_TM}{SEP_3}{Parameters._DEF_MAX_TM}{CLOSE}{EOL}" + \
@@ -337,7 +354,7 @@ class Parameters():
                 
                 # get the file format
                 elif opt in FMT_FLAGS:
-                    if arg not in Parameters._ALLOWED_FORMATS:
+                    if arg not in Parameters.__ALLOWED_FORMATS:
                         raise ValueError(ERR_MSG_5)
                     self.format = arg
                 
@@ -497,3 +514,25 @@ class Parameters():
             pickle.dump(obj, fh)
         clock.printDone()
         self.log.info(f'done {clock.getTimeString()}')
+
+    def loadObj(self, fn:str):
+        # constants
+        MSG_1A = "loading pickle from '"
+        MSG_1B = "'"
+        
+        # start clock
+        clock = Clock()
+        
+        # print status
+        self.log.info(MSG_1A + fn + MSG_1B)
+        clock.printStart(MSG_1A + fn + MSG_1B)
+        
+        # load the pickle
+        with open(fn, 'rb') as fh:
+            out = pickle.load(fh)
+            
+        # print status
+        clock.printDone()
+        self.log.info('done ' + clock.getTimeString())
+        
+        return out
