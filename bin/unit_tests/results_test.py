@@ -126,7 +126,7 @@ class ResultsTest(unittest.TestCase):
         Returns:
             Parameters: a Parameters object
         """
-        MSG = "please specify a number of threads to use"
+        MSG = "\nplease specify a number of threads to use: "
         
         # get the number of threads
         done = False
@@ -162,7 +162,10 @@ class ResultsTest(unittest.TestCase):
         
         # proceed like normal if the files do not yet exist
         else:
-            params = Parameters('', '')
+            params = Parameters('', '', initializeLog=False)
+        
+        # move the log file to the test directory
+        params.log = Log(debugDir=ResultsTest.TEST_DIR, debug=True)
         
         return params
 

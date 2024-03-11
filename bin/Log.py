@@ -7,15 +7,16 @@ class Log():
     # global constants
     __LOG_FN = "primerForge.log"
     
-    def __init__(self, debugDir:str='', debug:bool=False) -> Log:
+    def __init__(self, debugDir:str='', debug:bool=False, initialize=True) -> Log:
         """creates a Log object
 
         Args:
             debugDir (str, optional): the directory for debugging. Defaults to ''.
             debug (bool, optional): indicates if logging is debug level. Defaults to False.
+            initialize (bool, optional): indicates if the logger should be initialize. Defaults to True
 
         Returns:
-            Log: _description_
+            Log: a Log object
         """
         # type hint attributes
         self.__logger:logging.Logger
@@ -34,9 +35,9 @@ class Log():
         self.logFn:str = os.path.join(self.debugDir, Log.__LOG_FN)
         
         # point the log at the log file; level is DEBUG or INFO
-        if debug:
+        if debug and initialize:
             logging.basicConfig(filename=self.logFn, level=logging.DEBUG)
-        else:
+        elif initialize:
             logging.basicConfig(filename=self.logFn, level=logging.INFO)
     
     def rename(self, name:str):

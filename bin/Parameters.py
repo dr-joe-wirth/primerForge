@@ -39,7 +39,7 @@ class Parameters():
     _DEF_DEBUG = False
     _DEF_HELP = False
     
-    def __init__(self, author:str, version:str) -> Parameters:
+    def __init__(self, author:str, version:str, initializeLog:bool=True) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
@@ -75,7 +75,7 @@ class Parameters():
         # handle a few upkeep tasks if running
         if not self.helpRequested:
             # initialize a logger
-            self.log = Log(debug=self.debug)
+            self.log = Log(debug=self.debug, initialize=initializeLog)
             
             # create the pickle directory
             pickleDir = os.path.join(os.getcwd(), Parameters.__PICKLE_DIR)
