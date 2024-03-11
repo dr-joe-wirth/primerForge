@@ -244,6 +244,7 @@ def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
     MSG_2 = "updating analysis data"
     
     # print status
+    params.log.rename(__getFinalPairs.__name__)
     params.log.info(MSG_1)
     clock.printStart(MSG_1)
     
@@ -338,6 +339,43 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
             fh.flush()
 
 
+def __plotAndWrite(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], analysisData:dict[tuple[Seq,str],AnalysisData], clock:Clock) -> None:
+    """writes and plots final data
+
+    Args:
+        params (Parameters): a Parameters object
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
+        analysisData (dict[tuple[Seq,str],AnalysisData]): the dictionary produced by __initializeAnalysis
+        clock (Clock): a Clock object
+    """
+    # messages
+    MSG_1A = "writing "
+    MSG_1B = " primer pairs to "
+    MSG_2  = "plotting kmer distributions"
+    
+    # print status
+    params.log.rename(__plotAndWrite.__name__)
+    params.log.info(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
+    clock.printStart(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
+    
+    # write primer pairs to file
+    __writePrimerPairs(params.resultsFn, pairs)
+    
+    # print status
+    clock.printDone()
+    params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(MSG_2)
+    clock.printStart(MSG_2, end=' ...\n', spin=False)
+    
+    # plot analysis data
+    _plotAnalysisData(analysisData, params)
+    
+    # print status
+    clock.printDone()
+    params.log.rename(__plotAndWrite.__name__)
+    params.log.info(f"done {clock.getTimeString()}")
+
+
 def _main(params:Parameters) -> None:
     """main runner function:
         * reads ingroup and outgroup sequences into memory
@@ -347,9 +385,6 @@ def _main(params:Parameters) -> None:
         * writes data to file
     """
     # messages
-    MSG_1A = "writing "
-    MSG_1B = " primer pairs to "
-    MSG_2  = "plotting kmer distributions"
     MSG_3  = '\ntotal runtime: '
     
     # start the timers
@@ -374,20 +409,8 @@ def _main(params:Parameters) -> None:
     # keep one pair per bin pair
     __getFinalPairs(params, pairs, analysisData, clock)
     
-    # write pair results to file
-    params.log.info(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
-    clock.printStart(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
-    __writePrimerPairs(params.resultsFn, pairs)
-    clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
-    
-    # make analysis plots
-    params.log.info(MSG_2)
-    clock.printStart(MSG_2, end=' ...\n', spin=False)
-    _plotAnalysisData(analysisData, params)
-    clock.printDone()
-    params.log.rename(_main.__name__)
-    params.log.info(f"done {clock.getTimeString()}")
+    # make plots and write data
+    __plotAndWrite(params, pairs, analysisData, clock)
     
     # print the total runtime
     print(MSG_3, end='', flush=True)
