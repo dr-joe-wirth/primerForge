@@ -34,6 +34,7 @@ class Parameters():
     _DEF_MAX_PCR = 2400
     _DEF_MAX_TM_DIFF = 5.0
     _DEF_NUM_THREADS = 1
+    _DEF_KEEP = False
     _DEF_DEBUG = False
     _DEF_HELP = False
     
@@ -60,6 +61,7 @@ class Parameters():
         self.helpRequested:bool
         self.log:Log
         self.pickles:dict[int,str]
+        self.keepPickles:bool
         
         # save author and version as private attributes
         self.__author:str = author
@@ -189,6 +191,7 @@ class Parameters():
         THREADS_FLAGS = ('-n', '--num_threads')
         PCR_LEN_FLAGS = ('-r', '--pcr_prod')
         TM_DIFF_FLAGS = ('-d', '--tm_diff')
+        KEEP_FLAGS = ('-k', '--keep')
         VERSION_FLAGS = ('-v', '--version')
         HELP_FLAGS = ('-h', '--help')
         DEBUG_FLAGS = ("--debug",)
@@ -203,6 +206,7 @@ class Parameters():
                      TM_FLAGS[0][-1] + ":" + \
                      PCR_LEN_FLAGS[0][-1] + ":" + \
                      TM_DIFF_FLAGS[0][-1] + ":" + \
+                     KEEP_FLAGS[0][-1] + ":" + \
                      THREADS_FLAGS[0][-1] + ":" + \
                      VERSION_FLAGS[0][-1] + \
                      HELP_FLAGS[0][-1]
@@ -217,6 +221,7 @@ class Parameters():
                      TM_FLAGS[1][2:] + "=",
                      PCR_LEN_FLAGS[1][2:] + "=",
                      TM_DIFF_FLAGS[1][2:] + "=",
+                     KEEP_FLAGS[1][2:],
                      THREADS_FLAGS[1][2:] + "=",
                      VERSION_FLAGS[1][2:],
                      HELP_FLAGS[1][2:],
@@ -267,9 +272,10 @@ class Parameters():
                        f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_PCR}{SEP_3}{Parameters._DEF_MAX_PCR}{CLOSE}{EOL}" + \
                        f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{Parameters._DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
                        f"{GAP}{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{Parameters._DEF_NUM_THREADS}{CLOSE}{EOL}" + \
+                       f"{GAP}{KEEP_FLAGS[0] + SEP_1 + KEEP_FLAGS[1]:<{WIDTH}}keep intermediate files{DEF_OPEN}{Parameters._DEF_KEEP}{CLOSE}{EOL}" + \
                        f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
                        f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
-                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{EOL*2}"
+                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{DEF_OPEN}{Parameters._DEF_DEBUG}{CLOSE}{EOL*2}"
             
             print(HELP_MSG)
             
@@ -291,6 +297,7 @@ class Parameters():
         self.maxPcr = Parameters._DEF_MAX_PCR
         self.maxTmDiff = Parameters._DEF_MAX_TM_DIFF
         self.numThreads = Parameters._DEF_NUM_THREADS
+        self.keepPickles = Parameters._DEF_KEEP
         self.debug = Parameters._DEF_DEBUG
         self.helpRequested = Parameters._DEF_HELP
         
@@ -449,9 +456,14 @@ class Parameters():
                     except:
                         raise ValueError(ERR_MSG_15)
                 
+                # update keep to True if requested
+                if opt in KEEP_FLAGS:
+                    self.keepPickles = True
+                
                 # update debug to True if requested
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
+                    self.keepPickles = True
             
             # update disallowed to match pcr parameters unless it was already specified
             if self.disallowedLens is None:

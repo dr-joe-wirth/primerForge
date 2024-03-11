@@ -376,6 +376,20 @@ def __plotAndWrite(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,t
     params.log.info(f"done {clock.getTimeString()}")
 
 
+def __removePickles(params:Parameters) -> None:
+    """removes pickle files
+
+    Args:
+        params (Parameters): a Parameters object
+    """
+    # remove all the pickle files
+    for fn in params.pickles.values():
+        os.remove(fn)
+    
+    # remove the pickle directory
+    os.rmdir(os.path.dirname(fn))
+
+
 def _main(params:Parameters) -> None:
     """main runner function:
         * reads ingroup and outgroup sequences into memory
@@ -475,6 +489,10 @@ def _main(params:Parameters) -> None:
         
         # make plots and write data
         __plotAndWrite(params, pairs, analysisData, clock)
+    
+    # remove the pickles unless keeping them
+    if not params.keepPickles:
+        __removePickles(params)
     
     # print the total runtime
     print(f"{MSG}{totalClock.getTimeString()}\n")
