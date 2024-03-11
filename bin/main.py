@@ -113,7 +113,9 @@ def _main(params:Parameters) -> None:
     # messages
     MSG_1A = "identifying kmers suitable for use as primers in all "
     MSG_1B = " ingroup genome sequences"
+    MSG_X  = "initializing analysis data"
     MSG_2  = "identifying pairs of primers found in all ingroup sequences"
+    MSG_J  = "updating analysis data"
     MSG_3A = "    identified "
     MSG_3B = " primer pairs shared in all ingroup sequences"
     MSG_4  = "keeping one primer pair per locus"
@@ -130,98 +132,108 @@ def _main(params:Parameters) -> None:
     if not params.helpRequested:
         # read the ingroup sequences into memory
         ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
-
+        
+        # log data
+        params.log.rename(_main.__name__)
+        params.log.info(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}")
+        
         # get the candidate kmers for the ingroup
         clock.printStart(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", end='\n', spin=False)
-        if params.debug:
-            params.log.rename(_main.__name__)
-            params.log.info(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}")
         candidateKmers = _getAllCandidateKmers(ingroupSeqs, params)
         clock.printDone()
+        params.log.rename(_main.__name__)
+        params.log.info(f"{DONE} {clock.getTimeString()}")
+        
+        # dump the candidates to file
+        params.dumpObj(candidateKmers, CAND_FN, "candidate kmers")
         
         # initialize the analysis data
+        params.log.info(MSG_X)
+        clock.printStart(MSG_X)
         analysisData = _initializeAnalysisData(candidateKmers)
+        clock.printDone()
+        params.log.info(f"{DONE} {clock.getTimeString()}")
         
-        # save the candidates to file if in debug mode
-        if params.debug:
-            params.log.rename(_main.__name__)
-            params.log.info(f"{DONE} {clock.getTimeString()}")
-            params.dumpObj(candidateKmers, CAND_FN, "candidate kmers")
+        # dump the analysis to file
+        params.dumpObj(analysisData, ANAL_FN, "initial analysis data")
         
         # get the suitable primer pairs for the ingroup
+        params.log.info(MSG_2)
         clock.printStart(MSG_2)
-        if params.debug:
-            params.log.info(MSG_2)
         pairs = _getPrimerPairs(candidateKmers, params)
         clock.printDone()
+        params.log.info(f"{DONE} {clock.getTimeString()}")
         
         # remove the candidate kmers to free up memory
         del candidateKmers
         
-        # update the analysis data
-        _updateAnalysisData(analysisData, pairs.keys())
+        # dump the pairs to file
+        params.dumpObj(pairs, PAIR_1_FN, "unfiltered pairs")
         
-        # save the pairs to file if in debug mode
-        if params.debug:
-            params.log.info(f"{DONE} {clock.getTimeString()}")
-            params.dumpObj(pairs, PAIR_1_FN, "unfiltered pairs")
+        # update the analysis data
+        params.log.info(MSG_J)
+        clock.printStart(MSG_J)
+        _updateAnalysisData(analysisData, pairs.keys())
+        clock.printDone()
+        params.log.info(f"{DONE} {clock.getTimeString()}")
+
+        # dump the analysis to file
+        params.dumpObj(analysisData, ANAL_FN, 'updated analysis data')
         
         # print the number of candidate primer pairs
         print(f"{MSG_3A}{len(pairs)}{MSG_3B}")
-        if params.debug:
-            params.log.info(f"{MSG_3A}{len(pairs)}{MSG_3B}")
+        params.log.info(f"{MSG_3A}{len(pairs)}{MSG_3B}")
         
         # remove primer pairs that make products in the outgroup
         if params.outgroupFns != []:
             outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
             _removeOutgroupPrimers(outgroupSeqs, pairs, params)
-            
-            # save pairs to file if in debug mode and move log
-            if params.debug:
-                params.log.rename(_main.__name__)
-                params.dumpObj(pairs, PAIR_2_FN, "filtered pairs")
+            params.log.rename(_main.__name__)
+            params.dumpObj(pairs, PAIR_2_FN, "filtered pairs")
         
         # update analysis data
+        params.log.info(MSG_J)
+        clock.printStart(MSG_J)
         _updateAnalysisData(analysisData, pairs.keys())
+        clock.printDone()
+        params.log.info(f'{DONE} {clock.getTimeString()}')
+        
+        # dump the updated analysis
+        params.dumpObj(analysisData, ANAL_FN, 'updated analysis data')
         
         # only keep one pair per bin pair (only process ingroup bins)
         clock.printStart(MSG_4)
-        if params.debug:
-            params.log.info(MSG_4)
+        params.log.info(MSG_4)
         for name in map(os.path.basename, params.ingroupFns):
             _keepOnePairPerBinPair(pairs, name)
-        clock.printDone()
-        if params.debug:
-            params.log.info(f"{DONE} {clock.getTimeString()}")
+        params.log.info(f"{DONE} {clock.getTimeString()}")
         
         # update analysis data
+        params.log.info(MSG_J)
+        clock.printStart(MSG_J)
         _updateAnalysisData(analysisData, pairs.keys())
+        clock.printDone()
+        params.log.info(f'{DONE} {clock.getTimeString()}')
         
         # write pair results to file
+        params.log.info(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.resultsFn}")
         clock.printStart(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.resultsFn}")
-        if params.debug:
-            params.log.info(f"{MSG_5A}{len(pairs)}{MSG_5B}{params.resultsFn}")
         __writePrimerPairs(params.resultsFn, pairs)
-        if params.debug:
-            params.log.info(f"{DONE} {clock.getTimeString()}")
         clock.printDone()
+        params.log.info(f"{DONE} {clock.getTimeString()}")
         
         # save analysis data to file if in debug mode
-        if params.debug:
-            params.dumpObj(analysisData, ANAL_FN, 'analysisData')
+        params.dumpObj(analysisData, ANAL_FN, 'updated analysis data')
         
         # make analysis plots
+        params.log.info(MSG_6)
         clock.printStart(MSG_6, end=' ...\n', spin=False)
-        if params.debug:
-            params.log.info(MSG_6)
         _plotAnalysisData(analysisData, params)
         clock.printDone()
-        if params.debug:
-            params.log.rename(_main.__name__)
-            params.log.info(f"{DONE} {clock.getTimeString()}")
+        params.log.rename(_main.__name__)
+        params.log.info(f"{DONE} {clock.getTimeString()}")
         
         # print the total runtime
         print(MSG_7, end='', flush=True)
         totalClock.printTime()
-        if params.debug:
-            params.log.info(f"{MSG_7} {totalClock.getTimeString()}")
+        params.log.info(f"{MSG_7} {totalClock.getTimeString()}")

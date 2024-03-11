@@ -29,7 +29,6 @@ class ResultsTest(unittest.TestCase):
     """class for testing the results of primerForge
     """
     # constants
-    NUM_THREADS = 24
     TEST_DIR = os.path.join(os.getcwd(), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
     ANALYSIS_BASENAME = os.path.join(TEST_DIR, "distribution")
@@ -68,7 +67,7 @@ class ResultsTest(unittest.TestCase):
         
         # get the parameters
         cls.params:Parameters = ResultsTest._getParameters()
-        cls.params.log.initialize(ResultsTest.setUpClass.__name__)
+        cls.params.log.rename(ResultsTest.setUpClass.__name__)
         
         # run primerForge if results file does not exist
         if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.plotDataFn):
@@ -127,13 +126,27 @@ class ResultsTest(unittest.TestCase):
         Returns:
             Parameters: a Parameters object
         """
+        MSG = "please specify a number of threads to use"
+        
+        # get the number of threads
+        done = False
+        numThreads = input(MSG)
+
+        while not done:        
+            try:
+                numThreads = int(numThreads)
+                done = True
+            except:
+                print('invalid number of threads')
+                numThreads = input(MSG)
+            
         # make the parameters object
         sys.argv = ['primerForge.py',
                     '-i', os.path.join(ResultsTest.TEST_DIR, "i[123].gbff"),
                     '-u', os.path.join(ResultsTest.TEST_DIR, "o[12].gbff"),
                     '-r', '70,120',
                     '-b', '45,150',
-                    '-n', ResultsTest.NUM_THREADS,
+                    '-n', numThreads,
                     '-o', ResultsTest.RESULT_FN,
                     '-a', ResultsTest.ANALYSIS_BASENAME,
                     '--debug']
@@ -150,9 +163,6 @@ class ResultsTest(unittest.TestCase):
         # proceed like normal if the files do not yet exist
         else:
             params = Parameters('', '')
-        
-        # use a different logger pointing at the test directory
-        params.log = Log(ResultsTest.TEST_DIR)
         
         return params
 

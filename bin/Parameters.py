@@ -1,6 +1,7 @@
 from __future__ import annotations
 from Bio import SeqIO
 from bin.Log import Log
+from bin.Clock import Clock
 import getopt, glob, os, pickle, sys
 
 class Parameters():
@@ -60,8 +61,7 @@ class Parameters():
         self.__parseArgs()
         
         # initialize a log if debugging
-        if self.debug:
-            self.log = Log()
+        self.log = Log(debug=self.debug)
 
     def __checkOutputFile(fn:str) -> None:
         """checks if an output file is valid
@@ -75,8 +75,8 @@ class Parameters():
         """
         # constants
         YN = ['y', 'n']
-        WARN_MSG_A = 'file ('
-        WARN_MSG_B = ") already exists."
+        WARN_MSG_A = "\nfile '"
+        WARN_MSG_B = "' already exists."
         PROCEED_MSG = f"overwrite existing file? [{'/'.join(YN)}] "
         INVALID_SELECTION = 'invalid selection'
         ERR_MSG  = 'cannot write to '
@@ -300,22 +300,13 @@ class Parameters():
                         raise ValueError(ERR_MSG_1)
                 
                 # get output filename
-                elif opt in OUT_FLAGS:
-                    # check for existing files
-                    Parameters.__checkOutputFile(arg)
-                    
+                elif opt in OUT_FLAGS:                    
                     self.resultsFn = os.path.abspath(arg)
                     
                 # get analysis filenames
                 elif opt in ANAL_FLAGS:
-                    plotFn = arg + Parameters._PLOT_EXT
-                    dataFn = arg + Parameters._DATA_EXT
-                    
-                    Parameters.__checkOutputFile(plotFn)
-                    Parameters.__checkOutputFile(dataFn)
-                    
-                    self.plotsFn = os.path.abspath(plotFn)
-                    self.plotDataFn = os.path.abspath(dataFn)
+                    self.plotsFn = os.path.abspath(arg + Parameters._PLOT_EXT)
+                    self.plotDataFn = os.path.abspath(dataFn = arg + Parameters._DATA_EXT)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
@@ -454,6 +445,11 @@ class Parameters():
             
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
+            
+            # check for existing files
+            Parameters.__checkOutputFile(self.resultsFn)
+            Parameters.__checkOutputFile(self.plotDataFn)
+            Parameters.__checkOutputFile(self.plotsFn)
     
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
@@ -462,24 +458,24 @@ class Parameters():
         WIDTH = 34
         
         # write the parameters to the log file
-        self.log.debug(f'{"version:":<{WIDTH}}{self.__version}')
-        self.log.debug(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
-        self.log.debug(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
-        self.log.debug(f'{"results filename:":{WIDTH}}{self.resultsFn}')
-        self.log.debug(f'{"plots filename:":{WIDTH}}{self.plotsFn}')
-        self.log.debug(f'{"plots data filename:":{WIDTH}}{self.plotDataFn}')
-        self.log.debug(f'{"file format:":{WIDTH}}{self.format}')
-        self.log.debug(f'{"min kmer len:":{WIDTH}}{self.minLen}')
-        self.log.debug(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
-        self.log.debug(f'{"min % G+C":<{WIDTH}}{self.minGc}')
-        self.log.debug(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
-        self.log.debug(f'{"min Tm:":<{WIDTH}}{self.minTm}')
-        self.log.debug(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
-        self.log.debug(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
-        self.log.debug(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
-        self.log.debug(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
-        self.log.debug(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
-        self.log.debug(f'{"num threads:":<{WIDTH}}{self.numThreads}')
+        self.log.info(f'{"version:":<{WIDTH}}{self.__version}')
+        self.log.info(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
+        self.log.info(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
+        self.log.info(f'{"results filename:":{WIDTH}}{self.resultsFn}')
+        self.log.info(f'{"plots filename:":{WIDTH}}{self.plotsFn}')
+        self.log.info(f'{"plots data filename:":{WIDTH}}{self.plotDataFn}')
+        self.log.info(f'{"file format:":{WIDTH}}{self.format}')
+        self.log.info(f'{"min kmer len:":{WIDTH}}{self.minLen}')
+        self.log.info(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')
+        self.log.info(f'{"min % G+C":<{WIDTH}}{self.minGc}')
+        self.log.info(f'{"max % G+C":<{WIDTH}}{self.maxGc}')
+        self.log.info(f'{"min Tm:":<{WIDTH}}{self.minTm}')
+        self.log.info(f'{"max Tm:":<{WIDTH}}{self.maxTm}')
+        self.log.info(f'{"max Tm difference:":<{WIDTH}}{self.maxTmDiff}')
+        self.log.info(f'{"min PCR size:":<{WIDTH}}{self.minPcr}')
+        self.log.info(f'{"max PCR size:":<{WIDTH}}{self.maxPcr}')
+        self.log.info(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
+        self.log.info(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
     def dumpObj(self, obj:any, fn:str, objName:str) -> None:
         """dumps an object in memory to file as a pickle
@@ -489,8 +485,15 @@ class Parameters():
             fn (str): the filename where object will be dumped
             objName (str): the name of the dumped object
         """
+        MSG_1A = "dumping "
+        MSG_1B = " to "
+        
+        clock = Clock()
         fn = os.path.join(self.log.debugDir, fn)
+        
+        self.log.info(MSG_1A + objName + MSG_1B + fn)
+        clock.printStart(MSG_1A + objName + MSG_1B + fn)
         with open(fn, 'wb') as fh:
             pickle.dump(obj, fh)
-        
-        self.log.debug(f"dumped {objName} to {fn}")
+        clock.printDone()
+        self.log.info(f'done {clock.getTimeString()}')

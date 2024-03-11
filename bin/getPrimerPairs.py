@@ -474,16 +474,14 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     
     # make sure that some candidate pairs were identified
     if allCand == []:
-        if params.debug:
-            params.log.rename(_getPrimerPairs.__name__)
-            params.log.error(ERR_MSG_1)
+        params.log.rename(_getPrimerPairs.__name__)
+        params.log.error(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
     # make sure that some candidate pairs were universal
     elif out == dict():
-        if params.debug:
-            params.log.rename(_getPrimerPairs.__name__)
-            params.log.error(ERR_MSG_2)
+        params.log.rename(_getPrimerPairs.__name__)
+        params.log.error(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
     return out
