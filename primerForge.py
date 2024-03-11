@@ -11,14 +11,15 @@ if __name__ == "__main__":
     params = Parameters(__author__, __version__)
     
     if not params.helpRequested:
-        # save the run details if debugging
-        params.log.rename(__name__)
-        params.logRunDetails()
+        try:
+            # start up the logger
+            params.log.rename(__name__)
+            params.logRunDetails()
+            
+            # run primerForge
+            _main(params)
         
         # catch all error messages
-        try:
-            _main(params)
-            
         except Exception as e:
             # save the error message if in debug mode
             params.log.rename(__name__)
