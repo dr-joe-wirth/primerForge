@@ -130,7 +130,6 @@ class ResultsTest(unittest.TestCase):
         MSG = "\nplease specify a number of threads to use: "
         
         # get the number of threads
-        done = False
         numThreads = input(MSG)
 
         # make sure the threads is an int
@@ -171,7 +170,12 @@ class ResultsTest(unittest.TestCase):
         # move the pickle directory into the test directory
         oldDir = os.path.dirname(next(iter(params.pickles.values())))
         newDir = os.path.join(ResultsTest.TEST_DIR, os.path.basename(oldDir))
-        os.rename(oldDir, newDir)
+        
+        # move the directory, but allow it to fail for loading parameters outside the tests
+        try:
+            os.rename(oldDir, newDir)
+        except:
+            pass
         
         # update the location of the pickle files
         for key in params.pickles.keys():
