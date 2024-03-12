@@ -10,7 +10,6 @@ class Parameters():
     # constants
     _PLOT_EXT = "_plot.pdf"
     _DATA_EXT = "_data.tsv"
-    _BED_EXT  = "_kmers.bed"
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __PICKLE_DIR = "_pickles"
     __PICKLE_FNS = {0: "sharedKmers.p",
@@ -46,7 +45,6 @@ class Parameters():
         self.resultsFn:str
         self.plotsFn:str
         self.plotDataFn:str
-        self.bedFns:dict[str,str]
         self.format:str
         self.minLen:int
         self.maxLen:int
@@ -153,24 +151,6 @@ class Parameters():
             # raise an error only after the file is closed
             if fail:
                 raise ValueError(f"{fn}{ERR_MSG}")
-
-    def __getBedFilenames(self) -> None:
-        """creates a diciontary of BED filenames keyed by the genome filename
-        """
-        # initialize the dictionary
-        self.bedFns = dict()
-        
-        # for each genome
-        for fn in self.ingroupFns + self.outgroupFns:
-            # get the genome basename
-            genomeName = os.path.basename(fn)
-            
-            # create the filename
-            bedFn = os.path.splitext(genomeName)[0] + Parameters._BED_EXT
-            bedFn = os.path.join(os.getcwd(), bedFn)
-            
-            # store the bed filename under the genome name
-            self.bedFns[genomeName] = bedFn
     
     def __parseArgs(self) -> None:
         """parses command line arguments
@@ -495,9 +475,6 @@ class Parameters():
             
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
-            
-            # create and save a list of bed files
-            self.__getBedFilenames()
             
             # check for existing files
             Parameters.__checkOutputFile(self.resultsFn)
