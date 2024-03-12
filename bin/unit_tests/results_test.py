@@ -181,10 +181,6 @@ class ResultsTest(unittest.TestCase):
         for key in params.pickles.keys():
             params.pickles[key] = os.path.join(newDir, os.path.basename(params.pickles[key]))
         
-        # update the location of the bed files
-        for key in params.bedFns.keys():
-            params.bedFns[key] = os.path.join(ResultsTest.TEST_DIR, os.path.basename(params.bedFns[key]))
-        
         return params
 
     def _downloadOneGenome(ftp:str, fn:str) -> None:
