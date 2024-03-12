@@ -226,7 +226,7 @@ class Parameters():
                      TM_FLAGS[0][-1] + ":" + \
                      PCR_LEN_FLAGS[0][-1] + ":" + \
                      TM_DIFF_FLAGS[0][-1] + ":" + \
-                     KEEP_FLAGS[0][-1] + ":" + \
+                     KEEP_FLAGS[0][-1] + \
                      THREADS_FLAGS[0][-1] + ":" + \
                      VERSION_FLAGS[0][-1] + \
                      HELP_FLAGS[0][-1]
