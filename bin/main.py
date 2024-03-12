@@ -399,7 +399,7 @@ def _main(params:Parameters) -> None:
         * writes data to file
     """
     # messages
-    MSG  = '\ntotal runtime: '
+    MSG  = 'total runtime: '
     
     # start the timers
     totalClock = Clock()
@@ -490,10 +490,13 @@ def _main(params:Parameters) -> None:
         # make plots and write data
         __plotAndWrite(params, pairs, analysisData, clock)
     
+    # move the logger back
+    params.log.rename(_main.__name__)
+    
     # remove the pickles unless keeping them
     if not params.keepPickles:
         __removePickles(params)
     
     # print the total runtime
-    print(f"{MSG}{totalClock.getTimeString()}\n")
+    print(f"\n{MSG}{totalClock.getTimeString()}\n")
     params.log.info(f"{MSG}{totalClock.getTimeString()}\n\n")
