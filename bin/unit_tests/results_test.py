@@ -126,16 +126,17 @@ class ResultsTest(unittest.TestCase):
         Returns:
             Parameters: a Parameters object
         """
+        # message
         MSG = "\nplease specify a number of threads to use: "
         
         # get the number of threads
         done = False
         numThreads = input(MSG)
 
-        while not done:        
+        # make sure the threads is an int
+        while not type(numThreads) is int:
             try:
                 numThreads = int(numThreads)
-                done = True
             except:
                 print('invalid number of threads')
                 numThreads = input(MSG)
@@ -173,8 +174,12 @@ class ResultsTest(unittest.TestCase):
         os.rename(oldDir, newDir)
         
         # update the location of the pickle files
-        for num in params.pickles.keys():
-            params.pickles[num] = os.path.join(newDir, os.path.basename(params.pickles[num]))
+        for key in params.pickles.keys():
+            params.pickles[key] = os.path.join(newDir, os.path.basename(params.pickles[key]))
+        
+        # update the location of the bed files
+        for key in params.bedFns.keys():
+            params.bedFns[key] = os.path.join(ResultsTest.TEST_DIR, os.path.basename(params.bedFns[key]))
         
         return params
 
