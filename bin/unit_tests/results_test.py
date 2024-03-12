@@ -167,6 +167,15 @@ class ResultsTest(unittest.TestCase):
         # move the log file to the test directory
         params.log = Log(debugDir=ResultsTest.TEST_DIR, debug=True)
         
+        # move the pickle directory into the test directory
+        oldDir = os.path.dirname(next(iter(params.pickles.values())))
+        newDir = os.path.join(ResultsTest.TEST_DIR, os.path.basename(oldDir))
+        os.rename(oldDir, newDir)
+        
+        # update the location of the pickle files
+        for num in params.pickles.keys():
+            params.pickles[num] = os.path.join(newDir, os.path.basename(params.pickles[num]))
+        
         return params
 
     def _downloadOneGenome(ftp:str, fn:str) -> None:
