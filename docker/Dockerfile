@@ -6,7 +6,7 @@
 FROM ubuntu:22.04
 
 # Define a build argument for the version number
-ARG PRIMERFORGE_VERSION=0.6.1
+ARG PRIMERFORGE_VERSION=0.6.2
 
 # install wget and python
 RUN apt-get update
@@ -16,6 +16,8 @@ RUN apt-get -y install python3.11 python3-pip python3-setuptools python3-dev
 # install biopython
 RUN pip3 install --upgrade pip
 RUN pip3 install biopython
+RUN pip3 install matplotlib
+RUN pip3 install scipy
 
 # install primerForge.py
 RUN wget https://github.com/dr-joe-wirth/primerForge/archive/refs/tags/v${PRIMERFORGE_VERSION}.tar.gz
