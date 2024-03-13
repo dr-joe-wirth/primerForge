@@ -254,8 +254,7 @@ class ParametersTest(unittest.TestCase):
         params.dumpObj(obj, ParametersTest.DUMP_FN, 'test')
         
         # load the dumped object and remove the file
-        with open(os.path.join(params.log.debugDir, ParametersTest.DUMP_FN), 'rb') as fh:
-            imported = pickle.load(fh)
+        imported = params.loadObj(os.path.join(params.log.debugDir, ParametersTest.DUMP_FN))
         os.remove(os.path.join(params.log.debugDir, ParametersTest.DUMP_FN))
         
         # make sure the original object matches the loaded one
@@ -365,13 +364,13 @@ class ParametersTest(unittest.TestCase):
         """
         # create the params object
         sys.argv = self.debug1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, initializeLog=False)
         
         # replace the current Log object with one that references this directory
-        params.log = Log(os.getcwd())
+        params.log = Log(os.getcwd(), debug=True)
         
-        # start up the log
-        params.log.initialize(ParametersTest.testH_debug2.__name__)
+        # rename the log
+        params.log.rename(ParametersTest.testH_debug2.__name__)
         
         # verify that the log file exists
         self.assertTrue(os.path.exists(params.log.logFn))
@@ -390,11 +389,11 @@ class ParametersTest(unittest.TestCase):
         """
         # create a parameters object
         sys.argv = self.basic1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, initializeLog=False)
         
         # initialize the log object
         params.log = Log(os.getcwd())
-        params.log.initialize('tmp')
+        params.log.rename(ParametersTest.testI_dumpObjects.__name__)
         
         # check sets
         obj  = {1,2,3,4,5}
