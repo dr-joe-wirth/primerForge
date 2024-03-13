@@ -16,19 +16,20 @@ conda activate primerforge
 
 ### Docker Installation
 
-A Docker image has been made available under the docker folder
+A Docker image for the latest release is available at [DockerHub](https://hub.docker.com/r/jwirth/primerforge)
 
 ## Usage
 
 ```text
 usage:
-    primerForge.py [-ioubfpgtrdnvh]
+    primerForge.py [-ioaubfpgtrdnkvh]
 
 required arguments:
     -i, --ingroup        [file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff")
-    -o, --out            [file] output filename
 
 optional arguments: 
+    -o, --out            [file] output filename for primer pair data (default: results.tsv)
+    -a, --analysis       [file] output basename for primer analysis data (default: distribution)
     -u, --outgroup       [file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff")
     -b, --bad_sizes      [int,int] a range of PCR product lengths that the outgroup cannot produce (default: same as '--pcr_prod')
     -f, --format         [str] file format of the ingroup and outgroup genbank|fasta (default: genbank)
@@ -38,9 +39,10 @@ optional arguments:
     -r, --pcr_prod       [int(s)] a single PCR product length or a range specified as 'min,max' (default: 120,2400)
     -d, --tm_diff        [float] the maximum allowable Tm difference between a pair of primers (default: 5.0)
     -n, --num_threads    [int] the number of threads for parallel processing (default: 1)
+    -k, --keep           keep intermediate files (default: False)
     -v, --version        print the version
     -h, --help           print this message
-    --debug              run in debug mode
+    --debug              run in debug mode (default: False)
 ```
 
 ## Workflow
