@@ -6,11 +6,10 @@ from bin.main import _main
 from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
-from Bio.SeqUtils import MeltingTemp
 from bin.Parameters import Parameters
 from bin.AnalysisData import AnalysisData
 from bin.getPrimerPairs import _formsDimers
-import gzip, os, pickle, re, subprocess, sys, unittest
+import gzip, os, pickle, primer3, re, subprocess, sys, unittest
 
 class Result():
     """class to save results for easy lookup
@@ -590,6 +589,36 @@ class ResultsTest(unittest.TestCase):
                 return False
         return True
     
+    def _noHomoDimers(self, seq:Seq) -> bool:
+        """evaluates sequences for the presence of homodimers
+
+        Args:
+            seq (Seq): a DNA sequence
+
+        Returns:
+            bool: indicates if the sequence does not form homodimers
+        """
+        # constant
+        FIVE_DEGREES = 5
+        
+        # homodimers don't exist as long as the tm for formation is 5° below the min Tm
+        return primer3.calc_homodimer_tm(str(seq)) < (self.params.minTm - FIVE_DEGREES)
+    
+    def _noHairpins(self, seq:Seq) -> bool:
+        """evaluates sequences for the presence of hairpins
+
+        Args:
+            seq (Seq): a DNA sequence
+
+        Returns:
+            bool: indicates if the sequence does not form hairpins
+        """
+        # constant
+        FIVE_DEGREES = 5
+        
+        # hairpins don't exist as long as the tm for formation is 5° below the min Tm
+        return primer3.calc_hairpin_tm(str(seq)) < (self.params.minTm - FIVE_DEGREES)
+    
     # test cases
     def testA_isSequenceUpper(self) -> None:
         """is primer sequence uppercase
@@ -610,8 +639,8 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair, make sure the saved Tm matches the expected value
         for fwd,rev in self.results.keys():
-            self.assertEqual(self.results[(fwd,rev)].fwdTm, round(MeltingTemp.Tm_Wallace(fwd), 1), f"{FAIL_MSG}{fwd}")
-            self.assertEqual(self.results[(fwd,rev)].revTm, round(MeltingTemp.Tm_Wallace(rev), 1), f"{FAIL_MSG}{rev}")
+            self.assertEqual(self.results[(fwd,rev)].fwdTm, round(primer3.calc_tm(str(fwd)), 1), f"{FAIL_MSG}{fwd}")
+            self.assertEqual(self.results[(fwd,rev)].revTm, round(primer3.calc_tm(str(rev)), 1), f"{FAIL_MSG}{rev}")
     
     def testC_tmWithinRange(self) -> None:
         """is the Tm within the specified range
@@ -681,7 +710,25 @@ class ResultsTest(unittest.TestCase):
             self.assertTrue(ResultsTest._noLongRepeats(fwd), f"{FAIL_MSG}{fwd}")
             self.assertTrue(ResultsTest._noLongRepeats(rev), f"{FAIL_MSG}{rev}")
 
-    def testI_noPrimerDimers(self) -> None:
+    def testI_noHomoDimers(self) -> None:
+        # constant
+        FAIL_MSG = "homodimer present in "
+        
+        # for each pair, make sure there are no homodimers
+        for fwd,rev in self.results.keys():
+            self.assertTrue(self._noHomoDimers(fwd), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(self._noHomoDimers(rev), f"{FAIL_MSG}{rev}")
+    
+    def testJ_noHairpins(self) -> None:
+        # constant
+        FAIL_MSG = "hairpin present in "
+        
+        # for each pair, make sure there are no homodimers
+        for fwd,rev in self.results.keys():
+            self.assertTrue(self._noHairpins(fwd), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(self._noHairpins(rev), f"{FAIL_MSG}{rev}")
+
+    def testK_noPrimerDimers(self) -> None:
         """do all pairs not produce primer dimers
         """
         for fwd,rev in self.results.keys():
@@ -692,7 +739,7 @@ class ResultsTest(unittest.TestCase):
             # check for primer dimers; both primers need to be on the same strand
             self.assertFalse(_formsDimers(fwd,rev.reverseComplement()), f'primer dimers present in {fwd}, {rev}')
 
-    def testJ_ingroupHasOneProduct(self) -> None:
+    def testL_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
         """
         # constants
@@ -706,7 +753,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testK_ingroupProductsWithinRange(self) -> None:
+    def testM_ingroupProductsWithinRange(self) -> None:
         """is ingroup pcr product size in the expected range
         """
         # constants
@@ -720,7 +767,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testL_outgroupProductsSavedCorrectly(self) -> None:
+    def testN_outgroupProductsSavedCorrectly(self) -> None:
         """do outgroup pcr products look valid
         """
         # constants
@@ -735,7 +782,7 @@ class ResultsTest(unittest.TestCase):
                 numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
                 self.assertEqual(numContigs, numPcrLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
     
-    def testM_outgroupProductsNaAreZero(self) -> None:
+    def testO_outgroupProductsNaAreZero(self) -> None:
         """do outgroup products of 0 have NA as the contig and vice-versa
         """
         # constants
@@ -755,8 +802,8 @@ class ResultsTest(unittest.TestCase):
                     # if the pcr size is zero, then the contig should be NA
                     if self.results[pair].additional[name][ResultsTest.PCRLEN][idx] == 0:
                         self.assertEqual(self.results[pair].additional[name][ResultsTest.CONTIG][idx], 'NA', f"{FAIL_MSG_2A}{pair}{FAIL_MSG_B}{name}")
-                
-    def testN_outgroupProductsNotWithinDisallowedRange(self) -> None:
+
+    def testP_outgroupProductsNotWithinDisallowedRange(self) -> None:
         """are outgroup pcr products outside the disallowed range
         """
         # constants
@@ -770,7 +817,7 @@ class ResultsTest(unittest.TestCase):
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
                     self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
 
-    def testO_isRepeatedInIngroup(self) -> None:
+    def testQ_isRepeatedInIngroup(self) -> None:
         """does the primer pair have exactly one binding site
         """
         # constants
@@ -794,7 +841,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertEqual(rCount, 1, f"{rev}{FAIL_MSG_A}{rCount}{FAIL_MSG_B}{name}")
                 self.assertEqual(fCount, 1, f"{fwd}{FAIL_MSG_A}{fCount}{FAIL_MSG_B}{name}")
 
-    def testP_onSeparateStrandsInIngroup(self) -> None:
+    def testR_onSeparateStrandsInIngroup(self) -> None:
         """evaluates if the forward and reverse primers bind on separate strands in the ingroup
         """
         # for each primer pair
@@ -828,7 +875,7 @@ class ResultsTest(unittest.TestCase):
                         # the reverse primer should not be on the (-) strand
                         self.assertEqual(rbind[name][contig][Primer.MINUS], [], f"{rev} is on the same strand as {fwd} in {name}|{contig}")
     
-    def testQ_isProductLengthCorrect(self) -> None:
+    def testS_isProductLengthCorrect(self) -> None:
         """determines if the product length is correctly saved
         """
         # for each primer pair
@@ -927,7 +974,7 @@ class ResultsTest(unittest.TestCase):
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
     
-    def testR_analysisDataMatchesKmerPositions(self) -> None:
+    def testT_analysisDataMatchesKmerPositions(self) -> None:
         """check that the analysis data are congruent with the binding sites
         """
         # for each kmer in the analysis file
@@ -957,7 +1004,7 @@ class ResultsTest(unittest.TestCase):
             # the start positions should match
             self.assertEqual(analysis.primer.start, starts[0], f"{(kmer,contig)}: start position does not match")
     
-    def testS_resultsMatchesAnalysis(self) -> None:
+    def testU_resultsMatchesAnalysis(self) -> None:
         """checks that the results data and the analysis data are congruent
         """
         # track seen kmers to prevent redundant work
