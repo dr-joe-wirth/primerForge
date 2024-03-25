@@ -192,10 +192,10 @@ class PrimerTest(unittest.TestCase):
         rc_r2 = self.rev_2.reverseComplement()
         
         # check strand flipped
-        self.assertEqual(rc_f1.strand, PrimerTest.MINUS)
-        self.assertEqual(rc_f2.strand, PrimerTest.PLUS)
-        self.assertEqual(rc_r1.strand, PrimerTest.PLUS)
-        self.assertEqual(rc_r2.strand, PrimerTest.MINUS)
+        self.assertEqual(rc_f1.strand, Primer.MINUS)
+        self.assertEqual(rc_f2.strand, Primer.PLUS)
+        self.assertEqual(rc_r1.strand, Primer.PLUS)
+        self.assertEqual(rc_r2.strand, Primer.MINUS)
 
         # check start
         self.assertEqual(rc_f1.start, self.fwd_1.end)
