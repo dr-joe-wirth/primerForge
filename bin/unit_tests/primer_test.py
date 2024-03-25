@@ -1,6 +1,5 @@
-import primer3
-import unittest
 from Bio.Seq import Seq
+import primer3, unittest
 from bin.Primer import Primer
 
 class PrimerTest(unittest.TestCase):

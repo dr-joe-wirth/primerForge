@@ -1,7 +1,7 @@
-import multiprocessing
 from Bio.Seq import Seq
 from bin.Clock import Clock
 from bin.Primer import Primer
+import multiprocessing, primer3
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
@@ -214,6 +214,9 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int,
     Returns:
         Primer: a suitable primer at the given position
     """
+    # constant
+    FIVE_DEGREES = 5
+    
     # define helper functions to make booleans below more readable
     def isGcWithinRange(primer:Primer) -> bool:
         """is the percent GC within the acceptable range?"""
@@ -236,22 +239,17 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int,
                 return False
         return True
 
-    def noIntraPrimerComplements(primer:Primer) -> bool:
-        """verifies that the primer does not have hairpin potential
+    def noHairpins(primer:Primer) -> bool:
+        """verifies that the primer does not form hairpins
         """
-        # constants
-        MAX_LEN = 3
-        LEN_TO_CHECK = MAX_LEN + 1
-        
-        # get the reverse complement of the primer
-        revComp = primer.seq.reverse_complement()
-        
-        for idx in range(len(primer)-MAX_LEN):
-            # see if the reverse complement exists downstream
-            if revComp[idx:idx+LEN_TO_CHECK] in primer.seq:
-                return False
-        
-        return True
+        # hairpin tm should be less than (minTm - 5°)
+        return primer3.calc_hairpin_tm(str(primer)) < (minTm - FIVE_DEGREES)
+
+    def noHomodimers(primer:Primer) -> bool:
+        """verifies that the primer does not form homodimers
+        """
+        # homodimer tm should be less than (minTm - 5°)
+        return primer3.calc_homodimer_tm(str(primer)) < (minTm - FIVE_DEGREES)
     
     # initialize values for the while loop
     idx = 0
@@ -264,11 +262,12 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int,
         # create a Primer object
         primer = Primer(seq, contig, start, length, strand)
         
-        # evaluate the primer's percent GC, Tm, and homology; save if found
+        # evaluate the primer's percent GC, Tm, hairpin potential, and homodimer potential; save if passes
         if isGcWithinRange(primer) and isTmWithinRange(primer): # O(1)
             if noLongRepeats(primer): # O(1)
-                if noIntraPrimerComplements(primer): # this runtime is the worst O(len(primer)); evaluate last
-                    return primer
+                if noHairpins(primer):
+                    if noHomodimers(primer):
+                        return primer
 
 
 def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[Seq,int,str]]]], minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> list[Primer]:
