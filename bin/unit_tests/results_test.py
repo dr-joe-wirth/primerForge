@@ -47,8 +47,10 @@ class ResultsTest(unittest.TestCase):
         """sets up the class for all tests
         """
         # initialize clocks
-        total = Clock()
         clock = Clock()
+        
+        # get the number of threads to use
+        numThreads = ResultsTest._getNumThreads()
         
         # make the test directory if it doesn't exist
         if not os.path.isdir(ResultsTest.TEST_DIR):
@@ -66,19 +68,15 @@ class ResultsTest(unittest.TestCase):
             clock.printDone()
         
         # get the parameters
-        cls.params:Parameters = ResultsTest._getParameters()
+        cls.params:Parameters = ResultsTest._getParameters(numThreads)
         cls.params.log.rename(ResultsTest.setUpClass.__name__)
         
         # run primerForge if results file does not exist
-        if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.plotDataFn):
-            total.printStart('getting results for testing', end=' ...\n', spin=False)    
-            
+        if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.plotDataFn):  
             # run primerForge
             clock.printStart('running primerForge', end=' ...\n', spin=False)
             _main(cls.params)
             clock.printDone()
-            print()
-            total.printDone()
         
         # otherwise using existing file
         else:
@@ -120,12 +118,7 @@ class ResultsTest(unittest.TestCase):
             clock.printDone()
     
     # functions for setting up the class
-    def _getParameters() -> Parameters:
-        """creates a Parameters object for testing
-
-        Returns:
-            Parameters: a Parameters object
-        """
+    def _getNumThreads() -> int:
         # message
         MSG = "\nplease specify a number of threads to use: "
         
@@ -139,7 +132,18 @@ class ResultsTest(unittest.TestCase):
             except:
                 print('invalid number of threads')
                 numThreads = input(MSG)
-            
+        
+        return numThreads
+    
+    def _getParameters(numThreads:int) -> Parameters:
+        """creates a Parameters object for testing
+        
+        Args:
+            numThreads (int): the number of threads to use
+
+        Returns:
+            Parameters: a Parameters object
+        """ 
         # make the parameters object
         sys.argv = ['primerForge.py',
                     '-i', os.path.join(ResultsTest.TEST_DIR, "i[123].gbff"),
