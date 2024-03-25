@@ -1,6 +1,6 @@
 from __future__ import annotations
+import primer3
 from Bio.Seq import Seq
-from Bio.SeqUtils import MeltingTemp
 
 class Primer:
     """a class for calculating and storing primer data
@@ -87,7 +87,7 @@ class Primer:
 
     def __calculateTm(self) -> None:
         # calculate and store the melting temp
-        self.Tm = MeltingTemp.Tm_Wallace(self.seq)
+        self.Tm = primer3.calc_tm(str(self.seq))
     
     # public methods
     def reverseComplement(self) -> Primer:

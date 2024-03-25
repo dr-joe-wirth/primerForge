@@ -1,7 +1,7 @@
+import primer3
 import unittest
 from Bio.Seq import Seq
 from bin.Primer import Primer
-from Bio.SeqUtils import MeltingTemp
 
 class PrimerTest(unittest.TestCase):
     """unit tests for evaluating the Primer class
@@ -19,15 +19,13 @@ class PrimerTest(unittest.TestCase):
     RSTR_2 = 666
     REND_1 = 318
     REND_2 = 684
-    PLUS = "+"
-    MINUS = "-"
     
     def setUp(self) -> None:
         # make primer objects
-        self.fwd_1 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_1, PrimerTest.FSTR_1, len(PrimerTest.FWD_SEQ), PrimerTest.PLUS)
-        self.fwd_2 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_2, PrimerTest.FSTR_2, len(PrimerTest.FWD_SEQ), PrimerTest.MINUS)
-        self.rev_1 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_1, PrimerTest.RSTR_1, len(PrimerTest.REV_SEQ), PrimerTest.MINUS)
-        self.rev_2 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_2, PrimerTest.RSTR_2, len(PrimerTest.REV_SEQ), PrimerTest.PLUS)
+        self.fwd_1 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_1, PrimerTest.FSTR_1, len(PrimerTest.FWD_SEQ), Primer.PLUS)
+        self.fwd_2 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_2, PrimerTest.FSTR_2, len(PrimerTest.FWD_SEQ), Primer.MINUS)
+        self.rev_1 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_1, PrimerTest.RSTR_1, len(PrimerTest.REV_SEQ), Primer.MINUS)
+        self.rev_2 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_2, PrimerTest.RSTR_2, len(PrimerTest.REV_SEQ), Primer.PLUS)
     
     def tearDown(self) -> None:
         return super().tearDown()
@@ -104,8 +102,8 @@ class PrimerTest(unittest.TestCase):
         """is the meltiing temperature accurate
         """
         # constants
-        FWD_TM = MeltingTemp.Tm_Wallace(PrimerTest.FWD_SEQ)
-        REV_TM = MeltingTemp.Tm_Wallace(PrimerTest.REV_SEQ)
+        FWD_TM = primer3.calc_tm(PrimerTest.FWD_SEQ.upper())
+        REV_TM = primer3.calc_tm(PrimerTest.REV_SEQ.upper())
         
         # make sure Tm is calculated correctly
         self.assertAlmostEqual(self.fwd_1.Tm, FWD_TM)
@@ -180,10 +178,10 @@ class PrimerTest(unittest.TestCase):
     def testM_strand(self) -> None:
         """is the strand stored properly
         """
-        self.assertEqual(self.fwd_1.strand, PrimerTest.PLUS)
-        self.assertEqual(self.fwd_2.strand, PrimerTest.MINUS)
-        self.assertEqual(self.rev_1.strand, PrimerTest.MINUS)
-        self.assertEqual(self.rev_2.strand, PrimerTest.PLUS)
+        self.assertEqual(self.fwd_1.strand, Primer.PLUS)
+        self.assertEqual(self.fwd_2.strand, Primer.MINUS)
+        self.assertEqual(self.rev_1.strand, Primer.MINUS)
+        self.assertEqual(self.rev_2.strand, Primer.PLUS)
     
     def testN_revComp(self) -> None:
         """is reverseComplement method working
