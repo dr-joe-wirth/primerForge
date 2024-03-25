@@ -13,10 +13,12 @@ RUN apt-get update
 RUN apt-get -y install wget
 RUN apt-get -y install python3.11 python3-pip python3-setuptools python3-dev
 
-# install biopython
+# install python packages
 RUN pip3 install --upgrade pip
 RUN pip3 install biopython
 RUN pip3 install matplotlib
+RUN pip3 install numpy
+RUN pip3 install primer3-py
 RUN pip3 install scipy
 
 # install primerForge.py
