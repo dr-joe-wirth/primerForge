@@ -242,14 +242,20 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[Seq,int,
     def noHairpins(primer:Primer) -> bool:
         """verifies that the primer does not form hairpins
         """
-        # hairpin tm should be less than (minTm - 5°)
-        return primer3.calc_hairpin_tm(str(primer)) < (minTm - FIVE_DEGREES)
+        # hairpin tm should be less than (minTm - 5°); need to check both strands
+        fwdOk = primer3.calc_hairpin_tm(str(primer)) < (minTm - FIVE_DEGREES)
+        revOk = primer3.calc_hairpin_tm(str(primer.reverseComplement())) < (minTm - FIVE_DEGREES)
+        
+        return fwdOk and revOk
 
     def noHomodimers(primer:Primer) -> bool:
         """verifies that the primer does not form homodimers
         """
-        # homodimer tm should be less than (minTm - 5°)
-        return primer3.calc_homodimer_tm(str(primer)) < (minTm - FIVE_DEGREES)
+        # homodimer tm should be less than (minTm - 5°); need to check both strands
+        fwdOk = primer3.calc_homodimer_tm(str(primer)) < (minTm - FIVE_DEGREES)
+        revOk = primer3.calc_homodimer_tm(str(primer.reverseComplement())) < (minTm - FIVE_DEGREES)
+        
+        return fwdOk and revOk
     
     # initialize values for the while loop
     idx = 0
