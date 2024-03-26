@@ -589,11 +589,12 @@ class ResultsTest(unittest.TestCase):
                 return False
         return True
     
-    def _noHomoDimers(self, seq:Seq) -> bool:
+    def _noHomoDimers(seq:Seq, minTm:float) -> bool:
         """evaluates sequences for the presence of homodimers
 
         Args:
             seq (Seq): a DNA sequence
+            minTm (float): the minimum primer Tm
 
         Returns:
             bool: indicates if the sequence does not form homodimers
@@ -602,13 +603,14 @@ class ResultsTest(unittest.TestCase):
         FIVE_DEGREES = 5
         
         # homodimers don't exist as long as the tm for formation is 5° below the min Tm
-        return primer3.calc_homodimer_tm(str(seq)) < (self.params.minTm - FIVE_DEGREES)
+        return primer3.calc_homodimer_tm(str(seq)) < (minTm - FIVE_DEGREES)
     
-    def _noHairpins(self, seq:Seq) -> bool:
+    def _noHairpins(seq:Seq, minTm:float) -> bool:
         """evaluates sequences for the presence of hairpins
 
         Args:
             seq (Seq): a DNA sequence
+            minTm (float): the minimum primer Tm
 
         Returns:
             bool: indicates if the sequence does not form hairpins
@@ -617,7 +619,7 @@ class ResultsTest(unittest.TestCase):
         FIVE_DEGREES = 5
         
         # hairpins don't exist as long as the tm for formation is 5° below the min Tm
-        return primer3.calc_hairpin_tm(str(seq)) < (self.params.minTm - FIVE_DEGREES)
+        return primer3.calc_hairpin_tm(str(seq)) < (minTm - FIVE_DEGREES)
     
     # test cases
     def testA_isSequenceUpper(self) -> None:
