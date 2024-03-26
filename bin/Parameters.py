@@ -480,7 +480,6 @@ class Parameters():
             Parameters.__checkOutputFile(self.resultsFn)
             Parameters.__checkOutputFile(self.plotDataFn)
             Parameters.__checkOutputFile(self.plotsFn)
-            print()
     
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
