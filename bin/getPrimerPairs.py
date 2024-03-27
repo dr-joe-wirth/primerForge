@@ -4,7 +4,7 @@ import multiprocessing, primer3
 from bin.Parameters import Parameters
 
 
-def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
+def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
     """bins primers that overlap to form a contiguous sequence based on positional data
 
     Args:
@@ -13,6 +13,9 @@ def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[
     Returns:
         dict[str,dict[int,list[Primer]]]: key=contig; val=dict: key=bin number; val=list of overlapping Primer objects
     """
+    # constant
+    MAX_BIN_LEN = 64
+    
     # initialize output
     out = dict()
     
@@ -21,6 +24,7 @@ def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[
         # initialize variables
         currentBin = 0
         prevEnd = None
+        binStart = 0
         out[contig] = dict()
         
         # for each candidate primer in the contig
@@ -29,88 +33,29 @@ def __binOverlappingPrimers(candidates:dict[str,list[Primer]]) -> dict[str,dict[
             curStart = min(cand.start, cand.end)
             curEnd = max(cand.start, cand.end)
             
+            # get the length of the current bin
+            binLen = curEnd - binStart
+            
             # the first candidate needs to go into its own bin
             if prevEnd is None:
                 out[contig][currentBin] = [cand]
                 prevEnd = curEnd
+                binStart = curStart
             
-            # if the candidate overlaps the previous one, then add it to the bin
-            elif curStart < prevEnd:
+            # if the candidate overlaps the previous one and the bin isn't too long, then add it to the bin
+            elif curStart < prevEnd and binLen <= MAX_BIN_LEN:
                 prevEnd = curEnd
                 out[contig][currentBin].append(cand)
             
             # otherwise the candidate belongs in a new bin
             else:
                 prevEnd = curEnd
+                binStart = curStart
                 currentBin += 1
+                
                 out[contig][currentBin] = [cand]
     
     return out
-
-
-def __minimizeOverlaps(bins:dict[str,dict[int,list[Primer]]], minimizerLen:int) -> None:
-    """splits excessively long overlap bins by the minimizer sequences of the binned primers
-
-    Args:
-        bins (dict[str, dict[int,list[Primer]]]): the dictionary produced by __binOverlappingPrimers
-        minimizerLen (int): the length of the minimizer sequence
-    
-    Returns:
-        does not return. modifies input dictionary
-    """
-    # helper function to evaluate overlap length
-    def overlapIsTooLong(primers:list[Primer]) -> bool:
-        """determines if the overlap covered in the bin is too long"""
-        MAX_LEN = 64
-        start = min(primers[0].start, primers[0].end)
-        end = max(primers[-1].start, primers[-1].end)
-        return (end - start) > MAX_LEN
-    
-    # for each contig
-    for contig in bins:
-        # get the next empty bin number
-        curBin = max(bins[contig].keys()) + 1
-        
-        # for each existing bin number
-        for binNum in set(bins[contig].keys()):
-            # if the length of the overlap is too long
-            if overlapIsTooLong(bins[contig][binNum]):
-                # get the primers from that bin and remove it from the dictionary
-                primers = bins[contig].pop(binNum)
-                
-                # cluster each Primer by their minimizer sequence
-                clusters = dict()
-                for primer in primers:
-                    # get the minimizers for the plus strand only
-                    minimizer = primer.getMinimizer(minimizerLen, Primer.PLUS)
-                    
-                    # store the Primer in a list keyed under minimizer sequence
-                    clusters[minimizer] = clusters.get(minimizer, list())
-                    clusters[minimizer].append(primer)
-                
-                # add each cluster as a new bin in the input dictionary
-                for clust in clusters.values():
-                    bins[contig][curBin] = clust
-                    curBin += 1
-
-
-def __binCandidateKmers(candidates:dict[str,list[Primer]], minPrimerLen:int) -> dict[str,dict[int,list[Primer]]]:
-    """bins overlapping candidate primers; splits long overlaps on minimizer sequences
-
-    Args:
-        candidates (dict[str,list[Primer]]): key=contig; val=list of candidate Primers
-        minPrimerSize (int): the minimum length of a primer
-
-    Returns:
-        dict[str,dict[int,list[Primer]]]: key=contig; val=dict: key=bin number; val=list of candidate Primers
-    """
-    # first bin overlapping primers
-    bins = __binOverlappingPrimers(candidates)
-    
-    # next divide excessively long overlapping primers by minimizers (window size 1/2 min primer len)
-    __minimizeOverlaps(bins, int(minPrimerLen // 2))
-      
-    return bins
 
 
 def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, minProdLen:int, maxProdLen:int) -> list[tuple[str,int,int]]:
@@ -421,7 +366,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     # process each genome as different results may be obtained
     for name in candidateKmers.keys():
         # bin kmers to reduce time complexity
-        binnedCandidateKmers = __binCandidateKmers(candidateKmers[name], params.minLen)
+        binnedCandidateKmers = __binCandidateKmers(candidateKmers[name])
         
         # get the bins that could work
         binPairs = __getBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr)
