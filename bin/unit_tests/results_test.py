@@ -533,19 +533,26 @@ class ResultsTest(unittest.TestCase):
                     
                     # only add start positions for kmers in this contig
                     if kmer in relevantKmers:
-                        # extract the start positions for this kmer
-                        try:
-                            starts = kmers[Primer.PLUS][kmer]
-                            strand = Primer.PLUS
+                        # make sure these lists are empty
+                        plsStarts = list()
+                        mnsStarts = list()
                         
-                        # it may be on the minus strand
+                        # try to get the plus start positions
+                        try:
+                            plsStarts = kmers[Primer.PLUS][kmer]
                         except KeyError:
-                            starts = kmers[Primer.MINUS][kmer]
-                            strand = Primer.MINUS
-                            
+                            pass
+                        
+                        # try to get the minus start positions
+                        try:
+                            mnsStarts = kmers[Primer.MINUS][kmer]
+                        except KeyError:
+                            pass
+                        
                         # save the start positions for this kmer
                         try:
-                            bindingSites[kmer][name][contig][strand].extend(starts)
+                            bindingSites[kmer][name][contig][Primer.PLUS].extend(plsStarts)
+                            bindingSites[kmer][name][contig][Primer.MINUS].extend(mnsStarts)
                         
                         # the kmers will not necessarily be present in every contig
                         except KeyError:
@@ -718,8 +725,8 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair, make sure there are no homodimers
         for fwd,rev in self.results.keys():
-            self.assertTrue(self._noHomoDimers(fwd), f"{FAIL_MSG}{fwd}")
-            self.assertTrue(self._noHomoDimers(rev), f"{FAIL_MSG}{rev}")
+            self.assertTrue(ResultsTest._noHomoDimers(fwd, self.params.minTm), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(ResultsTest._noHomoDimers(rev, self.params.minTm), f"{FAIL_MSG}{rev}")
     
     def testJ_noHairpins(self) -> None:
         # constant
@@ -727,8 +734,8 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair, make sure there are no homodimers
         for fwd,rev in self.results.keys():
-            self.assertTrue(self._noHairpins(fwd), f"{FAIL_MSG}{fwd}")
-            self.assertTrue(self._noHairpins(rev), f"{FAIL_MSG}{rev}")
+            self.assertTrue(ResultsTest._noHairpins(fwd, self.params.minTm), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(ResultsTest._noHairpins(rev, self.params.minTm), f"{FAIL_MSG}{rev}")
 
     def testK_noPrimerDimers(self) -> None:
         """do all pairs not produce primer dimers
@@ -928,39 +935,33 @@ class ResultsTest(unittest.TestCase):
                 
                 # for each contig
                 for contig in fbind[name].keys():
-                    # only proceed if the reverse primer also binds to this contig
+                    # extract the forward and reverse binding sites on both strands
+                    fwdPlsStarts = fbind[name][contig][Primer.PLUS]
+                    fwdMnsStarts = fbind[name][contig][Primer.MINUS]
+                    revPlsStarts = rbind[name][contig][Primer.PLUS]
+                    revMnsStarts = rbind[name][contig][Primer.MINUS]
                     
+                    # for each fwd/rev pair on the (+)/(-) strands
+                    for fstart in fwdPlsStarts:
+                        for rstart in revMnsStarts:
+                            # calculate the pcr lengths
+                            pcrLen = rstart - fstart + 1
+                            
+                            # save the pcr length if it is positive
+                            if pcrLen > 0:
+                                tru[contig] = tru.get(contig, set())
+                                tru[contig].add(pcrLen)
                     
-                    # if contig in rbind[name].keys():
-                    
-                    
-                        # extract the forward and reverse binding sites on both strands
-                        fwdPlsStarts = fbind[name][contig][Primer.PLUS]
-                        fwdMnsStarts = fbind[name][contig][Primer.MINUS]
-                        revPlsStarts = rbind[name][contig][Primer.PLUS]
-                        revMnsStarts = rbind[name][contig][Primer.MINUS]
-                        
-                        # for each fwd/rev pair on the (+)/(-) strands
-                        for fstart in fwdPlsStarts:
-                            for rstart in revMnsStarts:
-                                # calculate the pcr lengths
-                                pcrLen = rstart - fstart + 1
-                                
-                                # save the pcr length if it is positive
-                                if pcrLen > 0:
-                                    tru[contig] = tru.get(contig, set())
-                                    tru[contig].add(pcrLen)
-                        
-                        # for each fwd/rev pair on the (-)/(+) strands
-                        for fstart in fwdMnsStarts:
-                            for rstart in revPlsStarts:
-                                # calculate the pcr lengths
-                                pcrLen = fstart - rstart + 1
-                                
-                                # only save the pcr length if it is positive
-                                if pcrLen > 0:
-                                    tru[contig] = tru.get(contig, set())
-                                    tru[contig].add(pcrLen)
+                    # for each fwd/rev pair on the (-)/(+) strands
+                    for fstart in fwdMnsStarts:
+                        for rstart in revPlsStarts:
+                            # calculate the pcr lengths
+                            pcrLen = fstart - rstart + 1
+                            
+                            # only save the pcr length if it is positive
+                            if pcrLen > 0:
+                                tru[contig] = tru.get(contig, set())
+                                tru[contig].add(pcrLen)
                 
                 # if the value was "NA", then there should be no saved data
                 if contigs == ["NA"]:
