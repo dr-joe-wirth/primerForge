@@ -369,7 +369,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, 
     """gets all the candidate kmer sequences for a given ingroup
 
     Args:
-        ingroup (dict[str,list[SeqRecord]]): key=genome name; val=contigs as a list of SeqRecord
+        ingroup (dict[str,list[SeqRecord]]): key=genome name; val=contigs as a list of SeqRecord (generator actually)
         params (Parameters): a Parameters object
         sharedExists (bool): indicates if the shared kmers are already pickled
 
@@ -401,9 +401,13 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, 
     params.log.rename(_getAllCandidateKmers.__name__)
     
     if sharedExists:
-        kmers = params.loadObj(params.pickles[SHARED_KMER_NUM])
-    
+        # close the genome files (not actually a list of seqRecords; they are generators)
+        for handle in ingroup.values():
+            handle.stream.close()
         
+        # load existing shared kmers from file
+        kmers = params.loadObj(params.pickles[SHARED_KMER_NUM])
+
     else:
         # get all non-duplicated kmers that are shared in the ingroup
         params.log.info(MSG_1)
