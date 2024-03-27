@@ -8,7 +8,7 @@ from bin.Parameters import Parameters
 __NULL_PRODUCT = ("NA", 0, ())
 
 
-def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int]]:
+def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[str,dict[Seq,list[int]]]:
     """gets all the kmers and their start positions from a contig
 
     Args:
@@ -17,15 +17,17 @@ def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int
         maxLen (int): the maximum kmer length
 
     Returns:
-        dict[Seq,list[int]]: key=kmer sequence; val=list of start positions
+        dict[str,dict[Seq,list[int]]]: key=strand; val=dict: key=kmer sequence; val=list of start positions
     """
     # initialize variables
-    kmers = dict()
+    kmers = {Primer.PLUS:  dict(),
+             Primer.MINUS: dict()}
     krange = range(minLen, maxLen + 1)
     smallest = min(krange)
     
     # extract the contig sequences
     fwdSeq:Seq = contig.seq
+    revSeq:Seq = contig.seq.reverse_complement()
     
     # get the length of the contig
     contigLen = len(contig)
@@ -46,10 +48,23 @@ def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int
         
             # proceed if the extracted kmer length is good
             else:
-                # extract the kmer sequences
-                kmer = fwdSeq[start:start+klen]
-                kmers[kmer] = kmers.get(kmer, list())
-                kmers[kmer].append(start)
+                # extract and save the forward kmer sequence
+                fKmer = fwdSeq[start:start+klen]
+                kmers[Primer.PLUS][fKmer] = kmers[Primer.PLUS].get(fKmer, list())
+                kmers[Primer.PLUS][fKmer].append(start)
+                
+                # calculate the end position (rev start position)
+                end = start + klen
+                
+                # extract the reverse kmer sequence
+                if start == 0:
+                    rKmer = revSeq[-end:]
+                else:
+                    rKmer = revSeq[-end:-start]
+                
+                # save the reverse kmer sequence
+                kmers[Primer.MINUS][rKmer] = kmers[Primer.MINUS].get(rKmer, list())
+                kmers[Primer.MINUS][rKmer].append(end-1)
         
         # stop iterating through the contig when we're done with it
         if done:
@@ -58,11 +73,37 @@ def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[Seq,list[int
     return kmers
 
 
-def __getOutgroupProductSizes(kmers:dict[Seq,list[int]], fwd:Primer, rev:Primer) -> set[int]:
+def __productSizesFromStartPositions(plusStarts:list[int], minusStarts:list[int]) -> set[int]:
+    """calculates the product sizes from lists of primer start positions
+
+    Args:
+        plusStarts (list[int]): the start positions on the plus strand
+        minusStarts (list[int]): the start positions on the minus strand
+
+    Returns:
+        set[int]: a set of pcr product sizes
+    """
+    # initialize output
+    out = set()
+    
+    # for each pair of start positions on opposite strands
+    for fStart in plusStarts:
+        for rStart in minusStarts:
+            # calculate the PCR product length
+            pcrLen = rStart - fStart + 1
+            
+            # negative values indicate primers that are facing away from each other
+            if pcrLen > 0:
+                out.add(pcrLen)
+    
+    return out
+
+
+def __getOutgroupProductSizes(kmers:dict[str,dict[Seq,list[int]]], fwd:Primer, rev:Primer) -> set[int]:
     """gets a set of pcr product sizes for a primer pair
 
     Args:
-        kmers (dict[Seq,list[int]]): the dictionary produced by __getAllKmers
+        kmers (dict[str,dict[Seq,list[int]]]): the dictionary produced by __getAllKmers
         fwd (Primer): the forward primer
         rev (Primer): the reverse primer
 
@@ -72,38 +113,23 @@ def __getOutgroupProductSizes(kmers:dict[Seq,list[int]], fwd:Primer, rev:Primer)
     # initialize the output
     out = set()
     
-    # try to get the primer binding sites from the kmers
+    # get the sizes when fwd (+) and rev (-)
     try:
-        # (+) strand if forward and reverse sequence are both present
-        fStarts = kmers[fwd.seq]
-        rStarts = kmers[rev.seq.reverse_complement()]
-        reversed = False
-    
+        productSizes = __productSizesFromStartPositions(kmers[Primer.PLUS][fwd.seq], kmers[Primer.MINUS][rev.seq])
+        out.update(productSizes)
+
+    # primers may not bind those strands
     except KeyError:
-        try:
-            # (-) strand if the reverse complements are present
-            fStarts = kmers[fwd.seq.reverse_complement()]
-            rStarts = kmers[rev.seq]
-            reversed = True
-        
-        # no binding sites ==> empty set
-        except KeyError:
-            return out
+        pass
     
-    # we found the binding sites; calculate the pcr product sizes
-    for f in fStarts:
-        for r in rStarts:
-            # equation if the binding sites are on the (+) strand
-            if not reversed:
-                pcrLen = r + len(rev) - f
-            
-            # equation if the binding sites are on the (-) strand
-            else:
-                pcrLen = f + len(fwd) - r
-            
-            # negative products mean the primers are oriented opposite from each other
-            if pcrLen > 0:
-                out.add(pcrLen)
+    # get the sizes when fwd (-) and rev (+)
+    try:
+        productSizes = __productSizesFromStartPositions(kmers[Primer.PLUS][rev.seq], kmers[Primer.MINUS][fwd.seq])
+        out.update(productSizes)
+    
+    # primers may not bind those strands
+    except KeyError:
+        pass
     
     return out
 
