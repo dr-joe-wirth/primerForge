@@ -257,7 +257,7 @@ class Parameters():
             HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
                        f"{GAP}{self.__author}, 2024{EOL*2}" + \
                        f"usage:{EOL}" + \
-                       f"{GAP}primerForge.py [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
+                       f"{GAP}primerForge [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
                        f"required arguments:{EOL}" + \
                        f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL*2}' + \
                        f"optional arguments: {EOL}" + \
