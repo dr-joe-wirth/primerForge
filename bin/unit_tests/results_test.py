@@ -2,7 +2,7 @@ from __future__ import annotations
 from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Log import Log
-from bin.main import _main
+from bin.main import _runner
 from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
@@ -74,7 +74,7 @@ class ResultsTest(unittest.TestCase):
         if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.plotDataFn):  
             # run primerForge
             clock.printStart('running primerForge', end=' ...\n', spin=False)
-            _main(cls.params)
+            _runner(cls.params)
             clock.printDone()
         
         # otherwise using existing file

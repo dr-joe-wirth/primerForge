@@ -1,29 +1,5 @@
 #!/usr/bin/env python3
-
-__version__ = "0.7.3"
-__author__ = "Joseph S. Wirth"
-
-from bin.Parameters import Parameters
-from bin.main import _main
+from bin.main import main, __version__, __author__
 
 if __name__ == "__main__":
-    # parse command line arguments
-    params = Parameters(__author__, __version__)
-    
-    if not params.helpRequested:
-        try:
-            # start up the logger
-            params.log.rename(__name__)
-            params.logRunDetails()
-            
-            # run primerForge
-            _main(params)
-        
-        # catch all error messages
-        except Exception as e:
-            # save the error message if in debug mode
-            params.log.rename(__name__)
-            params.log.critical(e)
-
-            # terminate        
-            raise Exception(e)
+    main()

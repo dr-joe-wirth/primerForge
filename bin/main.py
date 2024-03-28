@@ -12,6 +12,8 @@ from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
 from bin.analysis import _initializeAnalysisData, _updateAnalysisData, _plotAnalysisData
 
 # global constants
+__version__ = "0.7.4"
+__author__ = "Joseph S. Wirth"
 __SHARED_NUM = 0
 __CAND_NUM   = 1
 __PAIR_1_NUM = 2
@@ -308,6 +310,7 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
         
         return headers
     
+    # get the names of genomes, and create headers with the same order
     names = list(next(iter(pairs.values())).keys())
     headers = getHeaders(names)
     
@@ -390,7 +393,7 @@ def __removePickles(params:Parameters) -> None:
     os.rmdir(os.path.dirname(fn))
 
 
-def _main(params:Parameters) -> None:
+def _runner(params:Parameters) -> None:
     """main runner function:
         * reads ingroup and outgroup sequences into memory
         * gets candidate kmers to use to search for primer pairs
@@ -406,7 +409,7 @@ def _main(params:Parameters) -> None:
     clock = Clock()
     
     # start the logger
-    params.log.rename(_main.__name__)
+    params.log.rename(_runner.__name__)
     
     # get the checkpoint status
     sharedExists, candExists, unfiltExists, filtExists, finalExists, analExists = __getCheckpoint(params)
@@ -491,7 +494,7 @@ def _main(params:Parameters) -> None:
         __plotAndWrite(params, pairs, analysisData, clock)
     
     # move the logger back
-    params.log.rename(_main.__name__)
+    params.log.rename(_runner.__name__)
     
     # remove the pickles unless keeping them
     if not params.keepPickles:
@@ -500,3 +503,31 @@ def _main(params:Parameters) -> None:
     # print the total runtime
     print(f"\n{MSG}{totalClock.getTimeString()}\n")
     params.log.info(f"{MSG}{totalClock.getTimeString()}\n\n")
+
+
+def main() -> None:
+    """main runner function for primerForge
+
+    Raises:
+        Exception: catches all downstream exceptions
+    """
+    # parse command line arguments
+    params = Parameters(__author__, __version__)
+    
+    if not params.helpRequested:
+        try:
+            # start up the logger
+            params.log.rename(__name__)
+            params.logRunDetails()
+            
+            # run primerForge
+            _runner(params)
+        
+        # catch all error messages
+        except Exception as e:
+            # save the error message if in debug mode
+            params.log.rename(__name__)
+            params.log.critical(e)
+
+            # terminate        
+            raise Exception(e)

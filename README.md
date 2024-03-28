@@ -1,6 +1,6 @@
 # primerForge
 
-software to identify primers that can distinguish genomes
+software to identify primers that can be used to distinguish genomes
 
 ## Installation
 
