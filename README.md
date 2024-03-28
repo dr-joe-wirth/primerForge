@@ -28,7 +28,7 @@ A Docker image for the latest release is available at [DockerHub](https://hub.do
 
 ```text
 usage:
-    primerForge.py [-ioaubfpgtrdnkvh]
+    primerForge [-ioaubfpgtrdnkvh]
 
 required arguments:
     -i, --ingroup        [file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff")
