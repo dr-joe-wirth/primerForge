@@ -4,13 +4,19 @@ software to identify primers that can be used to distinguish genomes
 
 ## Installation
 
-### Conda installation
+### pip installation
+```shell
+pip install primerForge
+```
+
+### Manual installation
 
 > [!NOTE]
 > This might take up to ten minutes.
 
 ```shell
-conda env create -f env/environment.yml
+git clone https://github.com/dr-joe-wirth/primerForge.git
+conda env create -f primerForge/environment.yml
 conda activate primerforge
 ```
 
