@@ -4,9 +4,14 @@ software to identify primers that can be used to distinguish genomes
 
 ## Installation
 
-### pip installation
+### `pip` installation
 ```shell
 pip install primerforge
+```
+
+### `conda` installation
+```shell
+conda install -c bioconda primerforge
 ```
 
 ### Manual installation
