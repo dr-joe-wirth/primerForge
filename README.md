@@ -6,7 +6,7 @@ software to identify primers that can be used to distinguish genomes
 
 ### pip installation
 ```shell
-pip install primerForge
+pip install primerforge
 ```
 
 ### Manual installation
