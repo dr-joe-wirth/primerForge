@@ -20,12 +20,13 @@ authors:
     orcid: 0000-0002-2533-9161
     affiliation: 1
   - name: Grant Williams
-    orcide: 
+    orcid: 0000-0002-6033-485X
     affiliation: 1
 affiliations:
  - name: Centers for Disease Control and Prevention, Atlanta, GA, USA
    index: 1
  - name: Oak Ridge Institute for Science and Education, Oak Ridge, TN, USA
+   index: 2
 date: 15 April 2024
 bibliography: paper.bib
 ---
