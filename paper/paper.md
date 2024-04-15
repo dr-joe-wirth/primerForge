@@ -35,7 +35,7 @@ In both molecular epidemiology and microbial ecology, it is useful to be able
 to categorize specific strains of microorganisms in either an ingroup or an outgroup in a
 given population. While whole genome sequencing and pangenomics pipelines can be
 employed to do this, these techniques are often slow and can be expensive.
-Examples of these pangenomics pipelines include PIRATE and Rory [@pirate] [@rory].
+Examples of these pangenomics pipelines include PIRATE and Roary [@10.1093/bioinformatics/btv421] [@10.1093/bioinformatics/btv421].
 <!-- I think it might be more appropriate to have pangenomics instead metagenomics as the contrast ~~~~Lee -->
 The conclusion of these pangenomics pipelines would tell the laboratory that,
 in order to find whether or not a new sample is part of the ingroup or outgroup,
