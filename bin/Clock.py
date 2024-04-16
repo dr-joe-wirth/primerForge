@@ -228,9 +228,14 @@ class Clock:
         """prints the end message and the duration
         """
         # stop spinning the wheel if necessary
-        if self.__spin:
-            self.__WHEEL.stop()
-            
+        self._killWheel()
+        
         # print the done string
         print(f"done {self.getTimeString()}")
         sys.stdout.flush()
+    
+    def _killWheel(self) -> None:
+        """kills any spinning clocks
+        """
+        if self.__spin:
+            self.__WHEEL.stop()
