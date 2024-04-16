@@ -32,9 +32,14 @@ bibliography: paper.bib
 ---
 # Summary
 In both molecular epidemiology and microbial ecology, it is useful to be able
-to confirm or deny the presence of specific strains of microorganisms in a
-given population. While whole genome sequencing and metagenomics can be
+to categorize specific strains of microorganisms in either an ingroup or an outgroup in a
+given population. While whole genome sequencing and pangenomics pipelines can be
 employed to do this, these techniques are often slow and can be expensive.
+Examples of these pangenomics pipelines include PIRATE and Roary [@10.1093/bioinformatics/btv421] [@10.1093/bioinformatics/btv421].
+<!-- I think it might be more appropriate to have pangenomics instead metagenomics as the contrast ~~~~Lee -->
+The conclusion of these pangenomics pipelines would tell the laboratory that,
+in order to find whether or not a new sample is part of the ingroup or outgroup,
+they would have to sequence the whole genome.
 Alternatively, polymerase chain reaction (PCR) can be used to amplify regions
 of genetic material that are specific to the strain(s) of  interest. PCR is
 faster, less expensive, and more accessible than whole genome sequencing, so
@@ -42,6 +47,12 @@ having a PCR-based approach can accelerate the detection of specific strain(s)
 of microbes and faciliate diagnoses and/or population studies.
 
 # Statement of need
+<!-- I feel like you might want this explainer either here or in the previous section ~~~~Lee -->
+There are many use cases for what `primerForge` offers.
+One use case would be surveillance of an outbreak clone of a particular pathogen.
+A laboratory could develop a set of PCR reactions to track the population
+of this outbreak clone which could help inform whether the population
+were to grow, shrink, or migrate.
 In order to perform PCR, a pair of DNA primers capable of amplifying a region
 of interest is required. Traditional primer design involves the selection of a
 target region of DNA to amplify, followed by primer pair selection and
