@@ -46,11 +46,7 @@ having a PCR-based approach can accelerate the detection of specific strain(s)
 of microbes and faciliate diagnoses and/or population studies.
 
 # Statement of need
-There are many use cases for what `primerForge` offers. One use case would be
-surveillance of an outbreak clone of a particular pathogen. A laboratory could
-develop a set of PCR reactions to track the population of this outbreak clone
-which could help inform if the population were to grow, shrink, or migrate. In
-order to perform PCR, a pair of DNA primers capable of amplifying a region of
+In order to perform PCR, a pair of DNA primers capable of amplifying a region of
 interest is required. Traditional primer design involves the selection of a
 target region of DNA to amplify, followed by primer pair selection and
 subsequent validation of the primer pair. Identifying a good pair of primers
@@ -62,11 +58,16 @@ Instead of requiring the identification of specific target sequences (as is
 required with existing tools), `primerForge` identifies all suitable pairs of
 primers capable of producing PCR products of a specific size in a set of whole
 genome sequences. Optionally, it can also filter those primer pairs and limit
-the output to primer pairs tha can be used to distinguish one set of genomes
+the output to primer pairs that can be used to distinguish one set of genomes
 from another set of genomes via PCR amplification. `primerForge` relies on the
 `primer3-py` package to evaluate specific characteristics of primer pairs
 including melting temperature, hairpin potential, and dimer formation
 [@10.1093/nar/gks596].
+
+There are many use cases for what `primerForge` offers. One use case would be
+surveillance of an outbreak clone of a particular pathogen. A laboratory could
+develop a set of PCR reactions to track the population of this outbreak clone
+which could help inform if the population were to grow, shrink, or migrate. 
 
 # Acknowledgements
 This work was made possible by support from the Advanced Molecular Detection
