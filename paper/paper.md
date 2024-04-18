@@ -13,14 +13,14 @@ authors:
   - name: Joseph S. Wirth
     orcid: 0000-0002-9750-2845
     affiliation: "1,2"
-  - name: Jessica C. Chen
-    orcid: 0000-0002-9320-6774
-    affiliation: "1"
   - name: Lee S. Katz
     orcid: 0000-0002-2533-9161
     affiliation: "1"
   - name: Grant M. Williams
     orcid: 0000-0002-6033-485X
+    affiliation: "1"
+  - name: Jessica C. Chen
+    orcid: 0000-0002-9320-6774
     affiliation: "1"
 affiliations:
  - name: Centers for Disease Control and Prevention, Atlanta, GA, USA
