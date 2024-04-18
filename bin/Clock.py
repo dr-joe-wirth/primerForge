@@ -237,5 +237,7 @@ class Clock:
     def _killWheel(self) -> None:
         """kills any spinning clocks
         """
-        if self.__spin:
+        try:
             self.__WHEEL.stop()
+        except:
+            pass
