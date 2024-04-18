@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='primerforge',
-    version='0.7.4',
+    version='1.0.0',
     author='Joseph S. Wirth',
     packages=find_packages(),
     description='software to identify primers that can be used to distinguish genomes',
