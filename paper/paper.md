@@ -33,17 +33,16 @@ bibliography: paper.bib
 # Summary
 In both molecular epidemiology and microbial ecology, it is useful to be able
 to categorize specific strains of microorganisms in either an ingroup or an
-outgroup in a given population. While whole genome sequencing and pangenomics
-pipelines can be employed to do this, these techniques are often slow and can
-be expensive. Examples of these pangenomics pipelines include PIRATE and Roary
-[@10.1093/bioinformatics/btv421] [@10.1093/gigascience/giz119]. However, the
-laboratory would have to sequence the whole genome to use these tools to
-determine whether or not a new sample is part of the ingroup or outgroup.
-Alternatively, polymerase chain reaction (PCR) can be used to amplify regions
-of genetic material that are specific to the strain(s) of  interest. PCR is
-faster, less expensive, and more accessible than whole genome sequencing, so
-having a PCR-based approach can accelerate the detection of specific strain(s)
-of microbes and faciliate diagnoses and/or population studies.
+outgroup in a given population. While whole genome sequencing and downstream
+phylogenetic analyses can be employed to do this, these techniques are often
+slow and can be resource intensive. However, the laboratory would have to
+sequence the whole genome to use these tools to determine whether or not a new
+sample is part of the ingroup or outgroup. Alternatively, polymerase chain
+reaction (PCR) can be used to amplify regions of genetic material that are
+specific to the strain(s) of  interest. PCR is faster, less expensive, and more
+accessible than whole genome sequencing, so having a PCR-based approach can
+accelerate the detection of specific strain(s) of microbes and faciliate
+diagnoses and/or population studies.
 
 # Statement of need
 In order to perform PCR, a pair of DNA primers capable of amplifying a region
