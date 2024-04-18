@@ -83,7 +83,9 @@ flowchart TB
                 homo{"repeats
                 ≤ 3bp?"}
                 hair{"no hairpins?"}
-                GC-->Tm-->homo-->hair
+                dime{"no homo-
+                dimers?"}
+                GC-->Tm-->homo-->hair-->dime
             end
         end
     end
@@ -93,7 +95,7 @@ flowchart TB
     dump1[/"dump to file"/]
     sharedKmers --> dump1
     candidates(["unique, shared kmers; one per start position"])
-    hair --> candidates
+    dime --> candidates
 
     %% get primer pairs
     subgraph C["for each genome"]
@@ -109,6 +111,10 @@ flowchart TB
             subgraph C4["for each primer pair"]
                 prime{"is 3' end
                 G or C?"}
+                temp{"is Tm
+                difference ok?"}
+                hetero{"no hetero-
+                dimers?"}
             end
             size --> C4
         end
@@ -123,7 +129,7 @@ flowchart TB
 
         bin1 --> bin2
         bin2 --> C0
-        prime --> candPair
+        prime --> temp --> hetero --> candPair
         candPair --> C2
         pcr --> sharePair
     end
