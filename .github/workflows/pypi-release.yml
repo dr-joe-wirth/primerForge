@@ -1,8 +1,5 @@
-on:
-  release:
-    types: [created]
-
-name: publish primerForge
+on: release
+name: publish primerForge to pypi
 
 jobs:
     pypi-publish:
