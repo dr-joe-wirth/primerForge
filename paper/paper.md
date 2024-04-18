@@ -46,8 +46,8 @@ having a PCR-based approach can accelerate the detection of specific strain(s)
 of microbes and faciliate diagnoses and/or population studies.
 
 # Statement of need
-In order to perform PCR, a pair of DNA primers capable of amplifying a region of
-interest is required. Traditional primer design involves the selection of a
+In order to perform PCR, a pair of DNA primers capable of amplifying a region
+of interest is required. Traditional primer design involves the selection of a
 target region of DNA to amplify, followed by primer pair selection and
 subsequent validation of the primer pair. Identifying a good pair of primers
 and a suitable target region often requires several iterations of the primer
