@@ -67,7 +67,7 @@ including melting temperature, hairpin potential, and dimer formation
 There are many use cases for what `primerForge` offers. One use case would be
 surveillance of an outbreak clone of a particular pathogen. A laboratory could
 develop a set of PCR reactions to track the population of this outbreak clone
-which could help inform if the population were to grow, shrink, or migrate. 
+which could help inform if the population were to grow, shrink, or migrate.
 
 # Acknowledgements
 This work was made possible by support from the Advanced Molecular Detection
