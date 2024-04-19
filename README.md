@@ -42,7 +42,7 @@ primerForge --check_install
 If you installed manually, you may need to use the following command instead
 
 ```shell
-python primerforge.py --check_install
+python primerForge.py --check_install
 ```
 
 ## Usage
