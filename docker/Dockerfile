@@ -27,7 +27,7 @@ RUN tar xzf v${PRIMERFORGE_VERSION}.tar.gz
 RUN rm v${PRIMERFORGE_VERSION}.tar.gz
 RUN mv /primerForge-${PRIMERFORGE_VERSION} /primerForge
 RUN chmod +x /primerForge/primerForge.py
-RUN mv /primerForge/primerForge.py primerForge
+RUN mv /primerForge/primerForge.py /primerForge/primerForge
 
 # add executables to the path
 ENV PATH="${PATH}:/primerForge"
