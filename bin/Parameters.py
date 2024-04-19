@@ -152,6 +152,89 @@ class Parameters():
             if fail:
                 raise ValueError(f"{fn}{ERR_MSG}")
     
+    def __checkInstallation(self) -> None:
+        """checks the installation of all primerforge dependencies
+
+        Raises:
+            BaseException: incompatible python version
+            BaseException: biopython version is bad
+            BaseException: biopython not installed
+            BaseException: matplotlib version is bad
+            BaseException: matplotlib not installed
+            BaseException: numpy not installed
+            BaseException: primer3-py version is bad
+            BaseException: primer3-py not installed
+            BaseException: scipy version is bad
+            BaseException: scipy not installed
+        """
+        # constants
+        PY_MAJOR = 3
+        PY_MINOR = 11
+        BIO_VER = "1.81"
+        MPL_VER = "3.7.2"
+        P3_VER = 2
+        SCI_VER = (1, 10)
+        
+        # messages
+        BAD_VER = ' version is incompatible (requires '
+        NOT_INS = ' package is not installed'
+        
+        # check python version
+        if sys.version_info.major != PY_MAJOR or not sys.version_info.minor >= PY_MINOR:
+            raise BaseException(f'incompatible python version (requires {PY_MAJOR}.{PY_MINOR} or above)')
+    
+        # check that all dependencies exist
+        # check Bio installation
+        try:
+            import Bio
+            
+            # check bio version
+            if Bio.__version__ != BIO_VER:
+                raise BaseException(f"'Bio'{BAD_VER}{BIO_VER})")
+        
+        except:
+            raise BaseException(f"'Bio'{NOT_INS}")
+
+        # check matplotlib installation
+        try:
+            import matplotlib
+            
+            # check matplotlib version
+            if matplotlib.__version__ != MPL_VER:
+                raise BaseException(f"'matplotlib{BAD_VER}{MPL_VER})")
+        
+        except:
+            raise BaseException(f"'matplotlib'{NOT_INS}")
+        
+        # check numpy installation
+        try:
+            import numpy
+        except:
+            raise BaseException(f"'numpy'{NOT_INS}")
+        
+        # check primer3-py installation
+        try:
+            import primer3
+            
+            # check primer3-py version
+            if int(primer3.__version__.split('.')[0]) < P3_VER:
+                raise BaseException(f"'primer3-py'{BAD_VER}{P3_VER} or above)")
+        
+        except:
+            raise BaseException(f"'primer3-py'{NOT_INS}")
+        
+        # check scipy installation
+        try:
+            import scipy
+            
+            # check scipy version
+            vers = tuple(map(int, scipy.__version__.split('.')))
+            if vers[0] < SCI_VER[0] or (vers[0] >= SCI_VER[0] and vers[1] < SCI_VER[1]):
+                raise BaseException(f"'scipy'{BAD_VER}{'.'.join(map(str,SCI_VER))} or above)")
+        
+        except:
+            raise BaseException(f"'scipy'{NOT_INS}")
+    
     def __parseArgs(self) -> None:
         """parses command line arguments
 
@@ -194,6 +277,7 @@ class Parameters():
         KEEP_FLAGS = ('-k', '--keep')
         VERSION_FLAGS = ('-v', '--version')
         HELP_FLAGS = ('-h', '--help')
+        CHECK_FLAGS = ('--check_install',)
         DEBUG_FLAGS = ("--debug",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                      OUT_FLAGS[0][-1] + ":" + \
@@ -225,6 +309,7 @@ class Parameters():
                      THREADS_FLAGS[1][2:] + "=",
                      VERSION_FLAGS[1][2:],
                      HELP_FLAGS[1][2:],
+                     CHECK_FLAGS[0][2:],
                      DEBUG_FLAGS[0][2:])
 
         # messages
@@ -275,6 +360,7 @@ class Parameters():
                        f"{GAP}{KEEP_FLAGS[0] + SEP_1 + KEEP_FLAGS[1]:<{WIDTH}}keep intermediate files{DEF_OPEN}{Parameters._DEF_KEEP}{CLOSE}{EOL}" + \
                        f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
                        f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
+                       f"{GAP}{CHECK_FLAGS[0]:<{WIDTH}}check installation{EOL}" + \
                        f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{DEF_OPEN}{Parameters._DEF_DEBUG}{CLOSE}{EOL*2}"
             
             print(HELP_MSG)
@@ -310,6 +396,11 @@ class Parameters():
         elif VERSION_FLAGS[0] in sys.argv or VERSION_FLAGS[1] in sys.argv:
             self.helpRequested = True
             print(self.__version)
+        
+        # check the installation if requested
+        elif CHECK_FLAGS[0] in sys.argv:
+            self.helpRequested = True
+            self.__checkInstallation()
         
         # parse command line arguments
         else:
