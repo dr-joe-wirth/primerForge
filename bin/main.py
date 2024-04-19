@@ -12,7 +12,7 @@ from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
 from bin.analysis import _initializeAnalysisData, _updateAnalysisData, _plotAnalysisData
 
 # global constants
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Joseph S. Wirth"
 __SHARED_NUM = 0
 __CAND_NUM   = 1
