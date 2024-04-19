@@ -178,6 +178,7 @@ class Parameters():
         # messages
         BAD_VER = ' version is incompatible (requires '
         NOT_INS = ' package is not installed'
+        SUCCESS = f'primerForge v{self.__version} is properly installed'
         
         # check python version
         if sys.version_info.major != PY_MAJOR or not sys.version_info.minor >= PY_MINOR:
@@ -234,6 +235,9 @@ class Parameters():
         
         except:
             raise BaseException(f"'scipy'{NOT_INS}")
+
+        # print success message
+        print(SUCCESS)
     
     def __parseArgs(self) -> None:
         """parses command line arguments
