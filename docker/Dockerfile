@@ -5,32 +5,13 @@
 # start with ubuntu base
 FROM ubuntu:22.04
 
-# Define a build argument for the version number
-ARG PRIMERFORGE_VERSION=1.0.1
-
 # install wget and python
 RUN apt-get update
 RUN apt-get -y install wget
 RUN apt-get -y install python3.11 python3-pip python3-setuptools python3-dev
 
-# install python packages
-RUN pip3 install --upgrade pip
-RUN pip3 install biopython
-RUN pip3 install matplotlib
-RUN pip3 install numpy
-RUN pip3 install primer3-py
-RUN pip3 install scipy
-
 # install primerForge.py
-RUN wget https://github.com/dr-joe-wirth/primerForge/archive/refs/tags/v${PRIMERFORGE_VERSION}.tar.gz
-RUN tar xzf v${PRIMERFORGE_VERSION}.tar.gz
-RUN rm v${PRIMERFORGE_VERSION}.tar.gz
-RUN mv /primerForge-${PRIMERFORGE_VERSION} /primerForge
-RUN chmod +x /primerForge/primerForge.py
-RUN mv /primerForge/primerForge.py /primerForge/primerForge
-
-# add executables to the path
-ENV PATH="${PATH}:/primerForge"
+RUN python3.11 -m pip install primerforge
 
 # create the volume and set it as the working directory
 VOLUME ["/data"]
