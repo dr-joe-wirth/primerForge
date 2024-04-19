@@ -31,6 +31,20 @@ conda activate primerforge
 
 A Docker image for the latest release is available at [DockerHub](https://hub.docker.com/r/jwirth/primerforge)
 
+### Checking installation
+
+If `primerForge` is installed correctly, then the following commands should execute without errors:
+
+```shell
+primerForge --check_install
+```
+
+If you installed manually, you may need to use the following command instead
+
+```shell
+python primerforge.py --check_install
+```
+
 ## Usage
 
 ```text
@@ -55,6 +69,7 @@ optional arguments:
     -k, --keep           keep intermediate files (default: False)
     -v, --version        print the version
     -h, --help           print this message
+    --check_install      check installation
     --debug              run in debug mode (default: False)
 ```
 
