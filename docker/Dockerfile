@@ -6,9 +6,8 @@
 FROM ubuntu:22.04
 
 # install wget and python
-RUN apt-get update
-RUN apt-get -y install wget
-RUN apt-get -y install python3.11 python3-pip python3-setuptools python3-dev
+RUN apt-get update && \
+    apt-get -y install python3.11 python3-pip python3-setuptools python3-dev
 
 # install primerForge.py
 RUN python3.11 -m pip install primerforge
