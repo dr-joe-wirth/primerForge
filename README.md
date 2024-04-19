@@ -33,7 +33,7 @@ A Docker image for the latest release is available at [DockerHub](https://hub.do
 
 ### Checking installation
 
-If `primerForge` is installed correctly, then the following commands should execute without errors:
+If `primerForge` is installed correctly, then the following command should execute without errors:
 
 ```shell
 primerForge --check_install
