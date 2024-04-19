@@ -30,8 +30,10 @@ jobs:
         run: |
           which python
           python primerForge.py --help
+          python primerForge.py --check_install
       - name: pip installation
         shell: bash -el {0}
         run: |
           pip install .
           primerForge --help
+          primerForge --check_install
