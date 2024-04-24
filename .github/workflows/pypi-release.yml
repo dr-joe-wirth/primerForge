@@ -1,5 +1,9 @@
-on: release
 name: publish primerForge to pypi
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
     pypi-publish:
