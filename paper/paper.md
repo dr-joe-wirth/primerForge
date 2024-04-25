@@ -35,13 +35,13 @@ In both molecular epidemiology and microbial ecology, it is useful to be able
 to categorize specific strains of microorganisms in either an ingroup or an
 outgroup in a given population. While whole genome sequencing and downstream
 phylogenetic analyses can be employed to do this, these techniques are often
-slow and can be resource intensive. However, the laboratory would have to
+slow and can be resource intensive. Additionally, the laboratory would have to
 sequence the whole genome to use these tools to determine whether or not a new
 sample is part of the ingroup or outgroup. Alternatively, polymerase chain
 reaction (PCR) can be used to amplify regions of genetic material that are
 specific to the strain(s) of  interest. PCR is faster, less expensive, and more
 accessible than whole genome sequencing, so having a PCR-based approach can
-accelerate the detection of specific strain(s) of microbes and faciliate
+accelerate the detection of specific strain(s) of microbes and facilitate
 diagnoses and/or population studies.
 
 # Statement of need
