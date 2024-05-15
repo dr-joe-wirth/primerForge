@@ -167,9 +167,6 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     clock.printDone()
     params.log.info(f"done {clock.getTimeString()}")
     
-    # remove the candidate kmers to free up memory
-    del candidateKmers
-    
     # dump the pairs to file
     params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs")
     
@@ -464,6 +461,9 @@ def _runner(params:Parameters) -> None:
         # get unfiltered pairs
         pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
         
+        # remove the candidate kmers to free up memory
+        del candidateKmers
+        
         # remove outgroup
         __removeOutgroup(params, pairs, analysisData, clock)
         
@@ -483,6 +483,9 @@ def _runner(params:Parameters) -> None:
         
         # get the pairs shared in the ingroup
         pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
+        
+        # remove the candidate kmers to free up memory
+        del candidateKmers
         
         # remove primer pairs that make products in the outgroup
         __removeOutgroup(params, pairs, analysisData, clock)
