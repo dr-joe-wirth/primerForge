@@ -531,6 +531,8 @@ def main() -> None:
             # save the error message if in debug mode
             params.log.rename(__name__)
             params.log.critical(e)
-
+            
+            Clock._killWheel()
+            
             # terminate        
             raise Exception(e)
