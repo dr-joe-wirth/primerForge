@@ -425,7 +425,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, 
             raise RuntimeError(ERR_MSG_1)
         
         # dump the shared kmers to file
-        params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers")
+        params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers", prefix=GAP)
     
     # print status
     clock.printStart(MSG_2)

@@ -95,7 +95,7 @@ def __getCandidates(params:Parameters, sharedExists:bool, clock:Clock) -> dict[s
     params.log.info(f"done {clock.getTimeString()}")
     
     # dump the candidates to file
-    params.dumpObj(candidateKmers, params.pickles[__CAND_NUM], "candidate kmers")
+    params.dumpObj(candidateKmers, params.pickles[__CAND_NUM], "candidate kmers", prefix=" "*4)
     
     return candidateKmers
 
@@ -127,7 +127,7 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     params.log.info(f"done {clock.getTimeString()}")
     
     # dump the pairs to file
-    params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs")
+    params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs", prefix=" "*4)
     
     # print the number of candidate primer pairs
     print(f"{MSG_2A}{len(pairs)}{MSG_2B}")
@@ -156,7 +156,7 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         
         # dump the results
         params.log.rename(__removeOutgroup.__name__)
-        params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs")
+        params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs", prefix=" "*4)
 
 
 def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:

@@ -584,13 +584,14 @@ class Parameters():
         self.log.info(f'{"disallowed outgroup PCR sizes:":<{WIDTH}}{"-".join(map(str,[min(self.disallowedLens),max(self.disallowedLens)]))}')
         self.log.info(f'{"num threads:":<{WIDTH}}{self.numThreads}')
     
-    def dumpObj(self, obj:any, fn:str, objName:str) -> None:
+    def dumpObj(self, obj:any, fn:str, objName:str, prefix:str='') -> None:
         """dumps an object in memory to file as a pickle
 
         Args:
             obj (any): the object to dump
             fn (str): the filename where object will be dumped
             objName (str): the name of the dumped object
+            prefix (str, optional): a prefix for the printed message. Defaults to ''
         """
         # messages
         MSG_A = "dumping "
@@ -608,7 +609,7 @@ class Parameters():
         
         # print status
         self.log.info(MSG_A + objName + MSG_B + printedFn + MSG_C)
-        clock.printStart(MSG_A + objName + MSG_B + printedFn + MSG_C)
+        clock.printStart(MSG_A + objName + MSG_B + printedFn + MSG_C, prefix=prefix)
         
         # dump the object to file
         with open(fn, 'wb') as fh:
