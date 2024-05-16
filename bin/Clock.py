@@ -228,16 +228,16 @@ class Clock:
         """prints the end message and the duration
         """
         # stop spinning the wheel if necessary
-        self._killWheel()
+        Clock._killWheel()
         
         # print the done string
         print(f"done {self.getTimeString()}")
         sys.stdout.flush()
     
-    def _killWheel(self) -> None:
+    def _killWheel() -> None:
         """kills any spinning clocks
         """
         try:
-            self.__WHEEL.stop()
+            Clock.__WHEEL.stop()
         except:
             pass
