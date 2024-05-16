@@ -8,7 +8,6 @@ class Parameters():
     """class to store arguments and debug utilities
     """
     # constants
-    _PLOT_EXT = "_plot.pdf"
     _DATA_EXT = "_data.tsv"
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __PICKLE_DIR = "_pickles"
@@ -16,12 +15,10 @@ class Parameters():
                     1: "candidates.p",
                     2: "pairs.p",
                     3: "pairs_noOutgroup.p",
-                    4: "pairs_final.p",
-                    5: 'analysis.p'}
+                    4: "pairs_final.p"}
     
     # default values
     _DEF_RESULTS_FN = 'results.tsv'
-    _DEF_ANALYSIS_BASENAME = 'distribution'
     _DEF_OUTGROUP = list()
     _DEF_FRMT = __ALLOWED_FORMATS[0]
     _DEF_MIN_LEN = 16
@@ -43,8 +40,6 @@ class Parameters():
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
         self.resultsFn:str
-        self.plotsFn:str
-        self.plotDataFn:str
         self.format:str
         self.minLen:int
         self.maxLen:int
@@ -270,7 +265,6 @@ class Parameters():
         # flags
         INGROUP_FLAGS = ('-i', '--ingroup')
         OUT_FLAGS = ('-o', '--out')
-        ANAL_FLAGS = ('-a', '--analysis')
         OUTGROUP_FLAGS = ('-u', '--outgroup')
         DISALLOW_FLAGS = ("-b", "--bad_sizes")
         FMT_FLAGS = ('-f', '--format')
@@ -287,7 +281,6 @@ class Parameters():
         DEBUG_FLAGS = ("--debug",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                      OUT_FLAGS[0][-1] + ":" + \
-                     ANAL_FLAGS[0][1] + ":" + \
                      OUTGROUP_FLAGS[0][-1] + ":" + \
                      DISALLOW_FLAGS[0][-1] + ":" + \
                      FMT_FLAGS[0][-1] + ":" + \
@@ -302,7 +295,6 @@ class Parameters():
                      HELP_FLAGS[0][-1]
         LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
                      OUT_FLAGS[1][2:] + "=",
-                     ANAL_FLAGS[1][2:] + "=",
                      OUTGROUP_FLAGS[1][2:] + "=",
                      DISALLOW_FLAGS[1][2:] + "=",
                      FMT_FLAGS[1][2:] + "=",
@@ -353,7 +345,6 @@ class Parameters():
                        f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL*2}' + \
                        f"optional arguments: {EOL}" + \
                        f"{GAP}{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename for primer pair data{DEF_OPEN}{Parameters._DEF_RESULTS_FN}{CLOSE}{EOL}" + \
-                       f"{GAP}{ANAL_FLAGS[0] + SEP_1 + ANAL_FLAGS[1]:<{WIDTH}}[file] output basename for primer analysis data{DEF_OPEN}{Parameters._DEF_ANALYSIS_BASENAME}{CLOSE}{EOL}" + \
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
                        f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup {Parameters.__ALLOWED_FORMATS[0]}{SEP_2}{Parameters.__ALLOWED_FORMATS[1]}{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
@@ -374,8 +365,6 @@ class Parameters():
         # set default values
         self.ingroupFns = None
         self.resultsFn = os.path.join(os.getcwd(), Parameters._DEF_RESULTS_FN)
-        self.plotsFn = os.path.join(os.getcwd(), Parameters._DEF_ANALYSIS_BASENAME + Parameters._PLOT_EXT)
-        self.plotDataFn = os.path.join(os.getcwd(), Parameters._DEF_ANALYSIS_BASENAME + Parameters._DATA_EXT)
         self.outgroupFns = Parameters._DEF_OUTGROUP
         self.disallowedLens = None # start as None; update at the end
         self.format = Parameters._DEF_FRMT
@@ -424,11 +413,6 @@ class Parameters():
                 # get output filename
                 elif opt in OUT_FLAGS:                    
                     self.resultsFn = os.path.abspath(arg)
-                    
-                # get analysis filenames
-                elif opt in ANAL_FLAGS:
-                    self.plotsFn = os.path.abspath(arg + Parameters._PLOT_EXT)
-                    self.plotDataFn = os.path.abspath(arg + Parameters._DATA_EXT)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
@@ -575,8 +559,6 @@ class Parameters():
             
             # check for existing files
             Parameters.__checkOutputFile(self.resultsFn)
-            Parameters.__checkOutputFile(self.plotDataFn)
-            Parameters.__checkOutputFile(self.plotsFn)
     
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
@@ -589,8 +571,6 @@ class Parameters():
         self.log.info(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
         self.log.info(f'{"outgroup:":<{WIDTH}}{",".join(self.outgroupFns)}')
         self.log.info(f'{"results filename:":{WIDTH}}{self.resultsFn}')
-        self.log.info(f'{"plots filename:":{WIDTH}}{self.plotsFn}')
-        self.log.info(f'{"plots data filename:":{WIDTH}}{self.plotDataFn}')
         self.log.info(f'{"file format:":{WIDTH}}{self.format}')
         self.log.info(f'{"min kmer len:":{WIDTH}}{self.minLen}')
         self.log.info(f'{"max kmer len:":<{WIDTH}}{self.maxLen}')

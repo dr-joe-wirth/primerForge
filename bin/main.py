@@ -5,11 +5,9 @@ from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from bin.AnalysisData import AnalysisData
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
-from bin.analysis import _initializeAnalysisData, _updateAnalysisData, _plotAnalysisData
 
 # global constants
 __version__ = "1.0.2"
@@ -19,17 +17,16 @@ __CAND_NUM   = 1
 __PAIR_1_NUM = 2
 __PAIR_2_NUM = 3
 __PAIR_3_NUM = 4
-__ANAL_NUM   = 5
 
 
-def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool,bool]:
+def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
     """gets booleans for checkpointing
 
     Args:
         params (Parameters): a Parameters object
 
     Returns:
-        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; final pairs; analysis data
+        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; final pairs
     """
     
     # determine if each pickle exists
@@ -38,9 +35,8 @@ def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool,bool]:
     unfiltExists = os.path.exists(params.pickles[__PAIR_1_NUM])
     filterExists = os.path.exists(params.pickles[__PAIR_2_NUM])
     finalsExists = os.path.exists(params.pickles[__PAIR_3_NUM])
-    analysExists = os.path.exists(params.pickles[__ANAL_NUM])
     
-    return sharedExists, candidExists, unfiltExists, filterExists, finalsExists, analysExists
+    return sharedExists, candidExists, unfiltExists, filterExists, finalsExists
 
 
 def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
@@ -104,48 +100,12 @@ def __getCandidates(params:Parameters, sharedExists:bool, clock:Clock) -> dict[s
     return candidateKmers
 
 
-def __initializeAnalysis(params:Parameters, candidateKmers:dict[str,dict[str,list[Primer]]], clock:Clock) -> dict[tuple[Seq,str],AnalysisData]:
-    """initialize the analysis data
-
-    Args:
-        params (Parameters): a Parameters object
-        candidateKmers (dict[str,dict[str,list[Primer]]]): the dictionary produced by __getCandidates
-        clock (Clock): a Clock object
-
-    Returns:
-        dict[tuple[Seq,str],AnalysisData]: key=(kmer sequence, contig name); val=AnalysisData object
-    """
-    
-    # message
-    MSG  = "initializing analysis data"
-    
-    # log data
-    params.log.rename(__initializeAnalysis.__name__)
-    
-    # print status
-    params.log.info(MSG)
-    clock.printStart(MSG)
-    
-    # initialize analysis data
-    analysisData = _initializeAnalysisData(candidateKmers)
-    
-    # print status
-    clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
-    
-    # dump the analysis to file
-    params.dumpObj(analysisData, params.pickles[__ANAL_NUM], "initial analysis data")
-    
-    return analysisData
-
-
-def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,list[Primer]]], analysisData:dict[tuple[Seq,str],AnalysisData], clock:Clock) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
+def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,list[Primer]]], clock:Clock) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
     """gets the unfiltered pairs
 
     Args:
         params (Parameters): a Parameters object
         candidateKmers (dict[str,dict[str,list[Primer]]]): the dictionary produced by __getCandidates
-        analysisData (dict[tuple[Seq,str],AnalysisData]): the dictionary produced by __initializeAnalysis
         clock (Clock): a Clock object
 
     Returns:
@@ -153,9 +113,8 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     """
     # messages
     MSG_1  = "identifying pairs of primers found in all ingroup sequences"
-    MSG_2  = "updating analysis data"
-    MSG_3A = "    identified "
-    MSG_3B = " primer pairs shared in all ingroup sequences"
+    MSG_2A = "    identified "
+    MSG_2B = " primer pairs shared in all ingroup sequences"
     
     # log data
     params.log.rename(__getUnfilteredPairs.__name__)
@@ -170,35 +129,20 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     # dump the pairs to file
     params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs")
     
-    # update the analysis data
-    params.log.info(MSG_2)
-    clock.printStart(MSG_2)
-    _updateAnalysisData(analysisData, pairs.keys())
-    clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
-    
-    # dump the analysis to file
-    params.dumpObj(analysisData, params.pickles[__ANAL_NUM], 'updated analysis data')
-    
     # print the number of candidate primer pairs
-    print(f"{MSG_3A}{len(pairs)}{MSG_3B}")
-    params.log.info(f"{MSG_3A}{len(pairs)}{MSG_3B}")
+    print(f"{MSG_2A}{len(pairs)}{MSG_2B}")
+    params.log.info(f"{MSG_2A}{len(pairs)}{MSG_2B}")
     
     return pairs
 
 
-def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], analysisData:dict[tuple[Seq,str],AnalysisData], clock:Clock) -> None:
+def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
     """removes outgroup primers from the pairs dictionary. does not return
 
     Args:
         params (Parameters): a Parameters object
         pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
-        analysisData (dict[tuple[Seq,str],AnalysisData]): the dictionary produced by __initializeAnalysis
-        clock (Clock): a Clock object
     """
-    # message
-    MSG = "updating analysis data"
-    
     # log data
     params.log.rename(__removeOutgroup.__name__)
     
@@ -213,39 +157,23 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         # dump the results
         params.log.rename(__removeOutgroup.__name__)
         params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs")
-    
-        # print status
-        params.log.info(MSG)
-        clock.printStart(MSG)
-        
-        # update analysis data
-        _updateAnalysisData(analysisData, pairs.keys())
-        
-        # print status
-        clock.printDone()
-        params.log.info(f'done {clock.getTimeString()}')
-    
-        # dump the updated analysis
-        params.dumpObj(analysisData, params.pickles[__ANAL_NUM], 'updated analysis data')
 
 
-def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], analysisData:dict[tuple[Seq,str],AnalysisData], clock:Clock) -> None:
+def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
     """gets the final pairs by keeping one per bin pair. does not return
 
     Args:
         params (Parameters): a Parameters object
         pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
-        analysisData (dict[tuple[Seq,str],AnalysisData]): the dictionary produced by __initializeAnalysis
         clock (Clock): a Clock object
     """
     # messages
-    MSG_1  = "keeping one primer pair per locus"
-    MSG_2 = "updating analysis data"
+    MSG  = "keeping one primer pair per locus"
     
     # print status
     params.log.rename(__getFinalPairs.__name__)
-    params.log.info(MSG_1)
-    clock.printStart(MSG_1)
+    params.log.info(MSG)
+    clock.printStart(MSG)
     
     # only keep one pair per bin pair (only process ingroup bins)
     for name in map(os.path.basename, params.ingroupFns):
@@ -255,33 +183,22 @@ def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
     clock.printDone()
     params.log.info(f"done {clock.getTimeString()}")
     
-    # print status
-    params.log.info(MSG_2)
-    clock.printStart(MSG_2)
-    
-    # update analysis data (twice if no outgroup)
-    _updateAnalysisData(analysisData, pairs.keys())
-    if params.outgroupFns == []:
-        _updateAnalysisData(analysisData, pairs.keys())
-    
-    # print status
-    clock.printDone()
-    params.log.info(f'done {clock.getTimeString()}')
-    
-    # dump analysis data to file
-    params.dumpObj(analysisData, params.pickles[__ANAL_NUM], 'updated analysis data')
-    
     # dump pairs to file
     params.dumpObj(pairs, params.pickles[__PAIR_3_NUM], 'final pairs')
 
 
-def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
     """writes pairs of primers to file
 
     Args:
-        fn (str): the filename to write
+        params (Parameters): the Parameters object for the run
         pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]])): key=primer pair; val=dict: key=genome name; val=tuple: contig; pcr len;  bin pair
+        clock (Clock): a Clock object
     """
+    # messages
+    MSG_1A = "writing "
+    MSG_1B = " primer pairs to "
+    
     # contants
     EOL = "\n"
     SEP = "\t"
@@ -307,12 +224,17 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
         
         return headers
     
+    # print status
+    params.log.rename(__writePrimerPairs.__name__)
+    params.log.info(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
+    clock.printStart(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
+    
     # get the names of genomes, and create headers with the same order
     names = list(next(iter(pairs.values())).keys())
     headers = getHeaders(names)
     
     # open the file
-    with open(fn, 'w') as fh:
+    with open(params.resultsFn, 'w') as fh:
         # write the headers
         fh.write(SEP.join(headers) + EOL)
         fh.flush()
@@ -337,43 +259,10 @@ def __writePrimerPairs(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,tuple[st
             # write the data to the file
             fh.write(f"{SEP.join(map(str, row))}{EOL}")
             fh.flush()
-
-
-def __plotAndWrite(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], analysisData:dict[tuple[Seq,str],AnalysisData], clock:Clock) -> None:
-    """writes and plots final data
-
-    Args:
-        params (Parameters): a Parameters object
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
-        analysisData (dict[tuple[Seq,str],AnalysisData]): the dictionary produced by __initializeAnalysis
-        clock (Clock): a Clock object
-    """
-    # messages
-    MSG_1A = "writing "
-    MSG_1B = " primer pairs to "
-    MSG_2  = "plotting kmer distributions"
-    
-    # print status
-    params.log.rename(__plotAndWrite.__name__)
-    params.log.info(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
-    clock.printStart(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
-    
-    # write primer pairs to file
-    __writePrimerPairs(params.resultsFn, pairs)
     
     # print status
     clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
-    params.log.info(MSG_2)
-    clock.printStart(MSG_2, end=' ...\n', spin=False)
-    
-    # plot analysis data
-    _plotAnalysisData(analysisData, params)
-    
-    # print status
-    clock.printDone()
-    params.log.rename(__plotAndWrite.__name__)
-    params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(f"done {clock.getTimeString()}")    
 
 
 def __removePickles(params:Parameters) -> None:
@@ -409,92 +298,80 @@ def _runner(params:Parameters) -> None:
     params.log.rename(_runner.__name__)
     
     # get the checkpoint status
-    sharedExists, candExists, unfiltExists, filtExists, finalExists, analExists = __getCheckpoint(params)
+    sharedExists, candExists, unfiltExists, filtExists, finalExists = __getCheckpoint(params)
     
     # jump straight to the end if possible
-    if finalExists and analExists:
+    if finalExists:
         # load data
         pairs = params.loadObj(params.pickles[__PAIR_3_NUM])
-        analysisData = params.loadObj(params.pickles[__ANAL_NUM])
         
-        # plot and write data
-        __plotAndWrite(params, pairs, analysisData, clock)
+        # write data to file
+        __writePrimerPairs(params, pairs, clock)
     
     # otherwise jump to final pair retrieval if possible
-    elif filtExists and analExists:
+    elif filtExists:
         # load data
         pairs = params.loadObj(params.pickles[__PAIR_2_NUM])
-        analysisData = params.loadObj(params.pickles[__ANAL_NUM])
         
         # get final pairs
-        __getFinalPairs(params, pairs, analysisData, clock)
+        __getFinalPairs(params, pairs, clock)
         
-        # plot and write data
-        __plotAndWrite(params, pairs, analysisData, clock)
+        #  write data to file
+        __writePrimerPairs(params, pairs, clock)
     
     # otherwise jump to outgroup removal if possible
-    elif unfiltExists and analExists:
+    elif unfiltExists:
         # load data
         pairs = params.loadObj(params.pickles[__PAIR_1_NUM])
-        analysisData = params.loadObj(params.pickles[__ANAL_NUM])
         
         # remove outgroup
-        __removeOutgroup(params, pairs, analysisData, clock)
+        __removeOutgroup(params, pairs)
         
         # get final pairs
-        __getFinalPairs(params, pairs, analysisData, clock)
+        __getFinalPairs(params, pairs, clock)
         
-        # plot and write data
-        __plotAndWrite(params, pairs, analysisData, clock)
+        # write data to file
+        __writePrimerPairs(params, pairs, clock)
     
     # otherwise jump to pair retrieval
     elif candExists:
         # load data
         candidateKmers = params.loadObj(params.pickles[__CAND_NUM])
         
-        # get analysis data
-        if analExists:
-            analysisData = params.loadObj(params.pickles[__ANAL_NUM])
-        else:
-            analysisData = __initializeAnalysis(params, candidateKmers, clock)
-        
         # get unfiltered pairs
-        pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
+        pairs = __getUnfilteredPairs(params, candidateKmers, clock)
         
         # remove the candidate kmers to free up memory
         del candidateKmers
         
         # remove outgroup
-        __removeOutgroup(params, pairs, analysisData, clock)
+        __removeOutgroup(params, pairs)
         
         # get final pairs
-        __getFinalPairs(params, pairs, analysisData, clock)
+        __getFinalPairs(params, pairs, clock)
         
         # plot and write data
-        __plotAndWrite(params, pairs, analysisData, clock)
+        __writePrimerPairs(params, pairs, clock)
     
     # otherwise run from the beginning (_getAllCandidates handles sharedExists)
     else:
         # get the candidate kmers for the ingroup
         candidateKmers = __getCandidates(params, sharedExists, clock)
         
-        # initialize the analysis data
-        analysisData = __initializeAnalysis(params, candidateKmers, clock)
-        
         # get the pairs shared in the ingroup
-        pairs = __getUnfilteredPairs(params, candidateKmers, analysisData, clock)
+        pairs = __getUnfilteredPairs(params, candidateKmers, clock)
         
         # remove the candidate kmers to free up memory
         del candidateKmers
         
         # remove primer pairs that make products in the outgroup
-        __removeOutgroup(params, pairs, analysisData, clock)
+        __removeOutgroup(params, pairs)
         
         # keep one pair per bin pair
-        __getFinalPairs(params, pairs, analysisData, clock)
+        __getFinalPairs(params, pairs, clock)
         
         # make plots and write data
-        __plotAndWrite(params, pairs, analysisData, clock)
+        __writePrimerPairs(params, pairs, clock)
     
     # move the logger back
     params.log.rename(_runner.__name__)
