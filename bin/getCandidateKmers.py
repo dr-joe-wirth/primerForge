@@ -6,7 +6,7 @@ from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
 # functions
-def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]:
+def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> tuple[str,dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]]:
     """gets a collection of kmers from a genome that are:
         * not repeated anywhere in the genome
         * at least one end is a G or C
@@ -18,7 +18,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         name (str): the name of the genome
     
     Returns:
-        dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen, strand
+        tuple[str,dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]]: name, dict: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen, strand
     """
     # constant
     GC = {"G", "C", 'g', 'c'}
@@ -96,8 +96,8 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         try: kmers[Primer.MINUS].pop(seq)
         except KeyError: pass
     
-    return kmers
-            
+    return (name, kmers)
+
 
 def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,str]]]:
     """retrieves all the kmers that are shared between the input genomes
@@ -119,46 +119,45 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
     DBG_MSG_1 = ' shared kmers after processing '
     
     # intialize variables
-    sharedKmers = dict()
+    args = list()
     firstGenome = True
-
+    
     # set the debugger if required
     params.log.rename(__getSharedKmers.__name__)
-
-    # for each genome
+    
+    # create a list of arguments
     for name in seqs.keys():
-        # get the unique kmers for this genome/kmer lengths
-        kmers = __getUniqueKmers(seqs[name], params.minLen, params.maxLen, name)
-        
+        args.append((list(seqs[name]), params.minLen, params.maxLen, name))
+    
+    # parallelize kmer retrieval
+    pool = multiprocessing.Pool(params.numThreads)
+    allUniqueKmers = pool.starmap(__getUniqueKmers, args)
+    pool.close()
+    pool.join()
+    
+    # get intersection of all unique kmers
+    for name,kmers in allUniqueKmers:
         # make sure there are kmers for this genome
         if kmers == dict():
             params.log.error(f"{ERR_MSG_1}{name}")
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
-        # keep only the (+) strand kmers if this is the first genome
         if firstGenome:
-            sharedKmers.update(kmers[Primer.PLUS])
+            sharedKmers = kmers[Primer.PLUS]
             firstGenome = False
         
-        # otherwise keep the shared kmers (both + and -)
         else:
-            # get all the kmers for this genome (both + and - strands)
-            thisGenome = set(kmers[Primer.PLUS].keys()).union(kmers[Primer.MINUS].keys())
+            thisGenome = set(kmers[Primer.PLUS]).union(set(kmers[Primer.MINUS]))
+            badKmers = set(sharedKmers.keys()).difference(thisGenome)
             
-            # go through each kmer that is currently shared by all processed genomes
-            shared = set(sharedKmers.keys())
-            for kmer in shared:
-                # save data for kmers shared with this genome
-                if kmer in thisGenome:
-                    # strand information is now lost; try both
-                    try:
-                        sharedKmers[kmer].update(kmers[Primer.PLUS][kmer])
-                    except KeyError:
-                        sharedKmers[kmer].update(kmers[Primer.MINUS][kmer])
-                
-                # remove any kmers that are not shared with this genome
-                else:
-                    sharedKmers.pop(kmer)
+            for bad in badKmers:
+                sharedKmers.pop(bad)
+            
+            for kmer in sharedKmers:
+                try:
+                    sharedKmers[kmer].update(kmers[Primer.PLUS][kmer])
+                except KeyError:
+                    sharedKmers[kmer].update(kmers[Primer.MINUS][kmer])
         
         # make sure the kmers did not depopulate
         if sharedKmers == dict():
@@ -425,7 +424,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, 
             raise RuntimeError(ERR_MSG_1)
         
         # dump the shared kmers to file
-        params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers")
+        params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers", prefix=GAP)
     
     # print status
     clock.printStart(MSG_2)
