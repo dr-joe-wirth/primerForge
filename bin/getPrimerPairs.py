@@ -277,7 +277,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
 
     # for each remaining genome
     kmers = dict()
-    for name in remaining: 
+    for name in remaining:
         # restructure the data for O(1) lookup of primers by their sequences
         kmers[name] = __restructureCandidateKmerData(candidateKmers[name])
         

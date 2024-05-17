@@ -7,9 +7,8 @@ from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
-from bin.AnalysisData import AnalysisData
 from bin.getPrimerPairs import _formsDimers
-import gzip, os, pickle, primer3, re, subprocess, sys, unittest
+import gzip, os, pickle, primer3, subprocess, sys, unittest
 
 class Result():
     """class to save results for easy lookup
@@ -85,12 +84,7 @@ class ResultsTest(unittest.TestCase):
         clock.printStart('reading results into memory')
         cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.params.resultsFn)
         clock.printDone()
-        
-        # load the analysis file into memory
-        clock.printStart('reading analysis data into memory')
-        cls.analysis:dict[tuple[Seq,str],AnalysisData] = ResultsTest._parseAnalysisData(ResultsTest.params.plotDataFn)
-        clock.printDone()
-    
+
         # load the genomic sequences into memory
         clock.printStart('reading genomic sequences into memory')
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
@@ -107,7 +101,7 @@ class ResultsTest(unittest.TestCase):
         else:
             # calculate the binding sites
             clock.printStart('getting binding sites for all kmers and primers', end='...\n', spin=False)
-            cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = ResultsTest._getKmerBindingSites(cls.results, cls.analysis, cls.sequences, cls.params.minLen, cls.params.maxLen)
+            cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = ResultsTest._getKmerBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
             clock.printDone()
             
             # dump the binding sites
@@ -317,78 +311,6 @@ class ResultsTest(unittest.TestCase):
         
         return out
 
-    def _parseAnalysisData(fn:str) -> dict[tuple[Seq,str], AnalysisData]:
-        """parses an analysis data file
-
-        Args:
-            fn (str): the file to parse
-
-        Returns:
-            dict[tuple[Seq,str], AnalysisData]: key=(kmer seq, contig name); val=corresponding AnalysisData object
-        """
-        # constants
-        SEP = "\t"
-        G_COORD = 'genome coord'
-        GREP_FIND = r'^(.+) \((\d+), (\d+)\)$'
-        GREP_REPL = r'\1\t\2\t\3'
-        
-        # initialize variables
-        header = True
-        indices = dict()
-        recNum = 0
-        out = dict()
-        
-        # for each line in the file
-        with open(fn, 'r') as fh:
-            for line in fh:
-                # convert to a row of columns
-                line = line.rstrip()
-                row = line.split(SEP)
-                
-                # save the index for each genome's kmer coordinates
-                if header:
-                    # key = index; val = genome name
-                    indices = {idx:row[idx][:-len(G_COORD)].rstrip() for idx in range(2, len(row)) if G_COORD in row[idx]}
-                    header  = False
-                
-                # process data rows
-                else:
-                    # extract the sequence and the level
-                    seq = Seq(row[0])
-                    level = row[1]
-
-                    # for each genome
-                    for idx in indices.keys():
-                        # get the name
-                        name = indices[idx]
-
-                        # extract the positional data
-                        contig, start, end = re.sub(GREP_FIND, GREP_REPL, row[idx]).split(SEP)
-                        
-                        # cast coordinates as integers
-                        start = int(start)
-                        end = int(end)
-                        
-                        # determine the strand; `start` needs to be lowest value
-                        if start < end:
-                            strand = Primer.PLUS
-                        else:
-                            start = end
-                            strand = Primer.MINUS
-                        
-                        # create a primer object
-                        primer = Primer(seq, contig, start, len(seq), strand)
-                        
-                        # create and save an analysis data object; use the row as the index
-                        data = AnalysisData(primer, recNum, name)
-                        data.setLevel(level)
-                        out[(seq,contig)] = data
-                        
-                        # update the record number for the next entry
-                        recNum += 1
-        
-        return out
-
     def _loadOneGenomeSequence(fn:str) -> dict[str,dict[str,Seq]]:
         """loads a single genome sequence into memory
 
@@ -488,7 +410,7 @@ class ResultsTest(unittest.TestCase):
         
         return out
 
-    def _getKmerBindingSites(results:dict[tuple[Seq,Seq],Result], analysis:dict[tuple[Seq,str],AnalysisData], sequences:dict[str,dict[str,dict[str,Seq]]], minLen:int, maxLen:int) -> dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]:
+    def _getKmerBindingSites(results:dict[tuple[Seq,Seq],Result], sequences:dict[str,dict[str,dict[str,Seq]]], minLen:int, maxLen:int) -> dict[Seq,dict[str,dict[str,dict[str,list[int]]]]]:
         """get all of the primer binding sites in the provided genomes
 
         Args:
@@ -503,8 +425,6 @@ class ResultsTest(unittest.TestCase):
         # initialize variables
         bindingSites = dict()
         allPrimers = {p for pair in results.keys() for p in pair}
-        savedKmers = {k for k,c in analysis.keys()}
-        savedKmers.update(allPrimers)
         clock = Clock()
         
         # for each genome
@@ -520,10 +440,10 @@ class ResultsTest(unittest.TestCase):
                 # determine which kmers actually need to be evaluated
                 relevantKmers = set(kmers[Primer.PLUS])
                 relevantKmers.update(set(kmers[Primer.MINUS]))                
-                relevantKmers.intersection_update(savedKmers)
+                relevantKmers.intersection_update(allPrimers)
                 
                 # for each kmer
-                for kmer in savedKmers:
+                for kmer in allPrimers:
                     # build the data structure: seq, name, contig, strand, list of start positions
                     bindingSites[kmer] = bindingSites.get(kmer, dict())
                     bindingSites[kmer][name] = bindingSites[kmer].get(name, dict())
@@ -976,66 +896,3 @@ class ResultsTest(unittest.TestCase):
                         # and the pcr lengths should not be disallowed
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
-    
-    def testT_analysisDataMatchesKmerPositions(self) -> None:
-        """check that the analysis data are congruent with the binding sites
-        """
-        # for each kmer in the analysis file
-        for (kmer,contig),analysis in self.analysis.items():
-            # make sure the kmer is present in the genomes
-            self.assertIn(kmer, self.bindingSites.keys())
-            
-            # make sure the kmer binds exactly one strand
-            bindsPlus  = self.bindingSites[kmer][analysis.name][contig][Primer.PLUS]  != []
-            bindsMinus = self.bindingSites[kmer][analysis.name][contig][Primer.MINUS] != []
-            
-            self.assertFalse(bindsPlus and bindsMinus, f"{kmer} binds multiple strands")
-            self.assertTrue(bindsPlus  or  bindsMinus, f'{kmer} does not bind either strand')
-        
-            # extract the start position of the kmer
-            if bindsPlus:
-                starts = self.bindingSites[kmer][analysis.name][contig][Primer.PLUS]
-            elif bindsMinus:
-                starts = self.bindingSites[kmer][analysis.name][contig][Primer.MINUS]
-            
-            # should have at least one start position
-            self.assertNotEqual(starts, [], f"{(kmer,contig)} has no start positions")
-            
-            # only one start position should exist for all kmers
-            self.assertEqual(len(starts), 1, f"{(kmer,contig)} has multiple binding sites")
-            
-            # the start positions should match
-            self.assertEqual(analysis.primer.start, starts[0], f"{(kmer,contig)}: start position does not match")
-    
-    def testU_resultsMatchesAnalysis(self) -> None:
-        """checks that the results data and the analysis data are congruent
-        """
-        # track seen kmers to prevent redundant work
-        seen = set()
-        
-        # for each pair
-        for pair in self.results.keys():
-            # for each genome
-            for name in self.results[pair].additional.keys():
-                # for each contig
-                for contig in self.results[pair].additional[name][ResultsTest.CONTIG]:
-                    # for each kmer in the pair
-                    for kmer in pair:
-                        # only process each kmer once
-                        if kmer not in seen:
-                            # mark the kmer as seen
-                            seen.add(kmer)
-                            
-                            # the kmer (or its rev comp) should be in analysis data
-                            try:
-                                analysis = self.analysis[(kmer, contig)]
-                                
-                            except KeyError:
-                                try:
-                                    analysis = self.analysis[(kmer.reverse_complement(), contig)]
-                                
-                                except KeyError:
-                                    self.fail(f'{(kmer, contig)} from {pair} not in analysis data')
-
-                            # everything in the results should have the maximum level
-                            self.assertEqual(analysis.getLevel(), max(AnalysisData.LEVELS))

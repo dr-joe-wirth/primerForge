@@ -191,7 +191,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     """
     # messages
     MSG_1   = "removing primer pairs present in the outgroup sequences"
-    MSG_2   = "processing outgroup results"
+    MSG_2   = "    processing outgroup results"
     MSG_3A  = "removed "
     MSG_3B  = " pairs after processing "
     MSG_3C  = " ("

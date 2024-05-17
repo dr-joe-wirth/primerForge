@@ -201,11 +201,12 @@ class Clock:
         """
         self.__start()
     
-    def printStart(self, msg:str, end:str=' ... ', spin:bool=True) -> None:
+    def printStart(self, msg:str, prefix:str='', end:str=' ... ', spin:bool=True,) -> None:
         """prints the start message and restarts the clock
 
         Args:
             msg (str): the message to print
+            prefix (str, optional): the beginning of the printed message. Defaults to ''.
             end (str, optional): the end of the printed message. Defaults to ' ... '.
             spin (bool, optional): indicates if the wheel should spin. Defaults to True.
         """
@@ -214,11 +215,11 @@ class Clock:
         
         # spin the wheel if requested; wheel handles printing
         if self.__spin:
-            self.__WHEEL.start(msg + end)
+            self.__WHEEL.start(prefix + msg + end)
         
         # otherwise print the message 
         else:
-            print(msg, end=end)
+            print(prefix + msg, end=end)
             sys.stdout.flush()
         
         # restart the clock
