@@ -1,3 +1,5 @@
+import os
+from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Clock import Clock
 from bin.Primer import Primer
@@ -6,13 +8,14 @@ from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
 # functions
-def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> tuple[str,dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]]:
+def __getUniqueKmers(fn:str, frmt:str, minLen:int, maxLen:int, name:str) -> tuple[str,dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]]:
     """gets a collection of kmers from a genome that are:
         * not repeated anywhere in the genome
         * at least one end is a G or C
 
     Args:
-        seqs (list[SeqRecord]): a list of contigs as SeqRecord objects
+        fn (str): a sequence filename
+        frmt (str): the sequence file format
         minLen (int): the minimum kmer length
         maxLen (int): the maximum kmer length
         name (str): the name of the genome
@@ -33,6 +36,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
         return seq in kmers[Primer.PLUS].keys() or seq in kmers[Primer.MINUS].keys()
 
     # initialize variables
+    contig:SeqRecord
     kmers = dict()
     kmers[Primer.PLUS] = dict()
     kmers[Primer.MINUS] = dict()
@@ -41,7 +45,7 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
     smallest = min(krange)
     
     # go through each contig
-    for contig in seqs:
+    for contig in SeqIO.parse(fn, frmt):
         # extract the contig sequences
         fwdSeq:Seq = contig.seq
         revSeq:Seq = fwdSeq.reverse_complement()
@@ -99,11 +103,10 @@ def __getUniqueKmers(seqs:list[SeqRecord], minLen:int, maxLen:int, name:str) -> 
     return (name, kmers)
 
 
-def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,str]]]:
+def __getSharedKmers(params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,str]]]:
     """retrieves all the kmers that are shared between the input genomes
 
     Args:
-        seqs (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs
         params (Parameters): a Parameters object
 
     Raises:
@@ -126,8 +129,8 @@ def __getSharedKmers(seqs:dict[str,list[SeqRecord]], params:Parameters) -> dict[
     params.log.rename(__getSharedKmers.__name__)
     
     # create a list of arguments
-    for name in seqs.keys():
-        args.append((list(seqs[name]), params.minLen, params.maxLen, name))
+    for fn in params.ingroupFns:
+        args.append((fn, params.format, params.minLen, params.maxLen, os.path.basename(fn)))
     
     # parallelize kmer retrieval
     pool = multiprocessing.Pool(params.numThreads)
@@ -364,11 +367,10 @@ def __getCandidatesForOneGenome(name:str, kmers:dict[Seq,dict[str,tuple[str,int,
     return __buildOutput(kmers, candidates)
 
 
-def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, sharedExists:bool) -> dict[str,dict[str,list[Primer]]]:
+def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict[str,list[Primer]]]:
     """gets all the candidate kmer sequences for a given ingroup
 
     Args:
-        ingroup (dict[str,list[SeqRecord]]): key=genome name; val=contigs as a list of SeqRecord (generator actually)
         params (Parameters): a Parameters object
         sharedExists (bool): indicates if the shared kmers are already pickled
 
@@ -400,10 +402,6 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, 
     params.log.rename(_getAllCandidateKmers.__name__)
     
     if sharedExists:
-        # close the genome files (not actually a list of seqRecords; they are generators)
-        for handle in ingroup.values():
-            handle.stream.close()
-        
         # load existing shared kmers from file
         kmers = params.loadObj(params.pickles[SHARED_KMER_NUM])
 
@@ -411,7 +409,7 @@ def _getAllCandidateKmers(ingroup:dict[str,list[SeqRecord]], params:Parameters, 
         # get all non-duplicated kmers that are shared in the ingroup
         params.log.info(MSG_1)
         clock.printStart(MSG_1)
-        kmers = __getSharedKmers(ingroup, params)
+        kmers = __getSharedKmers(params)
         clock.printDone()
         
         # move log back to this function

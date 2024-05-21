@@ -79,15 +79,12 @@ def __getCandidates(params:Parameters, sharedExists:bool, clock:Clock) -> dict[s
     # log data
     params.log.rename(__getCandidates.__name__)
     
-    # read the ingroup sequences into memory
-    ingroupSeqs = __readSequenceData(params.ingroupFns, params.format)
-    
     # print status
-    params.log.info(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}")
-    clock.printStart(f"{MSG_1A}{len(ingroupSeqs)}{MSG_1B}", end='\n', spin=False)
+    params.log.info(f"{MSG_1A}{len(params.ingroupFns)}{MSG_1B}")
+    clock.printStart(f"{MSG_1A}{len(params.ingroupFns)}{MSG_1B}", end='\n', spin=False)
     
     # get the candidate kmers
-    candidateKmers = _getAllCandidateKmers(ingroupSeqs, params, sharedExists)
+    candidateKmers = _getAllCandidateKmers(params, sharedExists)
     
     # print status
     clock.printDone()
