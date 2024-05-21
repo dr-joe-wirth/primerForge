@@ -165,12 +165,15 @@ def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
         clock (Clock): a Clock object
     """
     # messages
-    MSG  = "keeping one primer pair per locus"
+    GAP = " "*4
+    MSG_1  = "keeping one primer pair per locus"
+    MSG_2A = "selected "
+    MSG_2B = " primer pairs"
     
     # print status
     params.log.rename(__getFinalPairs.__name__)
-    params.log.info(MSG)
-    clock.printStart(MSG)
+    params.log.info(MSG_1)
+    clock.printStart(MSG_1)
     
     # only keep one pair per bin pair (only process ingroup bins)
     for name in map(os.path.basename, params.ingroupFns):
@@ -179,9 +182,11 @@ def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
     # print status
     clock.printDone()
     params.log.info(f"done {clock.getTimeString()}")
+    print(f"{GAP}{MSG_2A}{len(pairs)}{MSG_2B}")
+    params.log.info(f"{GAP}{MSG_2A}{len(pairs)}{MSG_2B}")
     
     # dump pairs to file
-    params.dumpObj(pairs, params.pickles[__PAIR_3_NUM], 'final pairs')
+    params.dumpObj(pairs, params.pickles[__PAIR_3_NUM], 'final pairs', GAP)
 
 
 def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
