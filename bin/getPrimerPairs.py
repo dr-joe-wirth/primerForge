@@ -259,7 +259,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     Args:
         firstName (str): the name of the genome that has already been evaluated
         candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate kmers
-        candidatePairs (list[tuple[Primer,Primer,int,tuple[str,int,int]]]): the list produced by __evaluateBinPairs
+        candidatePairs (list[tuple[Primer,Primer,int,tuple[str,int,int]]]): the list produced by __getCandidatePrimerPairs
         params (Parameters): a Parameters object
 
     Returns:
@@ -341,6 +341,40 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
+def __updateBinsForUnprocessedGenomes(name:str, kmers:dict[str,list[Primer]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+    """updates the bin pairs for the unprocessed genomes to ensure that all redundant primers are removed
+
+    Args:
+        name (str): the name of an unprocessed genome
+        kmers (dict[str,list[Primer]]): candidate kmers for this genome (key=contig; val=list of candidate kmers)
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getAllSharedPrimerPairs
+    """
+    # bin the candidate kmers for this genome
+    binned = __binCandidateKmers(kmers)
+    
+    # restructure the data for O(1) lookup of bins by primer sequence
+    primerToBin = dict()
+    for contig in binned.keys():
+        for bin in binned[contig].keys():
+            for primer in binned[contig][bin]:
+                primerToBin[primer] = (contig, bin)
+    
+    # for each primer pair (primers are not on the same strand)
+    for fwd,rev in pairs.keys():
+        # check for presence on forward strand
+        try:
+            contig, fbin = primerToBin[fwd]
+            contig, rbin = primerToBin[rev.reverseComplement()]
+        
+        # check for presence on the reverse strand
+        except KeyError:
+            contig, fbin = primerToBin[fwd.reverseComplement()]
+            contig, rbin = primerToBin[rev]
+        
+        # update the bin pair with the data for this genome
+        pairs[(fwd,rev)][name] = (contig, fbin, rbin)
+
+
 def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
     """gets primer pairs found in all the ingroup genomes
 
@@ -385,6 +419,11 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         params.log.rename(_getPrimerPairs.__name__)
         params.log.error(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
+    
+    # bin the primers from the unprocessed genomes
+    unprocessed = set(candidateKmers.keys()).difference({firstName})
+    for name in unprocessed:
+        __updateBinsForUnprocessedGenomes(name, candidateKmers[name], pairs)
     
     return pairs
 
