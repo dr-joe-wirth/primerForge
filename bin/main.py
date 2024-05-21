@@ -123,12 +123,12 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     clock.printDone()
     params.log.info(f"done {clock.getTimeString()}")
     
-    # dump the pairs to file
-    params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs", prefix=" "*4)
-    
     # print the number of candidate primer pairs
     print(f"{MSG_2A}{len(pairs)}{MSG_2B}")
     params.log.info(f"{MSG_2A}{len(pairs)}{MSG_2B}")
+    
+    # dump the pairs to file
+    params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs", prefix=" "*4)
     
     return pairs
 
@@ -140,6 +140,12 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         params (Parameters): a Parameters object
         pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
     """
+    # messages
+    GAP = " "*4
+    MSG_1A = "removed "
+    MSG_1B = " pairs present in the outgroup ("
+    MSG_1C = " pairs remaining)"
+    
     # log data
     params.log.rename(__removeOutgroup.__name__)
     
@@ -148,12 +154,20 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         # load genome sequences
         outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
         
+        # determine the starting number of pairs
+        startingNum = len(pairs)
+        
         # remove the outgroup primers
         _removeOutgroupPrimers(outgroupSeqs, pairs, params)
         
+        # print the number of pairs removed
+        finalNum = len(pairs)
+        print(f"{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}")
+        params.log.info(f"{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}")
+        
         # dump the results
         params.log.rename(__removeOutgroup.__name__)
-        params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs", prefix=" "*4)
+        params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs", prefix=GAP)
 
 
 def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
