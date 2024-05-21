@@ -212,8 +212,7 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
         clock (Clock): a Clock object
     """
     # messages
-    MSG_1A = "writing "
-    MSG_1B = " primer pairs to "
+    MSG = "writing primer pairs to "
     
     # contants
     EOL = "\n"
@@ -242,8 +241,8 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     
     # print status
     params.log.rename(__writePrimerPairs.__name__)
-    params.log.info(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
-    clock.printStart(f"{MSG_1A}{len(pairs)}{MSG_1B}{params.resultsFn}")
+    params.log.info(f"{MSG}{params.resultsFn}")
+    clock.printStart(f"{MSG}{params.resultsFn}")
     
     # get the names of genomes, and create headers with the same order
     names = list(next(iter(pairs.values())).keys())
