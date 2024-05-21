@@ -29,7 +29,6 @@ class ResultsTest(unittest.TestCase):
     # constants
     TEST_DIR = os.path.join(os.getcwd(), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
-    ANALYSIS_BASENAME = os.path.join(TEST_DIR, "distribution")
     FAKE_FN = 'fakefile'
     BINDING_SITES_FN = os.path.join(TEST_DIR, "bindingSites.p")
     INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
@@ -70,7 +69,7 @@ class ResultsTest(unittest.TestCase):
         cls.params.log.rename(ResultsTest.setUpClass.__name__)
         
         # run primerForge if results file does not exist
-        if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.plotDataFn):  
+        if not os.path.exists(ResultsTest.params.resultsFn):  
             # run primerForge
             clock.printStart('running primerForge', end=' ...\n', spin=False)
             _runner(cls.params)
@@ -145,16 +144,12 @@ class ResultsTest(unittest.TestCase):
                     '-b', '45,150',
                     '-n', numThreads,
                     '-o', ResultsTest.RESULT_FN,
-                    '-a', ResultsTest.ANALYSIS_BASENAME,
                     '--debug']
         
         # don't overwrite existing results or analysis files
         if os.path.exists(ResultsTest.RESULT_FN):
-            sys.argv[12] = ResultsTest.FAKE_FN
-            sys.argv[14] = ResultsTest.FAKE_FN
+            sys.argv[sys.argv.index(ResultsTest.RESULT_FN)] = ResultsTest.FAKE_FN
             params = Parameters('', '')
-            params.plotDataFn = ResultsTest.ANALYSIS_BASENAME + Parameters._DATA_EXT
-            params.plotsFn = ResultsTest.ANALYSIS_BASENAME + Parameters._PLOT_EXT
             params.resultsFn = ResultsTest.RESULT_FN
         
         # proceed like normal if the files do not yet exist
