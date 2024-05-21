@@ -115,7 +115,7 @@ flowchart TB
     dime --> candidates
 
     %% get primer pairs
-    subgraph C["for each genome"]
+    subgraph C["for one genome"]
         bin1["bin overlapping kmers (64bp max)"]
         bin2["get bin pairs"]
         candPair(["candidate primer pairs"])

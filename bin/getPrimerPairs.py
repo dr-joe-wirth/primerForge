@@ -359,41 +359,34 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     ERR_MSG_1 = "could not identify suitable primer pairs from the candidate kmers"
     ERR_MSG_2 = "could not identify primer pairs present in every ingroup genome"
     
-    # initialize variables
-    allCand = list()
-    out = dict()
+    # only need to get pairs for one genome
+    firstName = next(iter(candidateKmers.keys()))
     
-    # process each genome as different results may be obtained
-    for name in candidateKmers.keys():
-        # bin kmers to reduce time complexity
-        binnedCandidateKmers = __binCandidateKmers(candidateKmers[name])
-        
-        # get the bins that could work
-        binPairs = __getBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr)
+    # bin kmers to reduce time complexity
+    binnedCandidateKmers = __binCandidateKmers(candidateKmers[firstName])
+    
+    # get the bins that could work
+    binPairs = __getBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr)
 
-        # get candidate primer pairs
-        candidatePairs = __getCandidatePrimerPairs(binPairs, binnedCandidateKmers, params)
-        
-        # get the primer pairs that are shared in all genomes
-        pairs = __getAllSharedPrimerPairs(name, candidateKmers, candidatePairs, params)
-        
-        # keep track of all the candidate pairs and final pairs
-        allCand.extend(candidatePairs)
-        out.update(pairs)
+    # get candidate primer pairs
+    candidatePairs = __getCandidatePrimerPairs(binPairs, binnedCandidateKmers, params)
     
     # make sure that some candidate pairs were identified
-    if allCand == []:
+    if candidatePairs == []:
         params.log.rename(_getPrimerPairs.__name__)
         params.log.error(ERR_MSG_1)
         raise RuntimeError(ERR_MSG_1)
     
+    # get the primer pairs that are shared in all genomes
+    pairs = __getAllSharedPrimerPairs(firstName, candidateKmers, candidatePairs, params)
+    
     # make sure that some candidate pairs were universal
-    elif out == dict():
+    if pairs == dict():
         params.log.rename(_getPrimerPairs.__name__)
         params.log.error(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
-    return out
+    return pairs
 
 
 def _keepOnePairPerBinPair(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], name:str) -> None:
