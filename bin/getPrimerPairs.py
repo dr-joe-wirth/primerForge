@@ -371,8 +371,8 @@ def __updateBinsForUnprocessedGenomes(name:str, kmers:dict[str,list[Primer]], pa
             contig, fbin = primerToBin[fwd.reverseComplement()]
             contig, rbin = primerToBin[rev]
         
-        # update the bin pair with the data for this genome
-        pairs[(fwd,rev)][name] = (contig, fbin, rbin)
+        # replace the bin pair with the data for this genome
+        pairs[(fwd,rev)][name] = pairs[(fwd,rev)][name][:-1] + ((contig, fbin, rbin),)
 
 
 def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
