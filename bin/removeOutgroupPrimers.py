@@ -151,7 +151,7 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
             # extract the outgroup product sizes for this pair
             result = outgroupProducts[name][pair]
 
-            # if there is only one primer seize, then save it
+            # if there is only one primer size, then save it
             if len(result) == 1:
                 pairs[pair][name] = result.pop()
             
