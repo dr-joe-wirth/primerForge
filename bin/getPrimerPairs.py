@@ -336,7 +336,7 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     # remove any pairs that are not universally suitable in all genomes
     for pair in set(out.keys()):
         if len(out[pair]) < len(candidateKmers.keys()):
-            out.pop(pair)
+            del out[pair]
     
     return out
 
@@ -448,7 +448,7 @@ def _keepOnePairPerBinPair(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,in
         
         # if the bin pair has already been seen, then remove this primer pair
         if binPair in seen and binPair != (): # outgroup binpairs are empty tuples
-            pairs.pop(pair)
+            del pairs[pair]
         
         # otherwise mark the bin pair as seen
         else:

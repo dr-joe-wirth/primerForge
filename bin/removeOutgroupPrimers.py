@@ -254,7 +254,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
             startNumPairs = len(pairs)
             prevName = name
             
-        # evaluate the pairs present in the dictionary (list allows on-the-fly popping)
+        # evaluate the pairs present in the dictionary (list allows on-the-fly removal)
         for fwd,rev in list(pairs.keys()):
             # initialize an empty set if one does not already exist
             outgroupProducts[name][(fwd,rev)] = outgroupProducts[name].get((fwd,rev), set())
@@ -275,7 +275,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                 for pcrLen in products:
                     # remove any pairs that produce disallowed product sizes
                     if pcrLen in params.disallowedLens:
-                        pairs.pop((fwd,rev))
+                        del pairs[(fwd,rev)]
                         done = True
                         break
                 

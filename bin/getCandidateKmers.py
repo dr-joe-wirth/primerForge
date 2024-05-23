@@ -94,10 +94,10 @@ def __getUniqueKmers(fn:str, frmt:str, minLen:int, maxLen:int, name:str) -> tupl
 
     # discard any sequences that were duplicated
     for seq in bad:
-        try: kmers[Primer.PLUS].pop(seq)
+        try: del kmers[Primer.PLUS][seq]
         except KeyError: pass
         
-        try: kmers[Primer.MINUS].pop(seq)
+        try: del kmers[Primer.MINUS][seq]
         except KeyError: pass
     
     return (name, kmers)
@@ -154,7 +154,7 @@ def __getSharedKmers(params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,s
             badKmers = set(sharedKmers.keys()).difference(thisGenome)
             
             for bad in badKmers:
-                sharedKmers.pop(bad)
+                del sharedKmers[bad]
             
             for kmer in sharedKmers:
                 try:
