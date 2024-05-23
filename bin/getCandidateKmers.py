@@ -145,17 +145,21 @@ def __getSharedKmers(params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,s
             params.log.error(f"{ERR_MSG_1}{name}")
             raise RuntimeError(f"{ERR_MSG_1}{name}")
         
+        # keep only the (+) strand kmers if this is the first genome
         if firstGenome:
             sharedKmers = kmers[Primer.PLUS]
             firstGenome = False
         
+        # otherwise keep the shared kmers (both + and -)
         else:
+            # get all the kmers for this genome
             thisGenome = set(kmers[Primer.PLUS]).union(set(kmers[Primer.MINUS]))
-            badKmers = set(sharedKmers.keys()).difference(thisGenome)
             
-            for bad in badKmers:
+            # determine which kmers in this genome are not shared and remove them
+            for bad in set(sharedKmers.keys()).difference(thisGenome):
                 del sharedKmers[bad]
             
+            # update shared kmers with the data for this genome
             for kmer in sharedKmers:
                 try:
                     sharedKmers[kmer].update(kmers[Primer.PLUS][kmer])
