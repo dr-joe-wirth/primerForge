@@ -1,3 +1,4 @@
+import multiprocessing
 from Bio.Seq import Seq
 from bin.Clock import Clock
 from bin.Primer import Primer
@@ -8,16 +9,17 @@ from bin.Parameters import Parameters
 __NULL_PRODUCT = ("NA", 0, ())
 
 
-def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[str,dict[Seq,list[int]]]:
+def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int) -> tuple[str,dict[str,dict[Seq,list[int]]]]:
     """gets all the kmers and their start positions from a contig
 
     Args:
+        name (str): the name of the genome
         contig (SeqRecord): a contig as a SeqRecord object
         minLen (int): the minimum kmer length
         maxLen (int): the maximum kmer length
 
     Returns:
-        dict[str,dict[Seq,list[int]]]: key=strand; val=dict: key=kmer sequence; val=list of start positions
+        tuple[str,dict[str,dict[Seq,list[int]]]]: (name, dict: key=strand; val=dict: key=kmer sequence; val=list of start positions)
     """
     # initialize variables
     kmers = {Primer.PLUS:  dict(),
@@ -70,7 +72,7 @@ def __getAllKmers(contig:SeqRecord, minLen:int, maxLen:int) -> dict[str,dict[Seq
         if done:
             break
 
-    return kmers
+    return name, kmers
 
 
 def __productSizesFromStartPositions(plusStarts:list[int], minusStarts:list[int]) -> set[int]:
@@ -190,75 +192,103 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
         RuntimeError: all candidate primer pairs were present in the outgroup
     """
     # messages
+    GAP = " "*4
+    DONE = "done "
     MSG_1   = "removing primer pairs present in the outgroup sequences"
-    MSG_2   = "    processing outgroup results"
-    MSG_3A  = "removed "
-    MSG_3B  = " pairs after processing "
-    MSG_3C  = " ("
-    MSG_3D  = " pairs remaining)"
+    MSG_2   = f"{GAP}getting outgroup kmers"
+    MSG_3   = f"{GAP}filtering primer pairs"
+    MSG_4   = f"{GAP}processing outgroup results"
+    MSG_5A  = "removed "
+    MSG_5B  = " pairs after processing "
+    MSG_5C  = " ("
+    MSG_5D  = " pairs remaining)"
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
     
     # initialize variables
+    args = list()
     clock = Clock()
+    prevName = None
     outgroupProducts = dict()
+    startNumPairs = len(pairs)
     
     # print status and log
     params.log.rename(_removeOutgroupPrimers.__name__)
     params.log.info(MSG_1)
-    clock.printStart(MSG_1)
+    print(MSG_1)
+    clock.printStart(MSG_2)
+    params.log.info(MSG_2)
     
     # for each outgroup genome
     for name in outgroup.keys():
-        # save the current number of primer pairs
-        startNumPairs = len(pairs)
-        
-        # stop looping if the number of pairs is 0
-        if startNumPairs == 0:
-            break
-        
         # initialize a dictionary for the current outgroup genome
         outgroupProducts[name] = dict()
         
-        # for each contig in the genome
+        # add each contig in the genome to the argument list
         for contig in outgroup[name]:
-            # get all the kmers
-            kmers = __getAllKmers(contig, params.minLen, params.maxLen)
-            
-            # evaluate only the pairs that are still present in the dictionary
-            for fwd,rev in set(pairs.keys()):
-                # initialize an empty set if one does not already exist
-                outgroupProducts[name][(fwd,rev)] = outgroupProducts[name].get((fwd,rev), set())
-
-                # get the outgroup products for this primer pair
-                products = __getOutgroupProductSizes(kmers, fwd, rev)
-                
-                # if there are no products, then the size is 0
-                if products == set():
-                    outgroupProducts[name][(fwd,rev)].update({__NULL_PRODUCT})
-                
-                # if there are products
-                else:
-                    # initialize variable to determine if this product needs to be processed further
-                    done = False
-                    
-                    # for each pcr product length
-                    for pcrLen in products:
-                        # remove any pairs that produce disallowed product sizes
-                        if pcrLen in params.disallowedLens:
-                            pairs.pop((fwd,rev))
-                            done = True
-                            break
-                    
-                    # if the pcr product lengths are not disallowed, then save them in the dictionary
-                    if not done:
-                        outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
+            args.append((name, contig, params.minLen, params.maxLen))
+    
+    # get all kmers in parallel
+    pool = multiprocessing.Pool(params.numThreads)
+    allKmers = pool.starmap(__getAllKmersForOneContig, args)
+    pool.close()
+    pool.join()
+    
+    # print status and log
+    clock.printDone()
+    params.log.info(f"{DONE}{clock.getTimeString()}")
+    clock.printStart(MSG_3)
+    params.log.info(MSG_3)
+    
+    # go through each set of kmers (sort by genome name to process genomes one-by-one)
+    for name,kmers in sorted(allKmers, key=lambda x: x[0]):
+        # first time through prevName is None, update it
+        if prevName is None:
+            prevName = name
         
-        # log the number of pairs removed and remaining if debugging
-        params.log.debug(f"{MSG_3A}{startNumPairs - len(pairs)}{MSG_3B}{name}{MSG_3C}{len(pairs)}{MSG_3D}")
+        # report the number of pairs removed for each genome
+        elif prevName != name:
+            # log the number of pairs removed and remaining if debugging
+            params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{name}{MSG_5C}{len(pairs)}{MSG_5D}")
+            
+            # reset the starting number and update the prev name
+            startNumPairs = len(pairs)
+            prevName = name
+            
+        # evaluate the pairs present in the dictionary (list allows on-the-fly popping)
+        for fwd,rev in list(pairs.keys()):
+            # initialize an empty set if one does not already exist
+            outgroupProducts[name][(fwd,rev)] = outgroupProducts[name].get((fwd,rev), set())
+
+            # get the outgroup products for this primer pair
+            products = __getOutgroupProductSizes(kmers, fwd, rev)
+            
+            # if there are no products, then the size is 0
+            if products == set():
+                outgroupProducts[name][(fwd,rev)].update({__NULL_PRODUCT})
+            
+            # if there are products
+            else:
+                # initialize variable to determine if this product needs to be processed further
+                done = False
+                
+                # for each pcr product length
+                for pcrLen in products:
+                    # remove any pairs that produce disallowed product sizes
+                    if pcrLen in params.disallowedLens:
+                        pairs.pop((fwd,rev))
+                        done = True
+                        break
+                
+                # if the pcr product lengths are not disallowed, then save them in the dictionary
+                if not done:
+                    outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
+        
+    # log the number of pairs removed and remaining from the last genome if debugging
+    params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{name}{MSG_5C}{len(pairs)}{MSG_5D}")
     
     # print status; log if debugging
     clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(f"{DONE}{clock.getTimeString()}")
     
     # if the pairs dictionary is now empty, then raise an error
     if pairs == dict():
@@ -266,12 +296,12 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
         raise RuntimeError(ERR_MSG)
     
     # print status and log
-    params.log.info(MSG_2)
-    clock.printStart(MSG_2)
+    params.log.info(MSG_4)
+    clock.printStart(MSG_4)
     
     # process the outgroup results and add them to the pairs dictionary
     __processOutgroupResults(outgroupProducts, pairs)
     
     # print status; log if debugging
     clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(f"{DONE}{clock.getTimeString()}")
