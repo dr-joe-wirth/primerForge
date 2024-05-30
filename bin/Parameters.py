@@ -152,21 +152,18 @@ class Parameters():
 
         Raises:
             BaseException: incompatible python version
-            BaseException: biopython version is bad
             BaseException: biopython not installed
-            BaseException: matplotlib version is bad
-            BaseException: matplotlib not installed
+            BaseException: biopython version is bad
             BaseException: numpy not installed
-            BaseException: primer3-py version is bad
             BaseException: primer3-py not installed
-            BaseException: scipy version is bad
+            BaseException: primer3-py version is bad
             BaseException: scipy not installed
+            BaseException: scipy version is bad
         """
         # constants
         PY_MAJOR = 3
         PY_MINOR = 11
         BIO_VER = (1, 81)
-        MPL_VER = (3, 7)
         P3_VER = 2
         SCI_VER = (1, 10)
         
@@ -183,26 +180,13 @@ class Parameters():
         # check Bio installation
         try:
             import Bio
-            
-            # check bio version
-            vers = tuple(map(int, Bio.__version__.split('.')))
-            if vers[0] < BIO_VER[0] or (vers[0] == BIO_VER[0] and vers[1] < BIO_VER[1]):
-                raise BaseException(f"'Bio'{BAD_VER}{'.'.join(map(str, BIO_VER))})")
-        
         except:
             raise BaseException(f"'Bio'{NOT_INS}")
-
-        # check matplotlib installation
-        try:
-            import matplotlib
-            
-            # check matplotlib version
-            vers = tuple(map(int, matplotlib.__version__.split('.')))
-            if vers[0] < MPL_VER[0] or (vers[0] >= MPL_VER[0] and vers[1] < MPL_VER[1]):
-                raise BaseException(f"'matplotlib{BAD_VER}{'.'.join(map(str,MPL_VER))})")
         
-        except:
-            raise BaseException(f"'matplotlib'{NOT_INS}")
+         # check bio version
+        vers = tuple(map(int, Bio.__version__.split('.')))
+        if vers[0] < BIO_VER[0] or (vers[0] == BIO_VER[0] and vers[1] < BIO_VER[1]):
+            raise BaseException(f"'Bio'{BAD_VER}{'.'.join(map(str, BIO_VER))})")
         
         # check numpy installation
         try:
@@ -213,26 +197,24 @@ class Parameters():
         # check primer3-py installation
         try:
             import primer3
-            
-            # check primer3-py version
-            if int(primer3.__version__.split('.')[0]) < P3_VER:
-                raise BaseException(f"'primer3-py'{BAD_VER}{P3_VER} or above)")
-        
         except:
             raise BaseException(f"'primer3-py'{NOT_INS}")
+        
+        # check primer3-py version
+        if int(primer3.__version__.split('.')[0]) < P3_VER:
+            raise BaseException(f"'primer3-py'{BAD_VER}{P3_VER} or above)")
         
         # check scipy installation
         try:
             import scipy
-            
-            # check scipy version
-            vers = tuple(map(int, scipy.__version__.split('.')))
-            if vers[0] < SCI_VER[0] or (vers[0] >= SCI_VER[0] and vers[1] < SCI_VER[1]):
-                raise BaseException(f"'scipy'{BAD_VER}{'.'.join(map(str,SCI_VER))} or above)")
-        
         except:
             raise BaseException(f"'scipy'{NOT_INS}")
-
+        
+        # check scipy version
+        vers = tuple(map(int, scipy.__version__.split('.')))
+        if vers[0] < SCI_VER[0] or (vers[0] >= SCI_VER[0] and vers[1] < SCI_VER[1]):
+            raise BaseException(f"'scipy'{BAD_VER}{'.'.join(map(str,SCI_VER))} or above)")
+        
         # print success message
         print(SUCCESS)
     
