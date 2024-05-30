@@ -55,12 +55,13 @@ class Wheel:
         """stops spinning the wheel
         """
         # stop spinning the wheel
-        self.__EVENT.set()
-        self.__process.join()
-        
-        # remove the wheel character
-        sys.stdout.write('\r' + self.__msg)
-        sys.stdout.flush()
+        if self.__process.is_alive():
+            self.__EVENT.set()
+            self.__process.join()
+            
+            # remove the wheel character
+            sys.stdout.write('\r' + self.__msg)
+            sys.stdout.flush()
 
 
 class Clock:
@@ -234,11 +235,10 @@ class Clock:
         # print the done string
         print(f"done {self.getTimeString()}")
         sys.stdout.flush()
+        
+        Clock.__WHEEL.__msg = ''
     
     def _killWheel() -> None:
         """kills any spinning clocks
         """
-        try:
-            Clock.__WHEEL.stop()
-        except:
-            pass
+        Clock.__WHEEL.stop()
