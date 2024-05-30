@@ -1,6 +1,6 @@
 from Bio import SeqIO
 from Bio.Seq import Seq
-import os, pickle, sys, unittest
+import os, sys, unittest
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters, Log
 
