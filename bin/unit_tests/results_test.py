@@ -835,7 +835,7 @@ class ResultsTest(unittest.TestCase):
             
             # for each outgroup genome
             for name in ResultsTest.OUTGROUP.keys():
-                # get the list of of pcr products and their contigs
+                # get the list of pcr products and their contigs
                 pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
                 contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
                 
