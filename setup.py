@@ -1,8 +1,9 @@
+from bin.main import __version__ as ver
 from setuptools import setup, find_packages
 
 setup(
     name='primerforge',
-    version='1.0.2',
+    version=ver,
     author='Joseph S. Wirth',
     packages=find_packages(),
     description='software to identify primers that can be used to distinguish genomes',
@@ -10,7 +11,6 @@ setup(
     long_description_content_type='text/markdown',
     install_requires=[
         'biopython==1.81',
-        'matplotlib==3.7.2',
         'numpy',
         'primer3-py>=2.0',
         'scipy>=1.10'
