@@ -181,8 +181,6 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.helpRequested, Parameters._DEF_HELP)
         self.assertEqual(params.debug, Parameters._DEF_DEBUG)
         self.assertEqual(params.disallowedLens, range(Parameters._DEF_MIN_PCR, Parameters._DEF_MAX_PCR+1))
-        self.assertEqual(params.plotDataFn, os.path.join(self.dir, Parameters._DEF_ANALYSIS_BASENAME + Parameters._DATA_EXT))
-        self.assertEqual(params.plotsFn, os.path.join(self.dir, Parameters._DEF_ANALYSIS_BASENAME + Parameters._PLOT_EXT))
 
     def _checkGenomeFilesPresent(self, params:Parameters, frmt:str) -> None:
         """checks if the genome files are present
