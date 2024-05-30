@@ -9,7 +9,7 @@ from bin.Parameters import Parameters
 __NULL_PRODUCT = ("NA", 0, ())
 
 
-def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int) -> tuple[str,dict[str,dict[Seq,list[int]]]]:
+def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int) -> tuple[str,str,dict[str,dict[Seq,list[int]]]]:
     """gets all the kmers and their start positions from a contig
 
     Args:
@@ -19,7 +19,7 @@ def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int
         maxLen (int): the maximum kmer length
 
     Returns:
-        tuple[str,dict[str,dict[Seq,list[int]]]]: (name, dict: key=strand; val=dict: key=kmer sequence; val=list of start positions)
+        tuple[str,str,dict[str,dict[Seq,list[int]]]]: (name, contig name, dict: key=strand; val=dict: key=kmer sequence; val=list of start positions)
     """
     # initialize variables
     kmers = {Primer.PLUS:  dict(),
@@ -72,7 +72,7 @@ def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int
         if done:
             break
 
-    return name, kmers
+    return name, contig.id, kmers
 
 
 def __productSizesFromStartPositions(plusStarts:list[int], minusStarts:list[int]) -> set[int]:
@@ -239,8 +239,11 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     clock.printStart(MSG_3)
     params.log.info(MSG_3)
     
-    # go through each set of kmers (sort by genome name to process genomes one-by-one)
-    for name,kmers in sorted(allKmers, key=lambda x: x[0]):
+    # sort kmers by genome name then contig name
+    allKmers.sort(key=lambda x: (x[0], x[1]))
+    
+    # go through each set of kmers
+    for name,contig,kmers in allKmers:
         # first time through prevName is None, update it
         if prevName is None:
             prevName = name
@@ -248,7 +251,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
         # report the number of pairs removed for each genome
         elif prevName != name:
             # log the number of pairs removed and remaining if debugging
-            params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{name}{MSG_5C}{len(pairs)}{MSG_5D}")
+            params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{prevName}{MSG_5C}{len(pairs)}{MSG_5D}")
             
             # reset the starting number and update the prev name
             startNumPairs = len(pairs)
@@ -281,7 +284,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
                 
                 # if the pcr product lengths are not disallowed, then save them in the dictionary
                 if not done:
-                    outgroupProducts[name][(fwd,rev)].update({(contig.id, x, ()) for x in products})
+                    outgroupProducts[name][(fwd,rev)].update({(contig, x, ()) for x in products})
         
     # log the number of pairs removed and remaining from the last genome if debugging
     params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{name}{MSG_5C}{len(pairs)}{MSG_5D}")
