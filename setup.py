@@ -1,9 +1,8 @@
-from bin.main import __version__ as ver
 from setuptools import setup, find_packages
 
 setup(
     name='primerforge',
-    version=ver,
+    version='1.1.0',
     author='Joseph S. Wirth',
     packages=find_packages(),
     description='software to identify primers that can be used to distinguish genomes',
