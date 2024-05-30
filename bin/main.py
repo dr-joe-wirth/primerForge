@@ -241,8 +241,8 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     
     # print status
     params.log.rename(__writePrimerPairs.__name__)
-    params.log.info(f"{MSG}{params.resultsFn}")
-    clock.printStart(f"{MSG}{params.resultsFn}")
+    params.log.info(f"{MSG}'{os.path.relpath(params.resultsFn)}'")
+    clock.printStart(f"{MSG}'{os.path.relpath(params.resultsFn)}'")
     
     # get the names of genomes, and create headers with the same order
     names = list(next(iter(pairs.values())).keys())
