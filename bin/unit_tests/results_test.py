@@ -152,7 +152,7 @@ class ResultsTest(unittest.TestCase):
             
             # use the default value after the timeout
             except TimeoutError:
-                print("timeout")
+                print(f"timeout; using {DEFAULT_NUM} threads")
                 numThreads = int(DEFAULT_NUM)
         
         return numThreads
