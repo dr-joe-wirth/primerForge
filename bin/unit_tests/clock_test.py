@@ -1,3 +1,6 @@
+import pathlib, sys
+sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
+
 import time, unittest
 from bin.Clock import Clock
 

@@ -1,6 +1,9 @@
+import pathlib, sys
+sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
+
+import os, unittest
 from Bio import SeqIO
 from Bio.Seq import Seq
-import os, sys, unittest
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters, Log
 

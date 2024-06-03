@@ -1,4 +1,8 @@
 from __future__ import annotations
+
+import pathlib, sys
+sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
+
 from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Log import Log
@@ -8,7 +12,7 @@ from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.getPrimerPairs import _formsDimers
-import gzip, os, pickle, primer3, subprocess, sys, unittest
+import gzip, os, pickle, primer3, signal, subprocess, unittest
 
 class Result():
     """class to save results for easy lookup
@@ -27,7 +31,7 @@ class ResultsTest(unittest.TestCase):
     """class for testing the results of primerForge
     """
     # constants
-    TEST_DIR = os.path.join(os.getcwd(), "test_dir")
+    TEST_DIR = os.path.join(str(pathlib.Path(__file__).parent.parent.parent), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
     FAKE_FN = 'fakefile'
     BINDING_SITES_FN = os.path.join(TEST_DIR, "bindingSites.p")
