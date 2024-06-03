@@ -404,3 +404,7 @@ class ParametersTest(unittest.TestCase):
         # check dictionaries
         obj  = {1:'one', 2:'two'}
         self._dumpLoadTest(params, obj)
+
+
+if __name__ == "__main__":
+    unittest.main()

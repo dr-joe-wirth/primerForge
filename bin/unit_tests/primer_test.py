@@ -232,3 +232,7 @@ class PrimerTest(unittest.TestCase):
         self.assertEqual(rc_f2.contig, self.fwd_2.contig)
         self.assertEqual(rc_r1.contig, self.rev_1.contig)
         self.assertEqual(rc_r2.contig, self.rev_2.contig)
+
+
+if __name__ == "__main__":
+    unittest.main()

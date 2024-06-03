@@ -891,3 +891,7 @@ class ResultsTest(unittest.TestCase):
                         # and the pcr lengths should not be disallowed
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
+
+
+if __name__ == "__main__":
+    unittest.main()

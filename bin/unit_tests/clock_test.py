@@ -107,3 +107,7 @@ class ClockTest(unittest.TestCase):
         # make sure the time string looks right
         self.assertEqual(timeStr, f"00:00:0{sec:.{NUM_DEC}f}")
         self.assertEqual(timeStr, f"00:00:0{testTime:.{NUM_DEC}f}")
+
+
+if __name__ == "__main__":
+    unittest.main()
