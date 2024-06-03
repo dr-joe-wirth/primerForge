@@ -115,19 +115,45 @@ class ResultsTest(unittest.TestCase):
     
     # functions for setting up the class
     def _getNumThreads() -> int:
-        # message
-        MSG = "\nplease specify a number of threads to use: "
-        
-        # get the number of threads
-        numThreads = input(MSG)
+        """gets the number of threads
 
+        Returns:
+            int: the number of cpus; default value used after a timeout
+        """
+        # constants
+        TIMEOUT = 10
+        DEFAULT_NUM = 4
+        
+        # messages
+        MSG = f"\nplease specify a number of cpus to use (defaults to {DEFAULT_NUM} after {TIMEOUT} seconds): "
+        INVALID = '\ninvalid number of threads'
+        
+        # helper function for handling signals
+        def handler(signum, frame):
+            raise TimeoutError
+        
+        # initialize a signal handler and numThreads
+        signal.signal(signal.SIGALRM, handler)
+        numThreads = None
+        
         # make sure the threads is an int
         while not type(numThreads) is int:
+            # start the timeout clock
+            signal.alarm(TIMEOUT)
+            
+            # get the user input
             try:
-                numThreads = int(numThreads)
-            except:
-                print('invalid number of threads')
+                numThreads = int(input(MSG))
+            
+            # print a message then try again if invalid input
+            except ValueError:
+                print(INVALID)
                 numThreads = input(MSG)
+            
+            # use the default value after the timeout
+            except TimeoutError:
+                print("timeout")
+                numThreads = int(DEFAULT_NUM)
         
         return numThreads
     
