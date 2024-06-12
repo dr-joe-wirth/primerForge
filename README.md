@@ -45,6 +45,26 @@ If you installed manually, you may need to use the following command instead
 python primerForge.py --check_install
 ```
 
+### Running unit tests
+In order to run unit tests, install `primerForge` using [the instructions above](#installation). You will also need to clone the repository if you haven't already:
+
+```bash
+git clone https://github.com/dr-joe-wirth/primerForge.git
+```
+
+Once installed and cloned, run the following commands to run the unit tests:
+
+> [!NOTE]
+> Running `results_test.py` may take up to three hours to complete
+
+```bash
+python3 primerForge/bin/unit_tests/clock_test.py
+python3 primerForge/bin/unit_tests/parameters_test.py
+python3 primerForge/bin/unit_tests/primer_test.py
+python3 primerForge/bin/unit_tests/results_test.py
+```
+
+
 ## Usage
 
 ```text
