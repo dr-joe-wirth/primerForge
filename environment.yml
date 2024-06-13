@@ -6,9 +6,9 @@
 
 name: primerforge
 channels:
+  - conda-forge
   - bioconda
   - defaults
-  - conda-forge
 dependencies:
   - python=3.11.0
   - pip=23.0.1
