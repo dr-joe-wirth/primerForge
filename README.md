@@ -13,7 +13,7 @@ pip install primerforge
 
 ### `conda` installation
 ```shell
-conda install -c bioconda -c conda-forge primerforge
+conda install -c conda-forge -c bioconda primerforge
 ```
 
 ### Manual installation
