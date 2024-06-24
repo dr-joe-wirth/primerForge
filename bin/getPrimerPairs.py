@@ -1,7 +1,7 @@
 from Bio.Seq import Seq
 from bin.Primer import Primer
-import multiprocessing, primer3
 from bin.Parameters import Parameters
+import multiprocessing, primer3, random
 
 
 def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
@@ -70,9 +70,13 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     Returns:
         list[tuple[str,int,int]]: list of tuples: contig, bin1 number, bin2 number
     """
-    # initialize a list of arguments for __evaluateOneBinPair
+    # constants
+    BUCKET_SIZE = 250
+    
+    # initialize variables
+    allBinPairs = list()
     out = list()
-
+    
     # for each contig in the genome
     for contig in binned.keys():
         # sort bins by their start position
@@ -83,7 +87,7 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
             bin1 = binned[contig][sortedBins[idx]]
             for jdx in range(idx+1, len(sortedBins)):
                 bin2 = binned[contig][sortedBins[jdx]]
-                
+
                 # calculate the smallest possible pcr product length
                 smallest = (bin2[0].start + minPrimerLen) - (bin1[-1].end - minPrimerLen)
                 
@@ -98,10 +102,26 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
                 elif largest < minProdLen:
                     continue
                 
-                # otherwise, these two bins could produce viable PCR product lengths; compare them
+                # otherwise, these two bins could produce viable PCR product lengths
                 else:
-                    out.append((contig, sortedBins[idx], sortedBins[jdx]))
-    return out
+                    # save all the bin pairs for this contig
+                    allBinPairs.append((contig, sortedBins[idx], sortedBins[jdx]))
+        
+        # get the max position
+        maxPosition = binned[contig][sortedBins[-1]][-1].end
+        
+        # only keep on average one pair per the bucket size
+        numToKeep = maxPosition // BUCKET_SIZE + 1
+        
+        # randomly sample if necessary
+        if len(allBinPairs) > numToKeep:
+            out.extend(random.sample(allBinPairs, numToKeep))
+        
+        # otherwise keep all the pairs
+        else:
+            out.extend(allBinPairs)
+    
+    return list(out)
 
 
 def _formsDimers(fwd:Primer, rev:Primer) -> bool:
