@@ -70,11 +70,7 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     Returns:
         list[tuple[str,int,int]]: list of tuples: contig, bin1 number, bin2 number
     """
-    # constants
-    BUCKET_SIZE = 250
-    
-    # initialize variables
-    allBinPairs = list()
+    # initialize output
     out = list()
     
     # for each contig in the genome
@@ -87,7 +83,7 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
             bin1 = binned[contig][sortedBins[idx]]
             for jdx in range(idx+1, len(sortedBins)):
                 bin2 = binned[contig][sortedBins[jdx]]
-
+                
                 # calculate the smallest possible pcr product length
                 smallest = (bin2[0].start + minPrimerLen) - (bin1[-1].end - minPrimerLen)
                 
@@ -104,24 +100,8 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
                 
                 # otherwise, these two bins could produce viable PCR product lengths
                 else:
-                    # save all the bin pairs for this contig
-                    allBinPairs.append((contig, sortedBins[idx], sortedBins[jdx]))
-        
-        # get the max position
-        maxPosition = binned[contig][sortedBins[-1]][-1].end
-        
-        # only keep on average one pair per the bucket size
-        numToKeep = maxPosition // BUCKET_SIZE + 1
-        
-        # randomly sample if necessary
-        if len(allBinPairs) > numToKeep:
-            out.extend(random.sample(allBinPairs, numToKeep))
-        
-        # otherwise keep all the pairs
-        else:
-            out.extend(allBinPairs)
-    
-    return list(out)
+                    out.append((contig, sortedBins[idx], sortedBins[jdx]))
+    return out
 
 
 def _formsDimers(fwd:Primer, rev:Primer) -> bool:
@@ -163,8 +143,8 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     # unsuitable if the Tm difference is not within the allowed range
     if not abs(fwd.Tm - rev.Tm) <= maxTmDiff: return False, pcrLen
 
-    # unsuitable if primer dimers can form
-    if _formsDimers(fwd, rev): return False, pcrLen
+    # # unsuitable if primer dimers can form
+    # if _formsDimers(fwd, rev): return False, pcrLen
     
     return True, pcrLen
 
