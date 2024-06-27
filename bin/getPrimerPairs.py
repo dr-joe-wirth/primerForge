@@ -29,9 +29,13 @@ def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,
         
         # for each candidate primer in the contig
         for cand in candidates[contig]:
+            # force the candidate to the plus strand
+            if cand.strand == Primer.MINUS:
+                cand = cand.reverseComplement()
+            
             # get the current start/end on the (+) strand
-            curStart = min(cand.start, cand.end)
-            curEnd = max(cand.start, cand.end)
+            curStart = cand.start
+            curEnd = cand.end
             
             # get the length of the current bin
             binLen = curEnd - binStart
