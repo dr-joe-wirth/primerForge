@@ -1,7 +1,37 @@
 from Bio.Seq import Seq
 from bin.Primer import Primer
+from itertools import combinations
 from bin.Parameters import Parameters
 import multiprocessing, primer3, random
+
+
+def __reduceBinSize(bins:dict[str,dict[int,list[Primer]]]) -> None:
+    """reduces the number of primers in each bin; modifies input
+
+    Args:
+        bins (dict[str,dict[int,list[Primer]]]): the dictionary being created within __binCandidateKmers
+    """
+    # for each contig
+    for contig in bins.keys():
+        # for each bin
+        for binNum in bins[contig].keys():
+            # sort the primers by their lengths
+            lengths = dict()
+            for primer in bins[contig][binNum]:
+                lengths[len(primer)] = lengths.get(len(primer), list())
+                lengths[len(primer)].append(primer)
+
+            # remove smaller primers that are sub strings
+            for small,big in combinations(sorted(lengths.keys()), 2):
+                # for each smaller primer
+                for p1 in lengths[small]:
+                    # for each larger primer
+                    for p2 in lengths[big]:
+                        # remove any primer that is a substring of an existing primer
+                        if p1.seq in p2.seq:
+                            bins[contig][binNum].remove(p1)
+                            lengths[small].remove(p1)
+                            break
 
 
 def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
@@ -58,6 +88,8 @@ def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,
                 currentBin += 1
                 
                 out[contig][currentBin] = [cand]
+    
+    __reduceBinSize(out)
     
     return out
 
