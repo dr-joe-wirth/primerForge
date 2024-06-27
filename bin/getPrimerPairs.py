@@ -140,12 +140,14 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     return out
 
 
-def _formsDimers(fwd:Primer, rev:Primer) -> bool:
+def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float) -> bool:
     """evaluates if two primers may form primer dimers
 
     Args:
-        fwd (Primer): the forward primer
-        rev (Primer): the reverse primer
+        fwd (str): the forward primer sequence
+        rev (str): the reverse primer sequence
+        fwdTm (float): the forward primer melting temperature
+        revTm (float): the reverse primer melting temperature
 
     Returns:
         bool: indicates if primer dimer formation is possible
@@ -154,7 +156,7 @@ def _formsDimers(fwd:Primer, rev:Primer) -> bool:
     FIVE_DEGREES = 5
 
     # dimer formation is a concern if the Tm is sufficiently high
-    return primer3.calc_heterodimer_tm(str(fwd), str(rev)) >= (min(fwd.Tm, rev.Tm) - FIVE_DEGREES)
+    return primer3.calc_heterodimer_tm(fwd, rev) >= (min(fwdTm, revTm) - FIVE_DEGREES)
 
 
 def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float) -> tuple[bool,int]:
@@ -178,32 +180,25 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     
     # unsuitable if the Tm difference is not within the allowed range
     if not abs(fwd.Tm - rev.Tm) <= maxTmDiff: return False, pcrLen
-
-    # # unsuitable if primer dimers can form
-    # if _formsDimers(fwd, rev): return False, pcrLen
     
     return True, pcrLen
 
 
-def __evaluateOnePair(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float, binPair:tuple[str,int,int]) -> tuple[Primer,Primer,int,tuple[str,int,int]]:
+def __evaluateOnePair(fwd:str, rev:str, fTm:float, rTm:float, binPair:str) -> str:
     """evaluates a primer pair; designed to work in parallel; only returns if the pair passes evaluation
 
     Args:
-        fwd (Primer): the forward Primer
-        rev (Primer): the reverse Primer
-        minPcr (int): the minimum PCR product size
-        maxPcr (int): the maximum PCR product size
-        maxTmDiff (float): the maximum difference between primer Tm
-        binPair (tuple[str,int,int]): contig, bin1 number, bin2 number
+        fwd (str): the forward Primer
+        rev (str): the reverse Primer
+        fTm (float): the forward melting temperature
+        rTm (float): the reverse melting temperature
+        binPair (str): the bin pair for this pair
 
     Returns:
-        tuple[Primer,Primer,int,int,int]: forward primer, reverse primer, pcr product size, bin pair
+        str: the bin pair for this pair
     """
-    # determine the product size and if the pair is suitable for PCR
-    acceptablePair, pcrLen = __isPairSuitable(fwd, rev, minPcr, maxPcr, maxTmDiff)
-    
     # return acceptable pairs and their pcr product sizes
-    if acceptablePair: return fwd,rev.reverseComplement(),pcrLen,binPair
+    if not _formsDimers(fwd, rev, fTm, rTm): return binPair
 
 
 def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int,tuple[str,int,int]]]:
@@ -232,40 +227,69 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
         if direction == REV:
             return primer.seq[0] in GC
 
-    # initialize a list of arguments for parallel processing
+    # initialize variables
+    out = list()
     args = list()
+    lookup = dict()
     
-    # for each pair of bins
+    # for each bin pair
     for contig,num1,num2 in binPairs:
+        # indicate if a suitable primer pair has been found
+        found = False
+        
         # extract the lists of primers for these bins
         bin1 = bins[contig][num1]
         bin2 = bins[contig][num2]
-
-        # for each forward primer
-        for fwd in bin1:
-            # make sure the primer is on the plus strand
-            if fwd.strand == Primer.MINUS:
-                fwd = fwd.reverseComplement()
-                
-            # only evaluate if the 3' end is GC
+        
+        # go through each possible forward primer
+        for idx,fwd in enumerate(bin1):
+            # only consider fwd primers with 3' GC
             if isThreePrimeGc(fwd):
-                # for each reverse primer
-                for rev in bin2:
-                    # make sure the primer is on the plus strand
-                    if rev.strand == Primer.MINUS:
-                        rev = rev.reverseComplement()
-
-                    # only evaluate if the 3' end is GC
+                # go through each possible reverse primer
+                for jdx,rev in enumerate(bin2):
+                    # only consider rev primers with 3' GC
                     if isThreePrimeGc(rev, REV):
-                        # save the pair for evaluation
-                        args.append((fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff, (contig, num1, num2)))
+                        # determine if the pair is suitable and its PCR product length
+                        suitable,pcrLen = __isPairSuitable(fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff)
+                        
+                        if suitable:
+                            # cast the bin pair as a string to reduce memory footprint
+                            binPair = str((contig, num1, num2))
+                            
+                            # store the indices of these primers within their respective bins
+                            lookup[binPair] = (idx, jdx, pcrLen)
+                            
+                            # add data to the argument list
+                            args.append((str(fwd), str(rev.reverseComplement()), fwd.Tm, rev.Tm, binPair))
+                            
+                            # indicate that a suitable primer pair has been found and break out of the loop
+                            found = True
+                            break
+                
+                # move to the next bin pair if a suitable primer pair has been found
+                if found:
+                    break
     
-    # evaluate pairs of primers in parallel
+    # evaluate pairs of primers for heterodimer potential in parallel
     with multiprocessing.Pool(params.numThreads) as pool:
-        out = pool.starmap(__evaluateOnePair, args)
+        pairs = pool.starmap(__evaluateOnePair, args)
     
-    # remove failed results from the list before returning
-    return [x for x in out if x is not None]
+    # for each valid pair
+    for pair in [x for x in pairs if x is not None]:
+        # recast the bin pair from a string to its component parts
+        contig, fbin, rbin = eval(pair)
+        
+        # extract the indices and pcr length for this pair
+        idx, jdx, pcrLen = lookup[pair]
+        
+        # retrieve the actual primer objects for this pair
+        fwd:Primer = bins[contig][fbin][idx]
+        rev:Primer = bins[contig][rbin][jdx]
+        
+        # save this pair in the output
+        out.append((fwd,rev.reverseComplement(),pcrLen,(contig,fbin,rbin)))
+    
+    return out
 
 
 def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Seq,Primer]:
