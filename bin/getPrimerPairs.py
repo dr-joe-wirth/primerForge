@@ -34,11 +34,12 @@ def __reduceBinSize(bins:dict[str,dict[int,list[Primer]]]) -> None:
                             break
 
 
-def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,list[Primer]]]:
+def __binCandidateKmers(candidates:dict[str,list[Primer]], isFirstGenome=False) -> dict[str,dict[int,list[Primer]]]:
     """bins primers that overlap to form a contiguous sequence based on positional data
 
     Args:
         candidates (dict[str,list[Primer]]): key=contig; val=list of Primers (sorted by start position)
+        isFirstGenome (bool, optional): indicates if this is the first genome. Defaults to False.
 
     Returns:
         dict[str,dict[int,list[Primer]]]: key=contig; val=dict: key=bin number; val=list of overlapping Primer objects
@@ -89,7 +90,9 @@ def __binCandidateKmers(candidates:dict[str,list[Primer]]) -> dict[str,dict[int,
                 
                 out[contig][currentBin] = [cand]
     
-    __reduceBinSize(out)
+    # reduce the number of kmers in a bin for the first genome only
+    if isFirstGenome:
+        __reduceBinSize(out)
     
     return out
 
@@ -457,7 +460,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     firstName = next(iter(candidateKmers.keys()))
     
     # bin kmers to reduce time complexity
-    binnedCandidateKmers = __binCandidateKmers(candidateKmers[firstName])
+    binnedCandidateKmers = __binCandidateKmers(candidateKmers[firstName], isFirstGenome=True)
     
     # get the bins that could work
     binPairs = __getBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr)
