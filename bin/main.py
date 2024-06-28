@@ -421,8 +421,8 @@ def main() -> None:
         # catch all error messages
         except Exception as e:
             # save the error message if in debug mode
-            params.log.rename(__name__)
             params.log.critical(e)
+            params.log.critical(e.__traceback__)
             
             Clock._killWheel()
             
