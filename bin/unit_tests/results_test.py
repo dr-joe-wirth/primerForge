@@ -155,6 +155,9 @@ class ResultsTest(unittest.TestCase):
                 print(f"timeout; using {DEFAULT_NUM} threads")
                 numThreads = int(DEFAULT_NUM)
         
+        # turn off the alarm
+        signal.alarm(0)
+        
         return numThreads
     
     def _getParameters(numThreads:int) -> Parameters:
