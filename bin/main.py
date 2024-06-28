@@ -10,7 +10,7 @@ from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
 
 # global constants
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 __author__ = "Joseph S. Wirth"
 __SHARED_NUM = 0
 __CAND_NUM   = 1
@@ -402,7 +402,7 @@ def _runner(params:Parameters) -> None:
 
 def main() -> None:
     """main runner function for primerForge
-
+    
     Raises:
         Exception: catches all downstream exceptions
     """
