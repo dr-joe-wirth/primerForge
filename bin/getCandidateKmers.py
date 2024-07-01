@@ -2,13 +2,81 @@ import os
 from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Clock import Clock
+from khmer import Countgraph
 from bin.Primer import Primer
 import multiprocessing, primer3
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
 # functions
-def __getUniqueKmers(fn:str, frmt:str, minLen:int, maxLen:int, name:str) -> tuple[str,dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]]:
+def __getAllowedKmers(fwd:str, rev:str, k:int) -> set[str]:
+    """gets all the kmers that are allowed
+
+    Args:
+        fwd (str): the entire (concatenated) forward sequence
+        rev (str): the entire (concatenated) reverse sequence
+        k (int): the length of the kmers
+
+    Returns:
+        set[str]: a set of the allowed kmers
+    """
+    # helper functions
+    def isOneEndGc(seq:str) -> bool:
+        """ evaluates if one end of a sequence is a GC
+        """
+        GC = {"G", "C", 'g', 'c'}
+        return seq[-1] in GC or seq[0] in GC
+    
+    def appearsOnce(seq:str, kh:Countgraph) -> bool:
+        return kh.get(seq) == 1
+    
+    # create count graphs for both strands
+    fkh = Countgraph(k, 1e7, 1)
+    rkh = Countgraph(k, 1e7, 1)
+    
+    # consume the sequences so kmers can be counted
+    fkh.consume(fwd)
+    rkh.consume(rev)
+    
+    # extract the allowed kmers for both strands
+    out = {x for x in fkh.get_kmers(fwd) if isOneEndGc(x) and appearsOnce(x, fkh)}
+    tmp = {x for x in rkh.get_kmers(rev) if isOneEndGc(x) and appearsOnce(x, rkh)}
+    
+    # remove any kmers shared between strands
+    out.difference_update(tmp)
+    
+    return out
+
+
+def __extractKmers(name:str, contig:str, strand:str, seq:str, k:int, allowed:set[str]) -> dict[str,dict[str,tuple[str,int,int,str]]]:
+    """extracts kmers from a contig's sequence
+
+    Args:
+        name (str): the name of the sequence file
+        contig (str): the name of the contig
+        strand (str): the strand of the sequence
+        seq (str): the dna sequence
+        k (int): the length of the kmer
+        allowed (set[str]): a set of allowed kmers
+
+    Returns:
+        dict[str,dict[str,tuple[str,int,int,str]]]: key=kmer; val=dict: key=name; val=(contig, start, klen, strand)
+    """
+    # create a countgraph and consume the sequence
+    kh = Countgraph(k, 1e7, 1)
+    kh.consume(seq)
+    
+    # extract the forward kmers and build the output
+    if strand == Primer.PLUS:
+        return {kmer:{name: (contig, start, k, strand)} for start,kmer in enumerate(kh.get_kmers(seq)) if kmer in allowed}
+    
+    # reverse kmer start position needs to be relative to the plus strand
+    else:
+        length = len(seq)
+        return {kmer:{name: (contig, (length - start - k), k, strand)} for start,kmer in enumerate(kh.get_kmers(seq)) if kmer in allowed}
+
+
+def __getUniqueKmers(fn:str, frmt:str, minK:int, maxK:int, name:str) -> tuple[str,dict[str,dict[str,dict[str,tuple[str,int,int,str]]]]]:
     """gets a collection of kmers from a genome that are:
         * not repeated anywhere in the genome
         * at least one end is a G or C
@@ -16,91 +84,48 @@ def __getUniqueKmers(fn:str, frmt:str, minLen:int, maxLen:int, name:str) -> tupl
     Args:
         fn (str): a sequence filename
         frmt (str): the sequence file format
-        minLen (int): the minimum kmer length
-        maxLen (int): the maximum kmer length
+        minK (int): the minimum kmer length
+        maxK (int): the maximum kmer length
         name (str): the name of the genome
     
     Returns:
         tuple[str,dict[str,dict[Seq,dict[str,tuple[str,int,int,str]]]]]: name, dict: key=strand; val=dict: key=kmer seq; val=dict: key=name; val=tuple: contig, start, klen, strand
     """
-    # constant
-    GC = {"G", "C", 'g', 'c'}
-    
-    # helper functions to clarify boolean expressions
-    def isOneEndGc(seq:Seq) -> bool:
-        """ evaluates if one end of a sequence is a GC
-        """
-        return seq[-1] in GC or seq[0] in GC
-
-    def isDuplicated(seq:Seq) -> bool:
-        return seq in kmers[Primer.PLUS].keys() or seq in kmers[Primer.MINUS].keys()
-
     # initialize variables
     contig:SeqRecord
-    kmers = dict()
-    kmers[Primer.PLUS] = dict()
-    kmers[Primer.MINUS] = dict()
-    bad = set()
-    krange = range(minLen, maxLen + 1)
-    smallest = min(krange)
+    out = {Primer.PLUS:  dict(),
+           Primer.MINUS: dict()}
     
-    # go through each contig
-    for contig in SeqIO.parse(fn, frmt):
-        # extract the contig sequences
-        fwdSeq:Seq = contig.seq
-        revSeq:Seq = fwdSeq.reverse_complement()
-        
-        # get the length of the contig
-        contigLen = len(contig)
-        done = False
-        
-        # get every possible kmer start position
-        for start in range(contigLen):
-            # for each allowed kmer length
-            for klen in krange:
-                # stop looping through the contig once we're past the smallest kmer
-                if start+smallest > contigLen:
-                    done = True
-                    break
-                
-                # stop looping through the kmers once the length is too long
-                elif start+klen > contigLen:
-                    break
-            
-                # proceed if the extracted kmer length is good
-                else:
-                    # extract the kmer sequences
-                    fwdKmer = fwdSeq[start:start+klen]
-                    
-                    # handle the first base differently for the (-) strand (special slicing condition)
-                    if start == 0:
-                        revKmer = revSeq[-(start+klen):]
-                    else:
-                        revKmer = revSeq[-(start+klen):-start]
-                    
-                    # mark duplicate kmers for removal
-                    if isDuplicated(fwdKmer):
-                        bad.add(fwdKmer)
-                        bad.add(revKmer)
-                    
-                    # only save kmers that have GC at one end
-                    elif isOneEndGc(fwdKmer):
-                        kmers[Primer.PLUS][fwdKmer]  = {name: (contig.id, start, klen, Primer.PLUS)}
-                        kmers[Primer.MINUS][revKmer] = {name: (contig.id, start, klen, Primer.MINUS)}
-            
-            # stop iterating through the contig when we're done with it
-            if done:
-                break
-
-    # discard any sequences that were duplicated
-    for seq in bad:
-        try: del kmers[Primer.PLUS][seq]
-        except KeyError: pass
-        
-        try: del kmers[Primer.MINUS][seq]
-        except KeyError: pass
+    # import sequences
+    seqs:list[SeqRecord] = list(SeqIO.parse(fn, frmt))
     
-    return (name, kmers)
+    # concatenate the contigs
+    fullFwd = ''
+    fullRev = ''
+    for contig in seqs:
+        fullFwd += str(contig.seq)
+        fullRev += str(contig.seq.reverse_complement())
+    
+    # for each kmer length
+    for k in range(minK, maxK+1):
+        # get the unique kmers
+        allowed = __getAllowedKmers(fullFwd, fullRev, k)
+        
+        # for each contig
+        for contig in seqs:
+            # get the kmers for the forward and reverse strands
+            fmers = __extractKmers(name, contig.id, Primer.PLUS,  str(contig.seq), k, allowed)
+            rmers = __extractKmers(name, contig.id, Primer.MINUS, str(contig.seq.reverse_complement()), k, allowed)
+            
+            # save the results
+            out[Primer.PLUS ].update(fmers)
+            out[Primer.MINUS].update(rmers)
+            
+            # free up memory
+            del fmers
+            del rmers
+    
+    return name,out
 
 
 def __getSharedKmers(params:Parameters) -> dict[Seq,dict[str,tuple[str,int,int,str]]]:
