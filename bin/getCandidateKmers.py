@@ -39,11 +39,11 @@ def __getAllowedKmers(fwd:str, rev:str, k:int) -> set[str]:
     rkh.consume(rev)
     
     # extract the allowed kmers for both strands
-    out = {x for x in fkh.get_kmers(fwd) if isOneEndGc(x) and appearsOnce(x, fkh)}
-    tmp = {x for x in rkh.get_kmers(rev) if isOneEndGc(x) and appearsOnce(x, rkh)}
+    out    = {x for x in fkh.get_kmers(fwd) if isOneEndGc(x) and appearsOnce(x, fkh)}
+    rKmers = {x for x in rkh.get_kmers(rev) if isOneEndGc(x) and appearsOnce(x, rkh)}
     
-    # remove any kmers shared between strands
-    out.difference_update(tmp)
+    # keep only the kmers that aren't shared between strands
+    out.symmetric_difference_update(rKmers)
     
     return out
 
