@@ -1,12 +1,33 @@
 import multiprocessing
 from Bio.Seq import Seq
 from bin.Clock import Clock
+from khmer import Countgraph
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
 # global constant
 __NULL_PRODUCT = ("NA", 0, ())
+
+
+def __kmerListToDict(kmers:list[tuple[str,int]]) -> dict[str,list[int]]:
+    """coerces a list of tuples to a dictionary of lists
+
+    Args:
+        kmers (list[tuple[str,int]]): key=kmer; val=start position
+
+    Returns:
+        dict[str,list[int]]: key=kmer; val=list of start positions
+    """
+    # initialize output
+    out = dict()
+    
+    # save each start position in a list keyed under the kmer
+    for kmer,start in kmers:
+        out[kmer] = out.get(kmer, list())
+        out[kmer].append(start)
+    
+    return out
 
 
 def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int) -> tuple[str,str,dict[str,dict[Seq,list[int]]]]:
@@ -22,57 +43,31 @@ def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int
         tuple[str,str,dict[str,dict[Seq,list[int]]]]: (name, contig name, dict: key=strand; val=dict: key=kmer sequence; val=list of start positions)
     """
     # initialize variables
-    kmers = {Primer.PLUS:  dict(),
-             Primer.MINUS: dict()}
-    krange = range(minLen, maxLen + 1)
-    smallest = min(krange)
+    out = {Primer.PLUS:  dict(),
+           Primer.MINUS: dict()}
     
     # extract the contig sequences
-    fwdSeq:Seq = contig.seq
-    revSeq:Seq = contig.seq.reverse_complement()
+    fwd = str(contig.seq)
+    rev = str(contig.seq.reverse_complement())
     
-    # get the length of the contig
+    # get the contig length
     contigLen = len(contig)
-    done = False
-    
-    # get every possible kmer start position
-    for start in range(contigLen):
-        # for each allowed kmer length
-        for klen in krange:
-            # stop looping through the contig once we're past the smallest kmer
-            if start+smallest > contigLen:
-                done = True
-                break
-            
-            # stop looping through the kmers once the length is too long
-            elif start+klen > contigLen:
-                break
-        
-            # proceed if the extracted kmer length is good
-            else:
-                # extract and save the forward kmer sequence
-                fKmer = fwdSeq[start:start+klen]
-                kmers[Primer.PLUS][fKmer] = kmers[Primer.PLUS].get(fKmer, list())
-                kmers[Primer.PLUS][fKmer].append(start)
-                
-                # calculate the end position (rev start position)
-                end = start + klen
-                
-                # extract the reverse kmer sequence
-                if start == 0:
-                    rKmer = revSeq[-end:]
-                else:
-                    rKmer = revSeq[-end:-start]
-                
-                # save the reverse kmer sequence
-                kmers[Primer.MINUS][rKmer] = kmers[Primer.MINUS].get(rKmer, list())
-                kmers[Primer.MINUS][rKmer].append(end-1)
-        
-        # stop iterating through the contig when we're done with it
-        if done:
-            break
 
-    return name, contig.id, kmers
+    # for each kmer length
+    for k in range(minLen,maxLen+1):
+        # create graph objects for evaluating each strand
+        fkh = Countgraph(k, 1e7, 1)
+        rkh = Countgraph(k, 1e7, 1)
+        
+        # get all the forward and reverse kmers
+        fKmers = [(kmer,start) for start,kmer in enumerate(fkh.get_kmers(fwd))]
+        rKmers = [(kmer,contigLen - start - k) for start,kmer in enumerate(rkh.get_kmers(rev))]
+
+        # store the kmers in the output
+        out[Primer.PLUS]  = __kmerListToDict(fKmers)
+        out[Primer.MINUS] = __kmerListToDict(rKmers)
+
+    return name, contig.id, out
 
 
 def __productSizesFromStartPositions(plusStarts:list[int], minusStarts:list[int]) -> set[int]:
