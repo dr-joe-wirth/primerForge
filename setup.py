@@ -10,6 +10,7 @@ setup(
     long_description_content_type='text/markdown',
     install_requires=[
         'biopython==1.81',
+        'khmer>=2.1',
         'numpy',
         'primer3-py>=2.0',
         'scipy>=1.10'
