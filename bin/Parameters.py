@@ -164,6 +164,7 @@ class Parameters():
         PY_MAJOR = 3
         PY_MINOR = 11
         BIO_VER = (1, 81)
+        KMR_VER = (2, 1)
         P3_VER = 2
         SCI_VER = (1, 10)
         
@@ -187,6 +188,17 @@ class Parameters():
         vers = tuple(map(int, Bio.__version__.split('.')))
         if vers[0] < BIO_VER[0] or (vers[0] == BIO_VER[0] and vers[1] < BIO_VER[1]):
             raise BaseException(f"'Bio'{BAD_VER}{'.'.join(map(str, BIO_VER))})")
+        
+        # check khmer installation
+        try:
+            import khmer
+        except:
+            raise BaseException(f"'khmer'{NOT_INS}")
+        
+        # check khmer version
+        vers = tuple(map(int, khmer.__version__.split('.')))
+        if vers[0] < KMR_VER[0] or (vers[0] == KMR_VER[0] and vers[1] < KMR_VER[1]):
+            raise BaseException(f"'khmer'{KMR_VER}{'.'.join(map(str, KMR_VER))}")
         
         # check numpy installation
         try:
