@@ -5,9 +5,9 @@ from bin.Clock import Clock
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.getPrimerPairs import _getPrimerPairs
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
-from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
 
 # global constants
 __version__ = "1.2.4"
@@ -16,27 +16,24 @@ __SHARED_NUM = 0
 __CAND_NUM   = 1
 __PAIR_1_NUM = 2
 __PAIR_2_NUM = 3
-__PAIR_3_NUM = 4
 
 
-def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
+def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool]:
     """gets booleans for checkpointing
 
     Args:
         params (Parameters): a Parameters object
 
     Returns:
-        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; final pairs
+        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs
     """
-    
     # determine if each pickle exists
     sharedExists = os.path.exists(params.pickles[__SHARED_NUM])
     candidExists = os.path.exists(params.pickles[__CAND_NUM])
     unfiltExists = os.path.exists(params.pickles[__PAIR_1_NUM])
     filterExists = os.path.exists(params.pickles[__PAIR_2_NUM])
-    finalsExists = os.path.exists(params.pickles[__PAIR_3_NUM])
     
-    return sharedExists, candidExists, unfiltExists, filterExists, finalsExists
+    return sharedExists, candidExists, unfiltExists, filterExists
 
 
 def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
@@ -170,39 +167,6 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs", prefix=GAP)
 
 
-def __getFinalPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
-    """gets the final pairs by keeping one per bin pair. does not return
-
-    Args:
-        params (Parameters): a Parameters object
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
-        clock (Clock): a Clock object
-    """
-    # messages
-    GAP = " "*4
-    MSG_1  = "keeping one primer pair per locus"
-    MSG_2A = "selected "
-    MSG_2B = " primer pairs"
-    
-    # print status
-    params.log.rename(__getFinalPairs.__name__)
-    params.log.info(MSG_1)
-    clock.printStart(MSG_1)
-    
-    # only keep one pair per bin pair (only process ingroup bins)
-    for name in map(os.path.basename, params.ingroupFns):
-        _keepOnePairPerBinPair(pairs, name)
-    
-    # print status
-    clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")
-    print(f"{GAP}{MSG_2A}{len(pairs)}{MSG_2B}")
-    params.log.info(f"{GAP}{MSG_2A}{len(pairs)}{MSG_2B}")
-    
-    # dump pairs to file
-    params.dumpObj(pairs, params.pickles[__PAIR_3_NUM], 'final pairs', GAP)
-
-
 def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
     """writes pairs of primers to file
 
@@ -313,23 +277,12 @@ def _runner(params:Parameters) -> None:
     params.log.rename(_runner.__name__)
     
     # get the checkpoint status
-    sharedExists, candExists, unfiltExists, filtExists, finalExists = __getCheckpoint(params)
+    sharedExists, candExists, unfiltExists, filtExists = __getCheckpoint(params)
     
     # jump straight to the end if possible
-    if finalExists:
-        # load data
-        pairs = params.loadObj(params.pickles[__PAIR_3_NUM])
-        
-        # write data to file
-        __writePrimerPairs(params, pairs, clock)
-    
-    # otherwise jump to final pair retrieval if possible
-    elif filtExists:
+    if filtExists:
         # load data
         pairs = params.loadObj(params.pickles[__PAIR_2_NUM])
-        
-        # get final pairs
-        __getFinalPairs(params, pairs, clock)
         
         #  write data to file
         __writePrimerPairs(params, pairs, clock)
@@ -341,9 +294,6 @@ def _runner(params:Parameters) -> None:
         
         # remove outgroup
         __removeOutgroup(params, pairs)
-        
-        # get final pairs
-        __getFinalPairs(params, pairs, clock)
         
         # write data to file
         __writePrimerPairs(params, pairs, clock)
@@ -362,9 +312,6 @@ def _runner(params:Parameters) -> None:
         # remove outgroup
         __removeOutgroup(params, pairs)
         
-        # get final pairs
-        __getFinalPairs(params, pairs, clock)
-        
         # plot and write data
         __writePrimerPairs(params, pairs, clock)
     
@@ -381,9 +328,6 @@ def _runner(params:Parameters) -> None:
         
         # remove primer pairs that make products in the outgroup
         __removeOutgroup(params, pairs)
-        
-        # keep one pair per bin pair
-        __getFinalPairs(params, pairs, clock)
         
         # make plots and write data
         __writePrimerPairs(params, pairs, clock)

@@ -14,8 +14,7 @@ class Parameters():
     __PICKLE_FNS = {0: "sharedKmers.p",
                     1: "candidates.p",
                     2: "pairs.p",
-                    3: "pairs_noOutgroup.p",
-                    4: "pairs_final.p"}
+                    3: "pairs_noOutgroup.p"}
     
     # default values
     _DEF_RESULTS_FN = 'results.tsv'
