@@ -694,7 +694,7 @@ class ResultsTest(unittest.TestCase):
             rev = Primer(rev, '', 100, len(rev), Primer.MINUS)
 
             # check for primer dimers; both primers need to be on the same strand
-            self.assertFalse(_formsDimers(fwd,rev.reverseComplement(),fwd.Tm, rev.Tm), f'primer dimers present in {fwd}, {rev}')
+            self.assertFalse(_formsDimers(str(fwd),str(rev.reverseComplement()),fwd.Tm, rev.Tm), f'primer dimers present in {fwd}, {rev}')
 
     def testL_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
