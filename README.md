@@ -137,15 +137,15 @@ flowchart TB
     %% get primer pairs
     subgraph C["for one genome"]
         bin1["bin overlapping kmers (64bp max)"]
-        bin2["get bin pairs"]
-        candPair(["candidate primer pairs"])
-        sharePair(["shared primer pairs"])
+        bin2["remove kmers that are
+        substrings of other kmers"]
+        bin3["get bin pairs"]
 
         %% evaluate one kmer pair
         subgraph C0["for each bin pair"]
             size{"is PCR
             size ok?"}
-            subgraph C4["for each primer pair"]
+            subgraph C1["for each primer pair"]
                 prime{"is 3' end
                 G or C?"}
                 temp{"is Tm
@@ -153,62 +153,60 @@ flowchart TB
                 hetero{"no hetero-
                 dimers?"}
             end
-            size --> C4
+            size --> C1
         end
-
-
-        %% get shared primer pairs
-        subgraph C2["for each candidate primer pair"]
-            subgraph C3["for each other genome"]
-                pcr{"PCR size ok?"}
-            end
-        end
-
-        bin1 --> bin2
-        bin2 --> C0
-        prime --> temp --> hetero --> candPair
-        candPair --> C2
-        pcr --> sharePair
     end
 
+    candPair(["candidate primer pairs"])
     allSharePair(["all shared primer pairs"])
+
+    %% get shared primer pairs
+    subgraph D["for each candidate primer pair"]
+        subgraph D0["for each other genome"]
+            pcr{"is PCR
+            size ok?"}
+        end
+    end
+
+    bin1 --> bin2
+    bin2 --> bin3
+    bin3 --> C0
+    prime --> temp --> hetero --> candPair
+    candPair --> D
+    pcr --> allSharePair
+
+    %% one pair per bin pair
+    subgraph E["for each bin pair"]
+        keep["keep only one primer pair"]
+    end
+    
+    selectedSharePair(["selected shared primer pairs"])
     dump2[/"dump to file"/]
     dump3[/"dump to file"/]
 
     candidates --> dump2
     candidates --> C
-    sharePair --> allSharePair
-    allSharePair --> dump3
+    allSharePair --> E
+    keep --> selectedSharePair
+    selectedSharePair --> dump3
 
     %% outgroup removal
     outgroup[/"outgroup genomes"/]
 
-    allSharePair --> D0
-    outgroup --> D
-    subgraph D["for each outgroup genome"]
-        subgraph D0["for each primer pair"]
+    subgraph F["for each outgroup genome"]
+        subgraph F0["for each primer pair"]
             ogsize{"PCR size outside
             disallowed range?"}
         end
     end
+
+    selectedSharePair --> F0
+    outgroup --> F
     
-    allPairs(["all suitable primer pairs"])
-    ogsize --> allPairs
-
-    %% one pair per bin pair
-    subgraph E["for each bin pair"]
-        keep["keep only one primer
-        pair per bin pair"]
-    end
-
-    allPairs --> E
-
-    final(["final set of pairs"])
-    keep --> final
+    final(["final set of primer pairs"])
+    ogsize --> final
 
     write[/"write pairs to file"/]
-    plots[/"make plots"/]
 
     final --> write
-    final --> plots
 ```
