@@ -10,7 +10,7 @@ from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 from bin.getPrimerPairs import _getPrimerPairs, _keepOnePairPerBinPair
 
 # global constants
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 __author__ = "Joseph S. Wirth"
 __SHARED_NUM = 0
 __CAND_NUM   = 1
