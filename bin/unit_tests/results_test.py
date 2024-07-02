@@ -8,6 +8,7 @@ from Bio.Seq import Seq
 from bin.Log import Log
 from bin.main import _runner
 from bin.Clock import Clock
+from khmer import Countgraph
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
@@ -378,63 +379,60 @@ class ResultsTest(unittest.TestCase):
         
         return out
     
-    def _getKmersForOneContig(seq:dict[str,Seq], minLen:int, maxLen:int) -> dict[str,dict[Seq,list[int]]]:
+    def _kmerListToDict(klist:list[tuple[str,int]]) -> dict[str,list[int]]:
+        """converts a list of kmers to a dictionary
+
+        Args:
+            klist (list[tuple[str,int]]): a list of kmers paired with their start positions
+
+        Returns:
+            dict[str,list[int]]: key=kmer; val=list of start positions
+        """
+        # initialize output
+        out = dict()
+        
+        # for each kmer
+        for kmer,start in klist:
+            # create the list (if necessary) and append the start position to it
+            out[kmer] = out.get(kmer, list())
+            out[kmer].append(start)
+        
+        return out
+    
+    def _getKmersForOneContig(seq:dict[str,Seq], minLen:int, maxLen:int, primers:set[str]) -> dict[str,dict[Seq,list[int]]]:
         """gets all the kmers for a single contig
 
         Args:
             seq (dict[str,Seq]): key=strand; val=contig sequence
             minLen (int): the minimum kmer length
             maxLen (int): the maximum kmer length
+            primers (set[str]): a set of all the primers being evaluated
 
         Returns:
             dict[str,dict[Seq,list[int]]]: key=strand; val=dict: key=kmers; val=list of start positions
         """
-        # initialize variables
-        krange = range(minLen, maxLen + 1)
-        smallest = min(krange)
-        seqLen = len(seq[Primer.PLUS])
-        done = False
+        # initialize output
         out = {Primer.PLUS:  dict(),
                Primer.MINUS: dict()}
         
-        # get every possible kmer start position
-        for start in range(seqLen):
-            # for each allowed kmer length
-            for klen in krange:
-                # stop looping through the contig once we're past the smallest kmer
-                if start+smallest > seqLen:
-                    done = True
-                    break
-                
-                # stop looping through the kmers once the length is too long
-                elif start+klen > seqLen:
-                    break
+        # extract the sequences from the dictionary as well as its length
+        fwd = str(seq[Primer.PLUS])
+        rev = str(seq[Primer.MINUS])
+        length = len(fwd)
+        
+        # for each kmer length
+        for k in range(minLen, maxLen+1):
+            # create countgraphs for each strand
+            fkh = Countgraph(k, 1e7, 1)
+            rkh = Countgraph(k, 1e7, 1)
             
-                # proceed if the extracted kmer length is good
-                else:
-                    # calculate the end
-                    end = start + klen
-                    
-                    # extract the forward sequence
-                    fKmer = seq[Primer.PLUS][start:end]
-                    
-                    # extract the reverse sequence
-                    if start == 0:
-                        rKmer = seq[Primer.MINUS][-end:]
-                    else:
-                        rKmer = seq[Primer.MINUS][-end:-start]
-                    
-                    # initialize lists stored under the kmers
-                    out[Primer.PLUS][fKmer] = out[Primer.PLUS].get(fKmer, list())
-                    out[Primer.MINUS][rKmer] = out[Primer.MINUS].get(rKmer, list())
-                    
-                    # save the start positions
-                    out[Primer.PLUS][fKmer].append(start)
-                    out[Primer.MINUS][rKmer].append(end-1)
+            # get all the kmers and their start positions for each strand
+            fmers = [(kmer, start) for start,kmer in enumerate(fkh.get_kmers(fwd)) if kmer in primers]
+            rmers = [(kmer, length - start - 1) for start,kmer in enumerate(rkh.get_kmers(rev)) if kmer in primers]
             
-            # stop iterating through the contig when we're done with it
-            if done:
-                break
+            # convert the lists to dictionaries and save them
+            out[Primer.PLUS].update(ResultsTest._kmerListToDict(fmers))
+            out[Primer.MINUS].update(ResultsTest._kmerListToDict(rmers))
         
         return out
 
@@ -452,7 +450,7 @@ class ResultsTest(unittest.TestCase):
         """
         # initialize variables
         bindingSites = dict()
-        allPrimers = {p for pair in results.keys() for p in pair}
+        allPrimers = {str(p) for pair in results.keys() for p in pair}
         clock = Clock()
         
         # for each genome
@@ -463,12 +461,7 @@ class ResultsTest(unittest.TestCase):
             # for each contig
             for contig in sequences[name].keys():
                 # get the all the kmers
-                kmers = ResultsTest._getKmersForOneContig(sequences[name][contig], minLen, maxLen)
-
-                # determine which kmers actually need to be evaluated
-                relevantKmers = set(kmers[Primer.PLUS])
-                relevantKmers.update(set(kmers[Primer.MINUS]))                
-                relevantKmers.intersection_update(allPrimers)
+                kmers = ResultsTest._getKmersForOneContig(sequences[name][contig], minLen, maxLen, allPrimers)
                 
                 # for each kmer
                 for kmer in allPrimers:
@@ -479,32 +472,30 @@ class ResultsTest(unittest.TestCase):
                     bindingSites[kmer][name][contig][Primer.PLUS] = bindingSites[kmer][name][contig].get(Primer.PLUS, list())
                     bindingSites[kmer][name][contig][Primer.MINUS] = bindingSites[kmer][name][contig].get(Primer.MINUS, list())
                     
-                    # only add start positions for kmers in this contig
-                    if kmer in relevantKmers:
-                        # make sure these lists are empty
-                        plsStarts = list()
-                        mnsStarts = list()
-                        
-                        # try to get the plus start positions
-                        try:
-                            plsStarts = kmers[Primer.PLUS][kmer]
-                        except KeyError:
-                            pass
-                        
-                        # try to get the minus start positions
-                        try:
-                            mnsStarts = kmers[Primer.MINUS][kmer]
-                        except KeyError:
-                            pass
-                        
-                        # save the start positions for this kmer
-                        try:
-                            bindingSites[kmer][name][contig][Primer.PLUS].extend(plsStarts)
-                            bindingSites[kmer][name][contig][Primer.MINUS].extend(mnsStarts)
-                        
-                        # the kmers will not necessarily be present in every contig
-                        except KeyError:
-                            pass
+                    # make sure these lists are empty
+                    plsStarts = list()
+                    mnsStarts = list()
+                    
+                    # try to get the plus start positions
+                    try:
+                        plsStarts = kmers[Primer.PLUS][kmer]
+                    except KeyError:
+                        pass
+                    
+                    # try to get the minus start positions
+                    try:
+                        mnsStarts = kmers[Primer.MINUS][kmer]
+                    except KeyError:
+                        pass
+                    
+                    # save the start positions for this kmer
+                    try:
+                        bindingSites[kmer][name][contig][Primer.PLUS].extend(plsStarts)
+                        bindingSites[kmer][name][contig][Primer.MINUS].extend(mnsStarts)
+                    
+                    # the kmers will not necessarily be present in every contig
+                    except KeyError:
+                        pass
                 
             # print status
             clock.printDone()
