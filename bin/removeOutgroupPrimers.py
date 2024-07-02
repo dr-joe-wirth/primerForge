@@ -59,13 +59,13 @@ def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int
         fkh = Countgraph(k, 1e7, 1)
         rkh = Countgraph(k, 1e7, 1)
         
-        # get all the forward and reverse kmers
+        # get all the forward and reverse kmers and their start positions
         fKmers = [(kmer,start) for start,kmer in enumerate(fkh.get_kmers(fwd))]
-        rKmers = [(kmer,contigLen - start - k) for start,kmer in enumerate(rkh.get_kmers(rev))]
+        rKmers = [(kmer,contigLen - start - 1) for start,kmer in enumerate(rkh.get_kmers(rev))]
 
         # store the kmers in the output
-        out[Primer.PLUS]  = __kmerListToDict(fKmers)
-        out[Primer.MINUS] = __kmerListToDict(rKmers)
+        out[Primer.PLUS].update(__kmerListToDict(fKmers))
+        out[Primer.MINUS].update(__kmerListToDict(rKmers))
 
     return name, contig.id, out
 
