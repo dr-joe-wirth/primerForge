@@ -8,6 +8,7 @@ setup(
     description='software to identify primers that can be used to distinguish genomes',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
+    python_requires='>=3.9,<3.12',
     install_requires=[
         'biopython==1.81',
         'khmer>=2.1',

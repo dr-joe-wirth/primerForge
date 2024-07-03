@@ -161,7 +161,7 @@ class Parameters():
         """
         # constants
         PY_MAJOR = 3
-        PY_MINOR = 11
+        PY_MINOR = (9, 11)
         BIO_VER = (1, 81)
         KMR_VER = (2, 1)
         P3_VER = 2
@@ -173,8 +173,8 @@ class Parameters():
         SUCCESS = f'primerForge v{self.__version} is properly installed'
         
         # check python version
-        if sys.version_info.major != PY_MAJOR or not sys.version_info.minor >= PY_MINOR:
-            raise BaseException(f'incompatible python version (requires {PY_MAJOR}.{PY_MINOR} or above)')
+        if sys.version_info.major != PY_MAJOR or not (PY_MINOR[0] <= sys.version_info.minor <= PY_MINOR[1]):
+            raise BaseException(f'incompatible python version (requires {PY_MAJOR}.{PY_MINOR[0]} to {PY_MAJOR}.{PY_MINOR[1]})')
     
         # check that all dependencies exist
         # check Bio installation
