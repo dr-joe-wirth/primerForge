@@ -1,4 +1,11 @@
+import sys
 from setuptools import setup, find_packages
+
+version = (sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
+
+if version < (3, 9) or version >= (3, 12):
+    sys.stderr.write(f"\Incompatible Python version ({'.'.join(map(str, version))}). primerForge requires Python >=3.9 and <3.12\n\n")
+    sys.exit(1)
 
 setup(
     name='primerforge',
