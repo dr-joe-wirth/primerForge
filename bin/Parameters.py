@@ -215,6 +215,12 @@ class Parameters():
         if int(primer3.__version__.split('.')[0]) < P3_VER:
             raise BaseException(f"'primer3-py'{BAD_VER}{P3_VER} or above)")
         
+        # check pyahocorasick installation
+        try:
+            import ahocorasick
+        except:
+            raise BaseException(f"'pyahocorasick'{NOT_INS}")
+        
         # check scipy installation
         try:
             import scipy

@@ -21,6 +21,7 @@ setup(
         'khmer>=2.1',
         'numpy',
         'primer3-py>=2.0',
+        'pyahocorasick>=2.1',
         'scipy>=1.10'
     ],
     entry_points={
