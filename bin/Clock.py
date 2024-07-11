@@ -54,14 +54,19 @@ class Wheel:
     def stop(self) -> None:
         """stops spinning the wheel
         """
-        # stop spinning the wheel
-        if self.__process.is_alive():
-            self.__EVENT.set()
-            self.__process.join()
-            
-            # remove the wheel character
-            sys.stdout.write('\r' + self.__msg)
-            sys.stdout.flush()
+        # this will raise AttributeError if the wheel isn't spinning
+        try:
+            # stop spinning the wheel
+            if self.__process.is_alive():
+                self.__EVENT.set()
+                self.__process.join()
+                
+                # remove the wheel character
+                sys.stdout.write('\r' + self.__msg)
+                sys.stdout.flush()
+        
+        except AttributeError:
+            pass
 
 
 class Clock:
