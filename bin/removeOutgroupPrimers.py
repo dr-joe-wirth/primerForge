@@ -1,73 +1,62 @@
-import multiprocessing
-from Bio.Seq import Seq
 from bin.Clock import Clock
-from khmer import Countgraph
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
+from ahocorasick import Automaton
 from bin.Parameters import Parameters
 
 # global constant
 __NULL_PRODUCT = ("NA", 0, ())
 
 
-def __kmerListToDict(kmers:list[tuple[str,int]]) -> dict[str,list[int]]:
-    """coerces a list of tuples to a dictionary of lists
+# functions
+def __getAutomaton(pairs:list[tuple[Primer,Primer]]) -> Automaton:
+    """creates an Aho-Corasick Automaton for substring lookup
 
     Args:
-        kmers (list[tuple[str,int]]): key=kmer; val=start position
+        pairs (list[tuple[Primer,Primer]]): a list of primer pairs
 
     Returns:
-        dict[str,list[int]]: key=kmer; val=list of start positions
+        Automaton: an Aho-Corasick Automaton
+    """
+    # initialize output
+    out = Automaton()
+    
+    # add each kmer in the pairs to the automaton once and make the automaton
+    for kmer in {str(x) for y in pairs for x in y}:
+        out.add_word(kmer, kmer)
+    out.make_automaton()
+
+    return out
+
+
+def __extractKmerData(seq:str, strand:str, kmers:Automaton) -> dict[str, list[int]]:
+    """extracts data from a contig sequence for a collection of kmers
+
+    Args:
+        seq (str): the contig sequence
+        strand (str): the strand of the sequence
+        kmers (Automaton): the collection of kmers as an Aho-Corasick Automaton
+
+    Returns:
+        dict[str, list[int]]: key=kmer; val=list of start positions
     """
     # initialize output
     out = dict()
     
-    # save each start position in a list keyed under the kmer
-    for kmer,start in kmers:
+    # for each kmer in the sequence
+    for end,kmer in kmers.iter(seq):
+        # extract the start position if on the 
+        start = end - len(kmer) + 1
+        
+        # modify the start position if on the (-) strand
+        if strand == Primer.MINUS:
+            start = len(seq) - start - 1
+        
+        # build the output
         out[kmer] = out.get(kmer, list())
         out[kmer].append(start)
     
     return out
-
-
-def __getAllKmersForOneContig(name:str, contig:SeqRecord, minLen:int, maxLen:int) -> tuple[str,str,dict[str,dict[Seq,list[int]]]]:
-    """gets all the kmers and their start positions from a contig
-
-    Args:
-        name (str): the name of the genome
-        contig (SeqRecord): a contig as a SeqRecord object
-        minLen (int): the minimum kmer length
-        maxLen (int): the maximum kmer length
-
-    Returns:
-        tuple[str,str,dict[str,dict[Seq,list[int]]]]: (name, contig name, dict: key=strand; val=dict: key=kmer sequence; val=list of start positions)
-    """
-    # initialize variables
-    out = {Primer.PLUS:  dict(),
-           Primer.MINUS: dict()}
-    
-    # extract the contig sequences
-    fwd = str(contig.seq)
-    rev = str(contig.seq.reverse_complement())
-    
-    # get the contig length
-    contigLen = len(contig)
-
-    # for each kmer length
-    for k in range(minLen,maxLen+1):
-        # create graph objects for evaluating each strand
-        fkh = Countgraph(k, 1e7, 1)
-        rkh = Countgraph(k, 1e7, 1)
-        
-        # get all the forward and reverse kmers and their start positions
-        fKmers = [(kmer,start) for start,kmer in enumerate(fkh.get_kmers(fwd))]
-        rKmers = [(kmer,contigLen - start - 1) for start,kmer in enumerate(rkh.get_kmers(rev))]
-
-        # store the kmers in the output
-        out[Primer.PLUS].update(__kmerListToDict(fKmers))
-        out[Primer.MINUS].update(__kmerListToDict(rKmers))
-
-    return name, contig.id, out
 
 
 def __productSizesFromStartPositions(plusStarts:list[int], minusStarts:list[int]) -> set[int]:
@@ -96,13 +85,13 @@ def __productSizesFromStartPositions(plusStarts:list[int], minusStarts:list[int]
     return out
 
 
-def __getOutgroupProductSizes(kmers:dict[str,dict[Seq,list[int]]], fwd:Primer, rev:Primer) -> set[int]:
+def __getOutgroupProductSizes(kmers:dict[str,dict[str,list[int]]], fwd:str, rev:str) -> set[int]:
     """gets a set of pcr product sizes for a primer pair
 
     Args:
-        kmers (dict[str,dict[Seq,list[int]]]): the dictionary produced by __getAllKmers
-        fwd (Primer): the forward primer
-        rev (Primer): the reverse primer
+        kmers (dict[str,dict[str,list[int]]]): key=strand; val=dict: key=kmer; val=list of start positions
+        fwd (str): the forward primer
+        rev (str): the reverse primer
 
     Returns:
         set[int]: a set of pcr product sizes
@@ -112,7 +101,7 @@ def __getOutgroupProductSizes(kmers:dict[str,dict[Seq,list[int]]], fwd:Primer, r
     
     # get the sizes when fwd (+) and rev (-)
     try:
-        productSizes = __productSizesFromStartPositions(kmers[Primer.PLUS][fwd.seq], kmers[Primer.MINUS][rev.seq])
+        productSizes = __productSizesFromStartPositions(kmers[Primer.PLUS][fwd], kmers[Primer.MINUS][rev])
         out.update(productSizes)
 
     # primers may not bind those strands
@@ -121,7 +110,7 @@ def __getOutgroupProductSizes(kmers:dict[str,dict[Seq,list[int]]], fwd:Primer, r
     
     # get the sizes when fwd (-) and rev (+)
     try:
-        productSizes = __productSizesFromStartPositions(kmers[Primer.PLUS][rev.seq], kmers[Primer.MINUS][fwd.seq])
+        productSizes = __productSizesFromStartPositions(kmers[Primer.PLUS][rev], kmers[Primer.MINUS][fwd])
         out.update(productSizes)
     
     # primers may not bind those strands
@@ -179,7 +168,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     """removes primers found in the outgroup that produce disallowed product sizes
 
     Args:
-        outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs
+        outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs (or a generator)
         pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
         params (Parameters): a Parameters object
 
@@ -190,7 +179,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     GAP = " "*4
     DONE = "done "
     MSG_1   = "removing primer pairs present in the outgroup sequences"
-    MSG_2   = f"{GAP}getting outgroup kmers"
+    MSG_2   = f"{GAP}getting outgroup PCR products"
     MSG_3   = f"{GAP}filtering primer pairs"
     MSG_4   = f"{GAP}processing outgroup results"
     MSG_5A  = "removed "
@@ -200,9 +189,9 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     ERR_MSG = "failed to find primer pairs that are absent in the outgroup"
     
     # initialize variables
-    args = list()
     clock = Clock()
     prevName = None
+    outgroupKmers = dict()
     outgroupProducts = dict()
     startNumPairs = len(pairs)
     
@@ -213,20 +202,26 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     clock.printStart(MSG_2)
     params.log.info(MSG_2)
     
+    # create the automaton from the pairs
+    kmers = __getAutomaton(pairs.keys())
+    
     # for each outgroup genome
     for name in outgroup.keys():
         # initialize a dictionary for the current outgroup genome
-        outgroupProducts[name] = dict()
+        outgroupKmers[name] = dict()
         
         # add each contig in the genome to the argument list
         for contig in outgroup[name]:
-            args.append((name, contig, params.minLen, params.maxLen))
-    
-    # get all kmers in parallel
-    pool = multiprocessing.Pool(params.numThreads)
-    allKmers = pool.starmap(__getAllKmersForOneContig, args)
-    pool.close()
-    pool.join()
+            outgroupKmers[name][contig.id] = {Primer.PLUS:  dict(),
+                                              Primer.MINUS: dict()}
+            
+            # extract the forward and reverse sequences
+            fwd = str(contig.seq)
+            rev = str(contig.seq.reverse_complement())
+            
+            # extract kmer data
+            outgroupKmers[name][contig.id][Primer.PLUS].update((__extractKmerData(fwd, Primer.PLUS, kmers)))
+            outgroupKmers[name][contig.id][Primer.MINUS].update(__extractKmerData(rev, Primer.MINUS, kmers))
     
     # print status and log
     clock.printDone()
@@ -234,52 +229,51 @@ def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[
     clock.printStart(MSG_3)
     params.log.info(MSG_3)
     
-    # sort kmers by genome name then contig name
-    allKmers.sort(key=lambda x: (x[0], x[1]))
-    
-    # go through each set of kmers
-    for name,contig,kmers in allKmers:
-        # first time through prevName is None, update it
-        if prevName is None:
-            prevName = name
-        
-        # report the number of pairs removed for each genome
-        elif prevName != name:
+    # for each outgroup genome
+    prevName = next(iter(outgroupKmers.keys()))
+    for name in outgroupKmers.keys():
+        # keep track of how the pairs are changing after each outgroup genome
+        if name != prevName:
             # log the number of pairs removed and remaining if debugging
             params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{prevName}{MSG_5C}{len(pairs)}{MSG_5D}")
             
             # reset the starting number and update the prev name
             startNumPairs = len(pairs)
             prevName = name
-            
-        # evaluate the pairs present in the dictionary (list allows on-the-fly removal)
-        for fwd,rev in list(pairs.keys()):
-            # initialize an empty set if one does not already exist
-            outgroupProducts[name][(fwd,rev)] = outgroupProducts[name].get((fwd,rev), set())
+        
+        # create the sub dictionary
+        outgroupProducts[name] = dict()
+        
+        # for each contig
+        for contig in outgroupKmers[name].keys():
+            # evaluate the pairs present in the dictionary (list allows on-the-fly removal)
+            for fwd,rev in list(pairs.keys()):
+                # initialize an empty set if one does not already exist
+                outgroupProducts[name][(fwd,rev)] = outgroupProducts[name].get((fwd,rev), set())
 
-            # get the outgroup products for this primer pair
-            products = __getOutgroupProductSizes(kmers, fwd, rev)
-            
-            # if there are no products, then the size is 0
-            if products == set():
-                outgroupProducts[name][(fwd,rev)].update({__NULL_PRODUCT})
-            
-            # if there are products
-            else:
-                # initialize variable to determine if this product needs to be processed further
-                done = False
+                # get the outgroup products for this primer pair
+                products = __getOutgroupProductSizes(outgroupKmers[name][contig], str(fwd), str(rev))
                 
-                # for each pcr product length
-                for pcrLen in products:
-                    # remove any pairs that produce disallowed product sizes
-                    if pcrLen in params.disallowedLens:
-                        del pairs[(fwd,rev)]
-                        done = True
-                        break
+                # if there are no products, then the size is 0
+                if products == set():
+                    outgroupProducts[name][(fwd,rev)].update({__NULL_PRODUCT})
                 
-                # if the pcr product lengths are not disallowed, then save them in the dictionary
-                if not done:
-                    outgroupProducts[name][(fwd,rev)].update({(contig, x, ()) for x in products})
+                # if there are products
+                else:
+                    # initialize variable to determine if this product needs to be processed further
+                    done = False
+                    
+                    # for each pcr product length
+                    for pcrLen in products:
+                        # remove any pairs that produce disallowed product sizes
+                        if pcrLen in params.disallowedLens:
+                            del pairs[(fwd,rev)]
+                            done = True
+                            break
+                    
+                    # if the pcr product lengths are not disallowed, then save them in the dictionary
+                    if not done:
+                        outgroupProducts[name][(fwd,rev)].update({(contig, x, ()) for x in products})
         
     # log the number of pairs removed and remaining from the last genome if debugging
     params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{name}{MSG_5C}{len(pairs)}{MSG_5D}")
