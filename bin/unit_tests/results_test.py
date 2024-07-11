@@ -137,6 +137,10 @@ class ResultsTest(unittest.TestCase):
         signal.signal(signal.SIGALRM, handler)
         numThreads = None
         
+        # return default value if not running interactively
+        if not sys.stdin.isatty():
+            return DEFAULT_NUM
+        
         # make sure the threads is an int
         while not type(numThreads) is int:
             # start the timeout clock
