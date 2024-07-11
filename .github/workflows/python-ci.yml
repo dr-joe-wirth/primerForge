@@ -37,3 +37,7 @@ jobs:
           pip install .
           primerForge --help
           primerForge --check_install
+      - name: unit tests
+        shell: bash -el {0}
+        run: |
+          python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
