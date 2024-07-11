@@ -1,5 +1,5 @@
 from __future__ import annotations
-import sys, time
+import os, sys, time
 from multiprocessing import Process, Event
 
 
@@ -212,7 +212,12 @@ class Clock:
             spin (bool, optional): indicates if the wheel should spin. Defaults to True.
         """
         # save the spin status
-        self.__spin = spin
+        if not "CI" in os.environ:
+            self.__spin = spin
+        
+        # do not spin if we are doing CI
+        else:
+            self.__spin = False
         
         # spin the wheel if requested; wheel handles printing
         if self.__spin:
