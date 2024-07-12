@@ -42,3 +42,8 @@ jobs:
         run: |
           free -h
           \time python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
+      - name: Upload pickled file
+        uses: actions/upload-artifact@v2
+        with:
+          name: sharedKmers.p
+          path: test_dir/_pickles/sharedKmers.p
