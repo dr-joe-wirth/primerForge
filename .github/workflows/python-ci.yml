@@ -40,4 +40,4 @@ jobs:
       - name: unit tests
         shell: bash -el {0}
         run: |
-          python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
+          \time python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
