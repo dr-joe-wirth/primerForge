@@ -41,9 +41,8 @@ jobs:
         shell: bash -el {0}
         run: |
           python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
-        continue-on-error: true
-      - name: Upload pickled file
-        if: failure()
+      - name: upload pickles
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: pickles
