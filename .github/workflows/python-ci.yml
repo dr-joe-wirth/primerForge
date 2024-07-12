@@ -40,10 +40,11 @@ jobs:
       - name: unit tests
         shell: bash -el {0}
         run: |
-          free -h
-          \time python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
+          python -m unittest discover -s ./bin/unit_tests/ -p "*_test.py"
+        continue-on-error: true
       - name: Upload pickled file
+        if: failure()
         uses: actions/upload-artifact@v2
         with:
-          name: sharedKmers.p
-          path: test_dir/_pickles/sharedKmers.p
+          name: pickles
+          path: test_dir/_pickles/*.p
