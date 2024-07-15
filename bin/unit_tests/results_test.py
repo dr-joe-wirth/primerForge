@@ -13,7 +13,7 @@ from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.getPrimerPairs import _formsDimers
-import gzip, os, pickle, primer3, signal, subprocess, unittest
+import gzip, os, pickle, primer3, signal, subprocess, time, unittest
 
 class Result():
     """class to save results for easy lookup
@@ -223,8 +223,10 @@ class ResultsTest(unittest.TestCase):
         Raises:
             RuntimeError: failed to download a genome
         """
-        # constant
+        # constants
         CMD = ('wget', '-q', '-O')
+        MAX_TRIES = 5
+        SLEEP_SEC = 1
         
         # get the gzip filename
         gz = fn + ".gz"
@@ -234,10 +236,20 @@ class ResultsTest(unittest.TestCase):
         cmd.append(gz)
         cmd.append(ftp)
         
-        # download the genome
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError:
+        # try to download the genome
+        numTries = 0
+        while numTries < MAX_TRIES:
+            try:
+                subprocess.run(cmd, check=True)
+                break
+            
+            # keep trying; sleep between attempts
+            except subprocess.CalledProcessError:
+                numTries += 1
+                time.sleep(SLEEP_SEC)
+        
+        # if the genome failed to be downloaded, then raise an error
+        if numTries == MAX_TRIES:
             raise RuntimeError(f"download failed for {os.path.basename(fn)}")
         
         # extract the gzipped file
