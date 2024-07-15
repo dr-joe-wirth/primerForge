@@ -165,7 +165,6 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
         dict[str,dict[str,tuple[str,int,str]]]: key=kmer; val=dict: key=genome name: val=tuple: contig, start, strand
     """
     # intialize variables
-    firstGenome = True
     contig:SeqRecord
     out = dict()
     
@@ -185,9 +184,6 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
             # only extract data for the (-) strand if not the first genome
             # if not firstGenome:
             __extractKmerData(name, contig.id, Primer.MINUS, str(contig.seq.reverse_complement()), allAllowed, out)
-        
-        # reset the boolean after processing the first genome
-        firstGenome = False
     
     return out
 
