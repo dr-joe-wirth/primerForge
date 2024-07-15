@@ -412,10 +412,6 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     numCand = 0
     out = dict()
     
-    # DEBUGGING CI!!! REMOVE LATER
-    print(f'\nparams.ingroupFns: {params.ingroupFns}\n')
-    params.ingroupFns.sort()
-    
     # setup debugger
     params.log.rename(_getAllCandidateKmers.__name__)
     
