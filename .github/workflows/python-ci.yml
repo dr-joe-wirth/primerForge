@@ -4,6 +4,7 @@ name: basic python
 jobs:
   example-1:
     name: (${{ matrix.python-version }}, ${{ matrix.os }})
+    timeout-minutes: 120
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
