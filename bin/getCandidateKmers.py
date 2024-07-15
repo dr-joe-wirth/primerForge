@@ -86,10 +86,6 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
             # add the sequences and the length to a list of arguments
             args.append((fwd, rev, k, firstGenome))
         
-        if firstGenome:
-            # print the first genome DEBUG REMOVE LATER
-            print(f'\n****** first genome: {os.path.basename(fn)} ******')
-        
         # reset first genome boolean
         firstGenome = False
     
