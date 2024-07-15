@@ -86,6 +86,10 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
             # add the sequences and the length to a list of arguments
             args.append((fwd, rev, k, firstGenome))
         
+        if firstGenome:
+            # print the first genome DEBUG REMOVE LATER
+            print(f'\n****** first genome: {os.path.basename(fn)} ******')
+        
         # reset first genome boolean
         firstGenome = False
     
@@ -97,10 +101,6 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     
     # sort the list by kmer length (small to big)
     allowed.sort(key=lambda x:len(next(iter(x))))
-    
-    # DEBUGGING CI ... DELETE THIS FILE
-    pickleDir = os.path.dirname(next(iter(params.pickles.values())))
-    params.dumpObj(allowed, os.path.join(pickleDir, 'allowed_kmers.p'), 'allowed kmers', '\n****** DEBUGGING CI ******')
     
     # save the shared kmers for each k
     while allowed != []:
@@ -182,11 +182,10 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
         
         # for each contig
         for contig in SeqIO.parse(fn, params.format):
-            # always extract data for the (+) strand
+            # extract data for the (+) strand
             __extractKmerData(name, contig.id, Primer.PLUS, str(contig.seq), allAllowed, out)
             
-            # only extract data for the (-) strand if not the first genome
-            # if not firstGenome:
+            # extract data for the (-) strand
             __extractKmerData(name, contig.id, Primer.MINUS, str(contig.seq.reverse_complement()), allAllowed, out)
     
     return out
