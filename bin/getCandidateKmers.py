@@ -98,6 +98,10 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     # sort the list by kmer length (small to big)
     allowed.sort(key=lambda x:len(next(iter(x))))
     
+    # DEBUGGING CI ... DELETE THIS FILE
+    pickleDir = os.path.dirname(next(iter(params.pickles.values())))
+    params.dumpObj(allowed, os.path.join(pickleDir, 'allowed_kmers.p'), 'allowed kmers', '\n****** DEBUGGING CI ******')
+    
     # save the shared kmers for each k
     while allowed != []:
         # remove the last item from the list
