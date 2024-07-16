@@ -6,8 +6,8 @@ sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Log import Log
-from bin.main import _runner
 from bin.Clock import Clock
+from bin.main import _runner
 from khmer import Countgraph
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
@@ -34,15 +34,24 @@ class ResultsTest(unittest.TestCase):
     # constants
     TEST_DIR = os.path.join(str(pathlib.Path(__file__).parent.parent.parent), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
-    FAKE_FN = 'fakefile'
     BINDING_SITES_FN = os.path.join(TEST_DIR, "bindingSites.p")
-    INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
-                'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
-                'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
-    OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
-                'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
+    FAKE_FN = 'fakefile'
     PCRLEN = "length"
     CONTIG = "contig"
+    
+    # default ingroup and outgroup genomes (Mycoplasma mycoides)
+    DEFAULT_INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz',
+                        'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz',
+                        'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345.1_ASM303434v1/GCF_003034345.1_ASM303434v1_genomic.gbff.gz'}
+    DEFAULT_OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz',
+                        'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz'}
+    
+    # alternate ingroup and outgroup genomes (Escherichia coli)
+    ALTRNTE_INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
+                        'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
+                        'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
+    ALTRNTE_OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
+                        'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
     
     @classmethod
     def setUpClass(cls) -> None:
@@ -54,19 +63,24 @@ class ResultsTest(unittest.TestCase):
         # get the number of threads to use
         numThreads = ResultsTest._getNumThreads()
         
+        # determine which dataset to use
+        cls.ingroup:dict[str,str]
+        cls.outgroup:dict[str,str]
+        cls.ingroup, cls.outgroup = ResultsTest._selectDataset()
+        
         # make the test directory if it doesn't exist
         if not os.path.isdir(ResultsTest.TEST_DIR):
             os.mkdir(ResultsTest.TEST_DIR)
         
         # get a list of all the genome files
-        allFiles = list(ResultsTest.INGROUP.keys()) + list(ResultsTest.OUTGROUP.keys())
+        allFiles = list(ResultsTest.ingroup.keys()) + list(ResultsTest.outgroup.keys())
         allFiles = map(os.path.join, [ResultsTest.TEST_DIR]*len(allFiles), allFiles)
         
         # download genome files if necessary
         if not all(map(os.path.exists, allFiles)):
             clock.printStart('downloading genomes')
-            ResultsTest._downloadGenomesForGroup(ResultsTest.INGROUP)
-            ResultsTest._downloadGenomesForGroup(ResultsTest.OUTGROUP)
+            ResultsTest._downloadGenomesForGroup(ResultsTest.ingroup)
+            ResultsTest._downloadGenomesForGroup(ResultsTest.outgroup)
             clock.printDone()
         
         # get the parameters
@@ -77,7 +91,7 @@ class ResultsTest(unittest.TestCase):
         if not os.path.exists(ResultsTest.params.resultsFn):  
             # run primerForge
             clock.printStart('running primerForge', end=' ...\n', spin=False)
-            _runner(cls.params)
+            _runner(ResultsTest.params)
             clock.printDone()
         
         # otherwise using existing file
@@ -164,6 +178,69 @@ class ResultsTest(unittest.TestCase):
         signal.alarm(0)
         
         return numThreads
+    
+    
+    def _selectDataset() -> tuple[dict[str,str],dict[str,str]]:
+        """allows the user to interactively select the test dataset
+
+        Returns:
+            tuple[dict[str,str],dict[str,str]]: an ingroup and an outgroup (see class attributes for details)
+        """
+        # constants
+        TIMEOUT = 10
+        ALLOWED = ('mycoplasma', 'ecoli')
+        
+        # messages
+        MSG = f"\nplease specify a dataset {str(ALLOWED)} (default: {ALLOWED[0]}): "
+        INVALID = '\ninvalid dataset'
+        
+        # helper function for handling signals
+        def handler(signum, frame):
+            raise TimeoutError
+        
+        # initialize a signal handler and numThreads
+        signal.signal(signal.SIGALRM, handler)
+        dataset = None
+        
+        # run interactively
+        if sys.stdin.isatty():
+            # make sure the threads is an int
+            while True:
+                # start the timeout clock
+                signal.alarm(TIMEOUT)
+                
+                try:
+                    # get the user input
+                    dataset = input(MSG)
+                    
+                # use the default value after the timeout
+                except TimeoutError:
+                    print(f"timeout; using {ALLOWED[0]} dataset")
+                    dataset = ALLOWED[0]
+
+                # default value
+                if dataset == ALLOWED[0]:
+                    out = ResultsTest.DEFAULT_INGROUP, ResultsTest.DEFAULT_OUTGROUP
+                    break
+                
+                # alternate value
+                elif dataset == ALLOWED[1]:
+                    out = ResultsTest.ALTRNTE_INGROUP, ResultsTest.ALTRNTE_OUTGROUP
+                    break
+                
+                # otherwise it is invalid
+                else:
+                    print(INVALID)
+
+            # turn off the alarm
+            signal.alarm(0)
+        
+        # default value if not running interactively
+        else:
+            out = ResultsTest.DEFAULT_INGROUP, ResultsTest.DEFAULT_OUTGROUP
+        
+        return out
+    
     
     def _getParameters(numThreads:int) -> Parameters:
         """creates a Parameters object for testing
@@ -386,11 +463,11 @@ class ResultsTest(unittest.TestCase):
         out = dict()
         
         # load ingroup sequences
-        for fn in ResultsTest.INGROUP.keys():
+        for fn in ResultsTest.ingroup.keys():
             out[fn] = ResultsTest._loadOneGenomeSequence(fn)
         
         # load outgroup sequences
-        for fn in ResultsTest.OUTGROUP.keys():
+        for fn in ResultsTest.outgroup.keys():
             out[fn] = ResultsTest._loadOneGenomeSequence(fn)
         
         return out
@@ -712,7 +789,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the ingroup
         for pair in self.results.keys():
-            for name in ResultsTest.INGROUP.keys():
+            for name in ResultsTest.ingroup.keys():
                 # there should be exactly one pcr product size for each ingroup genome
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
@@ -726,7 +803,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pari in the ingroup
         for pair in self.results.keys():
-            for name in ResultsTest.INGROUP.keys():
+            for name in ResultsTest.ingroup.keys():
                 # make sure the pcr products are within the allowed range
                 self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
@@ -740,7 +817,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the outgroup
         for pair in self.results.keys():
-            for name in ResultsTest.OUTGROUP.keys():
+            for name in ResultsTest.outgroup.keys():
                 # the length of the contig and pcr size lists should be equal
                 numContigs = len(self.results[pair].additional[name][ResultsTest.CONTIG])
                 numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
@@ -756,7 +833,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the outgroup
         for pair in self.results.keys():
-            for name in ResultsTest.OUTGROUP.keys():
+            for name in ResultsTest.outgroup.keys():
                 # for each pcr product saved
                 for idx in range(len(self.results[pair].additional[name][ResultsTest.CONTIG])):
                     # if the contig is NA, then the pcr size should be zero
@@ -776,7 +853,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the outgroup
         for pair in self.results.keys():
-            for name in ResultsTest.OUTGROUP.keys():
+            for name in ResultsTest.outgroup.keys():
                 # each pcr product size should not be in the disallowed range
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
                     self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
@@ -793,7 +870,7 @@ class ResultsTest(unittest.TestCase):
             rbind = self.bindingSites[rev]
             
             # for each ingroup genome
-            for name in ResultsTest.INGROUP.keys():
+            for name in ResultsTest.ingroup.keys():
                 # count the number of binding sites in the genome for each primer
                 fCount = 0
                 rCount = 0
@@ -815,7 +892,7 @@ class ResultsTest(unittest.TestCase):
             rbind = self.bindingSites[rev]
             
             # only evaluate for the ingroup
-            for name in ResultsTest.INGROUP.keys():
+            for name in ResultsTest.ingroup.keys():
                 for contig in fbind[name].keys():
                     # if the forward primer is on the (+) strand
                     if fbind[name][contig][Primer.PLUS] != []:
@@ -849,7 +926,7 @@ class ResultsTest(unittest.TestCase):
             rbind = self.bindingSites[rev]
             
             # for each ingroup genome
-            for name in ResultsTest.INGROUP.keys():
+            for name in ResultsTest.ingroup.keys():
                 # extract the stored pcr length and the contig
                 pcrLen = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN][0]
                 contig = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG][0]
@@ -874,7 +951,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
             
             # for each outgroup genome
-            for name in ResultsTest.OUTGROUP.keys():
+            for name in ResultsTest.outgroup.keys():
                 # get the list of pcr products and their contigs
                 pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
                 contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
