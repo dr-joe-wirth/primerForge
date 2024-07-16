@@ -9,6 +9,9 @@ from ahocorasick import Automaton
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
+# global constant
+__JUNCTION_CHAR = "~"
+
 # functions
 def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool) -> set[str]:
     """gets all the kmers that are allowed
@@ -32,6 +35,9 @@ def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool) -> set[str]:
     def appearsOnce(seq:str, kh:Countgraph) -> bool:
         return kh.get(seq) == 1
     
+    def atJunction(seq:str) -> bool:
+        return __JUNCTION_CHAR in seq
+    
     # create count graphs for both strands
     fkh = Countgraph(k, 1e7, 1)
     rkh = Countgraph(k, 1e7, 1)
@@ -40,9 +46,9 @@ def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool) -> set[str]:
     fkh.consume(fwd)
     rkh.consume(rev)
     
-    # extract the allowed kmers for the (+) strand
-    out    = {x for x in fkh.get_kmers(fwd) if isOneEndGc(x) and appearsOnce(x, fkh)}
-    rKmers = {x for x in rkh.get_kmers(rev) if isOneEndGc(x) and appearsOnce(x, rkh)}
+    # extract the allowed kmers for both strands
+    out    = {x for x in fkh.get_kmers(fwd) if isOneEndGc(x) and appearsOnce(x, fkh) and not atJunction(x)}
+    rKmers = {x for x in rkh.get_kmers(rev) if isOneEndGc(x) and appearsOnce(x, rkh) and not atJunction(x)}
     
     # remove the reverse kmers if this is the first genome
     if first:
@@ -74,16 +80,21 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     
     # for each file
     for fn in params.ingroupFns:
-        # concatenate the forward and reverse sequences
-        fwd = ''
-        rev = ''
+        # create lists of the contig sequences as strings
+        fwd = list()
+        rev = list()
         for rec in SeqIO.parse(fn, params.format):
-            fwd += str(rec.seq)
-            rev += str(rec.seq.reverse_complement())
+            fwd.append(str(rec.seq))
+            rev.append(str(rec.seq.reverse_complement()))
+        
+        # concatenate contig sequences separated by junction characters
+        # this will prevent the creation of "chimeric junction kmers"
+        fwd = (__JUNCTION_CHAR * params.maxLen).join(fwd)
+        rev = (__JUNCTION_CHAR * params.maxLen).join(rev)
         
         # for each kmer length
         for k in range(params.minLen, params.maxLen+1):
-            # add the sequences and the length to a list of arguments
+            # create a list of arguments for __getAllowedKmers
             args.append((fwd, rev, k, firstGenome))
         
         # reset first genome boolean
