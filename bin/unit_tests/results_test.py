@@ -1009,6 +1009,8 @@ class ResultsTest(unittest.TestCase):
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
 
+    def testT_guaranteedFailure_debuggingCI(self) -> None:
+        self.assertTrue(False)
 
 if __name__ == "__main__":
     unittest.main()
