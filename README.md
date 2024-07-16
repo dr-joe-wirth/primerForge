@@ -20,6 +20,7 @@ conda install -c conda-forge -c bioconda primerforge
 
 > [!NOTE]
 > This might take up to ten minutes.
+> `primerForge` is incompatible with version of python3.8 and below and python3.12 and above.
 
 ```shell
 git clone https://github.com/dr-joe-wirth/primerForge.git
@@ -58,10 +59,7 @@ Once installed and cloned, run the following commands to run the unit tests:
 > Running `results_test.py` may take up to three hours to complete
 
 ```bash
-python3 primerForge/bin/unit_tests/clock_test.py
-python3 primerForge/bin/unit_tests/parameters_test.py
-python3 primerForge/bin/unit_tests/primer_test.py
-python3 primerForge/bin/unit_tests/results_test.py
+python3 -m unittest discover -s .primerForge/bin/unit_tests/ -p "*_test.py"
 ```
 
 
