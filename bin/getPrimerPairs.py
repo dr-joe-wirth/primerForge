@@ -1,8 +1,8 @@
 from Bio.Seq import Seq
 from bin.Primer import Primer
 from itertools import combinations
+import multiprocessing, os, primer3
 from bin.Parameters import Parameters
-import multiprocessing, primer3, random
 
 
 def __reduceBinSize(bins:dict[str,dict[int,list[Primer]]]) -> None:
@@ -457,7 +457,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     ERR_MSG_2 = "could not identify primer pairs present in every ingroup genome"
     
     # only need to get pairs for one genome
-    firstName = next(iter(candidateKmers.keys()))
+    firstName = os.path.basename(params.ingroupFns[0])
     
     # bin kmers to reduce time complexity
     binnedCandidateKmers = __binCandidateKmers(candidateKmers[firstName], isFirstGenome=True)
