@@ -12,9 +12,7 @@ pip install primerforge
 ```
 
 ### `conda` installation
-```shell
-conda install -c conda-forge -c bioconda primerforge
-```
+A `conda` installation is currently unavailable due to `khmer` being unsupported. We are actively trying to resolve this.
 
 ### Manual installation
 
