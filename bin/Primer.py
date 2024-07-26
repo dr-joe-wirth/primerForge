@@ -59,7 +59,17 @@ class Primer:
         return str(self)
     
     def __eq__(self, other:Primer) -> bool:
-        return self.seq == other.seq
+        # compare two primers
+        if type(other) is Primer:
+            return self.seq == other.seq
+        
+        # handle comparisons to Seq and str
+        elif type(other) in (Seq, str):
+            return self.seq == other
+        
+        # handle comparisons to invalid objects
+        else:
+            raise ValueError(f"cannot compare Primer to type '{type(other)}'")
     
     def __ne__(self, other:Primer) -> bool:
         return not self.seq == other.seq
