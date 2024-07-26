@@ -9,6 +9,7 @@ software to identify primers that can be used to distinguish genomes
 ### `pip` installation
 ```shell
 pip install primerforge
+conda install ispcr
 ```
 
 ### `conda` installation
@@ -199,10 +200,19 @@ flowchart TB
     selectedSharePair --> F0
     outgroup --> F
     
-    final(["final set of primer pairs"])
-    ogsize --> final
+    noout(["primer pairs absent from outgroup"])
+    ogsize --> noout
+    noout --> dump4
+    dump4[/"dump to file"/]
 
+    ispcr["filter pairs using isPcr"]
+    final(["final primer pairs"])
+    dump5[/"dump to file"/]
     write[/"write pairs to file"/]
 
+
+    noout --> ispcr
+    ispcr --> final
+    final --> dump5
     final --> write
 ```
