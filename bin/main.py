@@ -6,6 +6,7 @@ from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.getPrimerPairs import _getPrimerPairs
+from bin.validatePrimers import _validatePrimerPairs
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 
@@ -16,24 +17,26 @@ __SHARED_NUM = 0
 __CAND_NUM   = 1
 __PAIR_1_NUM = 2
 __PAIR_2_NUM = 3
+__PAIR_3_NUM = 4
 
 
-def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool]:
+def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
     """gets booleans for checkpointing
 
     Args:
         params (Parameters): a Parameters object
 
     Returns:
-        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs
+        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; validated pairs
     """
     # determine if each pickle exists
     sharedExists = os.path.exists(params.pickles[__SHARED_NUM])
     candidExists = os.path.exists(params.pickles[__CAND_NUM])
     unfiltExists = os.path.exists(params.pickles[__PAIR_1_NUM])
     filterExists = os.path.exists(params.pickles[__PAIR_2_NUM])
+    validsExists = os.path.exists(params.pickles[__PAIR_3_NUM])
     
-    return sharedExists, candidExists, unfiltExists, filterExists
+    return sharedExists, candidExists, unfiltExists, filterExists, validsExists
 
 
 def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
@@ -157,14 +160,47 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         # remove the outgroup primers
         _removeOutgroupPrimers(outgroupSeqs, pairs, params)
         
+        # move the log back
+        params.log.rename(__removeOutgroup.__name__)
+        
         # print the number of pairs removed
         finalNum = len(pairs)
         print(f"{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}")
         params.log.info(f"{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}")
         
         # dump the results
-        params.log.rename(__removeOutgroup.__name__)
         params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs", prefix=GAP)
+
+
+def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+    """validates primer pairs with in silico PCR and removes invalid pairs
+
+    Args:
+        params (Parameters): a Parameters object
+        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
+    """
+    # messages
+    GAP = ' '*4
+    MSG_1A = 'removed '
+    MSG_1B = ' pairs not validated by isPcr ('
+    MSG_1C = ' pairs remaining)'
+    
+    # get the starting number of pairs
+    startingNum = len(pairs)
+    
+    # validate pairs
+    _validatePrimerPairs(params, pairs)
+    
+    # move the log back
+    params.log.rename(__validatePairs.__name__)
+    
+    # print and log the number of pairs removed and remaining
+    finalNum = len(pairs)
+    print(f'{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}')
+    params.log.info(f'{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}')
+    
+    # dump the results
+    params.dumpObj(pairs, params.pickles[__PAIR_3_NUM], "validated pairs", prefix=GAP)
 
 
 def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
@@ -277,12 +313,23 @@ def _runner(params:Parameters) -> None:
     params.log.rename(_runner.__name__)
     
     # get the checkpoint status
-    sharedExists, candExists, unfiltExists, filtExists = __getCheckpoint(params)
+    sharedExists, candExists, unfiltExists, filtExists, validExists = __getCheckpoint(params)
     
     # jump straight to the end if possible
-    if filtExists:
+    if validExists:
+        # load data
+        pairs = params.loadObj(params.pickles[__PAIR_3_NUM])
+        
+        # write data to file
+        __writePrimerPairs(params, pairs, clock)
+    
+    # otherwise jump to validatoin if possible
+    elif filtExists:
         # load data
         pairs = params.loadObj(params.pickles[__PAIR_2_NUM])
+        
+        # validate pairs
+        __validatePairs(params, pairs)
         
         #  write data to file
         __writePrimerPairs(params, pairs, clock)
@@ -294,6 +341,9 @@ def _runner(params:Parameters) -> None:
         
         # remove outgroup
         __removeOutgroup(params, pairs)
+        
+        # validate pairs
+        __validatePairs(params, pairs)
         
         # write data to file
         __writePrimerPairs(params, pairs, clock)
@@ -312,6 +362,9 @@ def _runner(params:Parameters) -> None:
         # remove outgroup
         __removeOutgroup(params, pairs)
         
+        # validate pairs
+        __validatePairs(params, pairs)
+        
         # plot and write data
         __writePrimerPairs(params, pairs, clock)
     
@@ -328,6 +381,9 @@ def _runner(params:Parameters) -> None:
         
         # remove primer pairs that make products in the outgroup
         __removeOutgroup(params, pairs)
+        
+        # validate pairs
+        __validatePairs(params, pairs)
         
         # make plots and write data
         __writePrimerPairs(params, pairs, clock)

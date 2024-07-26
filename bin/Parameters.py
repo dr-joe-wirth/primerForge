@@ -2,7 +2,7 @@ from __future__ import annotations
 from Bio import SeqIO
 from bin.Log import Log
 from bin.Clock import Clock
-import getopt, glob, os, pickle, sys
+import getopt, glob, os, pickle, shutil, sys
 
 class Parameters():
     """class to store arguments and debug utilities
@@ -10,11 +10,14 @@ class Parameters():
     # constants
     _DATA_EXT = "_data.tsv"
     __ALLOWED_FORMATS = ('genbank', 'fasta')
+    __ALL_CONTIGS_FNA = ".all_contigs.fna"
+    __QUERY_FN = ".ispcr_query.tsv"
     __PICKLE_DIR = "_pickles"
     __PICKLE_FNS = {0: "sharedKmers.p",
                     1: "candidates.p",
                     2: "pairs.p",
-                    3: "pairs_noOutgroup.p"}
+                    3: "pairs_noOutgroup.p",
+                    4: "pairs_noOutgroup_validated.p"}
     
     # default values
     _DEF_RESULTS_FN = 'results.tsv'
@@ -56,6 +59,8 @@ class Parameters():
         self.log:Log
         self.pickles:dict[int,str]
         self.keepPickles:bool
+        self.allContigsFna:str
+        self.queryFn:str
         
         # save author and version as private attributes
         self.__author:str = author
@@ -76,6 +81,12 @@ class Parameters():
             
             # get the pickle filenames
             self.pickles = {x:os.path.join(pickleDir, y) for x,y in self.__PICKLE_FNS.items()}
+            
+            # get the all contigs fasta filename
+            self.allContigsFna = os.path.join(os.path.dirname(self.resultsFn), Parameters.__ALL_CONTIGS_FNA)
+            
+            # get the ispcr query filename
+            self.queryFn = os.path.join(os.path.dirname(self.resultsFn), Parameters.__QUERY_FN)
 
     def __checkOutputFile(fn:str) -> None:
         """checks if an output file is valid
@@ -145,6 +156,20 @@ class Parameters():
             # raise an error only after the file is closed
             if fail:
                 raise ValueError(f"{fn}{ERR_MSG}")
+    
+    def __isPcrInstalled() -> None:
+        """determines if isPcr is installed and in the PATH
+
+        Raises:
+            BaseException: isPcr is not installed or not in the PATH
+        """
+        # constant
+        IS_PCR = "isPcr"
+        ERR_MSG = ' is not installed or not in the PATH'
+        
+        # make sure that isPcr is in the path
+        if not shutil.which(IS_PCR):
+            raise BaseException(f"'{IS_PCR}'{ERR_MSG}")
     
     def __checkInstallation(self) -> None:
         """checks the installation of all primerforge dependencies
@@ -231,6 +256,9 @@ class Parameters():
         vers = tuple(map(int, scipy.__version__.split('.')))
         if vers[0] < SCI_VER[0] or (vers[0] >= SCI_VER[0] and vers[1] < SCI_VER[1]):
             raise BaseException(f"'scipy'{BAD_VER}{'.'.join(map(str,SCI_VER))} or above)")
+        
+        # make sure isPcr is installed
+        Parameters.__isPcrInstalled()
         
         # print success message
         print(SUCCESS)
@@ -396,8 +424,11 @@ class Parameters():
             self.helpRequested = True
             self.__checkInstallation()
         
-        # parse command line arguments
         else:
+            # make sure isPcr is installed
+            Parameters.__isPcrInstalled()
+            
+            # parse command line arguments
             opts,args = getopt.getopt(sys.argv[1:], SHORT_OPTS, LONG_OPTS)
             for opt,arg in opts:
                 # get the ingroup filenames
