@@ -5,21 +5,23 @@
 software to identify primers that can be used to distinguish genomes
 
 ## Installation
+`primerForge` is incompatible with versions python3.8 and below and python3.12 and above.
 
 ### `pip` installation
+`primerForge` can be installed with the following commands:
+
 ```shell
 pip install primerforge
 conda install ispcr
 ```
 
 ### `conda` installation
-A `conda` installation is currently unavailable due to `khmer` being unsupported. We are actively trying to resolve this.
+A `conda` installation is currently unavailable due to `khmer` being unsupported. We are actively working to resolve this.
 
 ### Manual installation
 
 > [!NOTE]
 > This might take up to ten minutes.
-> `primerForge` is incompatible with version of python3.8 and below and python3.12 and above.
 
 ```shell
 git clone https://github.com/dr-joe-wirth/primerForge.git
