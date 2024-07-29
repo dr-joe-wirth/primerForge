@@ -309,3 +309,30 @@ If a primer pair is predicted to produce multiple products in an outgroup genome
 
 > [!NOTE]
 > Multiple PCR products will only ever be predicted for outgroup genomes as `primerForge` does not allow such primer pairs in the ingroup genome.
+
+## Common error messages (and possible solutions)
+### `detected wildcards that are not enclosed in quotes`
+This error occurs if you specify a wildcard representing input files without enclosing them in quotes. For example, this will cause the error:
+
+```bash
+primerForge --ingroup ./i*gbff
+```
+
+and this will fix it:
+
+```bash
+primerForge --ingroup "./i*gbff"
+```
+
+The same holds true for the `--outgroup` flag.
+
+This error can also occur if you have inadvertently included a space in any other the arguments passed to other flags.
+
+### `invalid or missing file(s)`
+This error occurs if the specified file(s) cannot be found or if the file format does not match the `--format` flag (default = `genbank`). Check that the file path is correct and the files can be read. If they are correct, then double check that you have specified `--format fasta` if you are working with `fasta` files.
+
+### `failed to identify a set of kmers shared between the ingroup genomes`
+This error occurs if `primerForge` cannot find kmers that are shared in all the ingroup genomes. This can occur if the input genomes are too distantly related, or if one or more of the genomes is of very poor quality. To diagnose this, try repeating the command but include the `--debug` flag. This will report which ingroup genome is causing the number of shared kmers to drop to zero in the `primerForge.log` file.
+
+### `failed to find primer pairs that are absent in the outgroup`
+This error occurs if all the primer pairs `primerForge` identified cannot be used to distinguish the ingroup from the outgroup. This most often occurs because one or more members of the outgroup is too closely-related to the ingroup. To diagnose this, try repreating the command but include the `--debug` flag. This will report which outgroup genome is causing the number of shared kmers to drop to zero in the `primerForge.log` file. Alternatively, you can expand your search by widening the ranges passed to the flags `--pcr_prod` and/or `--bad_sizes`.
