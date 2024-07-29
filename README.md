@@ -326,7 +326,7 @@ primerForge --ingroup "./i*gbff"
 
 The same holds true for the `--outgroup` flag.
 
-This error can also occur if you have inadvertently included a space in any other the arguments passed to other flags.
+This error can also occur if you have inadvertently included a space in any of the arguments passed to other flags.
 
 ### `invalid or missing file(s)`
 This error occurs if the specified file(s) cannot be found or if the file format does not match the `--format` flag (default = `genbank`). Check that the file path is correct and the files can be read. If they are correct, then double check that you have specified `--format fasta` if you are working with `fasta` files.
