@@ -14,7 +14,7 @@ RUN wget -O conda_installer.sh https://github.com/conda-forge/miniforge/releases
 RUN bash conda_installer.sh
 RUN conda update conda
 
-# install primerForge.py
+# install primerForge
 RUN python3.11 -m pip install primerforge
 
 # install isPcr
@@ -28,5 +28,5 @@ RUN primerForge --check_install
 VOLUME ["/data"]
 WORKDIR /data
 
-# add an entry point so that primerForge.py can be called without entering the container
+# add an entry point so that primerForge can be called without entering the container
 ENTRYPOINT ["/bin/bash", "-c", "exec \"$@\"", "-"]
