@@ -218,3 +218,54 @@ flowchart TB
     final --> dump5
     final --> write
 ```
+
+## Example usage with a test case
+### Motivation
+In this example, we will use `primerForge` to find primer pairs of size between 18bp and 24bp that can be used to differentiate three strains of _Mycoplasma mycoides_ subspecies mycoides (the "ingroup") from two strains of _Mycoplasma mycoides_ subspecies capri (the "outgroup"). The primer pairs identified by `primerForge` are predicted to produce a single PCR product between 500bp and 2000bp in the ingroup. These same primer pairs are predicted to produce PCR products <300bp, >3000bp, or no PCR products at all.
+
+### preparing the workspace
+In order to get started, create a directory called `mycoplasma_test` and download the following _Mycoplasma mycoides_ genomes using the following commands:
+
+```bash
+mkdir ./mycoplasma_test
+wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz | gzip -d > ./mycoplasma_test/i1.gbff
+wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz | gzip -d > ./mycoplasma_test/i2.gbff
+wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345.1_ASM303434v1/GCF_003034345.1_ASM303434v1_genomic.gbff.gz | gzip -d > ./mycoplasma_test/i3.gbff
+wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz | gzip -d > mycoplasma_test/o1.gbff
+wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz | gzip -d > ./mycoplasma_test/o2.gbff
+```
+
+If you cannot download the genbank files using `wget`, you can download them manually from NCBI by replacing `ftp://` with `http://` and copying and pasting the addresses into your web browser.
+
+Install `primerForge` and confirm it is installed properly [as described above](#installation).
+
+### Running `primerForge`
+Run `primerForge` using the following command:
+
+```bash
+cd ./mycoplasma_test
+primerForge --ingroup "./i*gbff" --outgroup "./o*gbff" --pcr_prod 500,2000 --bad_sizes 300,3000 --primer_len 18,24
+```
+
+  * The `--ingroup` and `--outgroup` flags are both file patterns for the ingroup and outgroup genomes, respectively. It is important that this pattern is enclosed in double-quotes as shown above.
+  * The `pcr_prod` flag indicates that we want ingroup products between 500 and 2000bp.
+  * The `--bad_sizes` flag indicates that we do not want outgroup products between 300bp and 3000bp.
+  * The `--primer_len` flag indicates that our primers are allowed to be between 18bp an 24bp.
+
+You can get a list of all available flags using the command `primerForge --help`.
+
+After running that command, you should see something like this printed to the screen:
+
+```text
+
+```
+
+As we can see, `primerForge` found 5615 kmers that were suitable for use as a primer in all three ingroup genomes. It then went on to identify **___** primer pairs that would produce PCR products between 500bp and 2000bp in the ingroup genomes. Next, it found that of those **___** pairs, **___** of them formed PCR products between 300bp and 3000bp in one or more outgroup genomes. Finally, it used `isPcr` to validate the remaining **___** primer pairs resulting in **___** primer pairs being written to file.
+
+`primerForge` generated `results.tsv`, the file that contains the sequences and details for each primer pair, and `primerForge.log`. Here are the first few lines from this file:
+
+```text
+
+```
+
+The first six columns show the forward and reverse sequences (5' --> 3') as well as their melting temperatures and their G+C %. Next, for each genome it lists the contig and the PCR product size(s) that is predicted be produced by this pair.
