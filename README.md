@@ -233,8 +233,7 @@ mkdir ./mycoplasma_test
 cd ./mycoplasma_test
 ```
 
-Next, download the following _Mycoplasma mycoides_ genomes using the following commands. If you cannot download the genbank files using `wget`, you can download them manually from NCBI by replacing `ftp://` with `http://` and copying and pasting the addresses into your web browser (eg. `http://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz`)
-
+Next, download the following _Mycoplasma mycoides_ genomes using the following commands:
 ```bash
 wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz | gzip -d > ./i1.gbff
 wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz | gzip -d > ./i2.gbff
@@ -242,6 +241,8 @@ wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345
 wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz | gzip -d > ./o1.gbff
 wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz | gzip -d > ./o2.gbff
 ```
+
+If you cannot download the genbank files using `wget`, you can download them manually from NCBI by replacing `ftp://` with `http://` and copying and pasting each address into your web browser (eg. `http://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz`) and then using `gzip -d` on the downloaded file to uncompress it. Finally, be sure to rename each file as shown above (eg. `mv GCF_003034305.1_ASM303430v1_genomic.gbff i1.gbff`).
 
 ### Running `primerForge`
 We will use the following flags to specify specific parameters for this example:
