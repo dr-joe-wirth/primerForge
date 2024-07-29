@@ -267,6 +267,7 @@ class Parameters():
         """parses command line arguments
 
         Raises:
+            BaseError:  cannot use wildcards without enclosing them in quotes
             ValueError: invalid/missing ingroup files
             ValueError: invalid/missing ingroup files
             ValueError: invalid/missing outgroup files
@@ -338,6 +339,7 @@ class Parameters():
                      DEBUG_FLAGS[0][2:])
 
         # messages
+        ERR_MSG_0  = 'detected wildcards that are not enclosed in quotes; aborting'
         ERR_MSG_1  = 'invalid or missing ingroup file(s)'
         ERR_MSG_2  = 'invalid or missing outgroup file(s)'
         ERR_MSG_3  = 'must specify exactly two integers for bad outgroup PCR product length'
@@ -430,6 +432,11 @@ class Parameters():
             
             # parse command line arguments
             opts,args = getopt.getopt(sys.argv[1:], SHORT_OPTS, LONG_OPTS)
+            
+            # abort if args is not empty (happens if wildcards are not enclosed in quotes)
+            if args != []:
+                raise BaseException(ERR_MSG_0)
+            
             for opt,arg in opts:
                 # get the ingroup filenames
                 if opt in INGROUP_FLAGS:
