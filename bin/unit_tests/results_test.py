@@ -179,7 +179,6 @@ class ResultsTest(unittest.TestCase):
         
         return numThreads
     
-    
     def _selectDataset() -> tuple[dict[str,str],dict[str,str]]:
         """allows the user to interactively select the test dataset
 
@@ -240,7 +239,6 @@ class ResultsTest(unittest.TestCase):
             out = ResultsTest.DEFAULT_INGROUP, ResultsTest.DEFAULT_OUTGROUP
         
         return out
-    
     
     def _getParameters(numThreads:int) -> Parameters:
         """creates a Parameters object for testing
