@@ -7,18 +7,25 @@ FROM ubuntu:22.04
 
 # install wget and python
 RUN apt-get update && \
+    apt-get -y install wget && \
     apt-get -y install python3.11 python3-pip python3-setuptools python3.11-dev
 
-# install conda
-RUN wget -O conda_installer.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
-RUN bash conda_installer.sh
+# install and configure conda
+RUN wget -O /tmp/miniconda.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+RUN bash /tmp/miniconda.sh -b -p /opt/conda
+ENV PATH /opt/conda/bin:$PATH
+RUN rm /tmp/miniconda.sh
 RUN conda update conda
+RUN conda config --add channels defaults && \
+    conda config --add channels bioconda && \
+    conda config --add channels conda-forge && \
+    conda config --set channel_priority strict
 
 # install primerForge
 RUN python3.11 -m pip install primerforge
 
 # install isPcr
-RUN conda install isPcr
+RUN conda install ispcr
 
 # verify installation
 RUN primerForge --help
