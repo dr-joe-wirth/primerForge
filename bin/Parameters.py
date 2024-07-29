@@ -387,7 +387,7 @@ class Parameters():
                        f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
                        f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
                        f"{GAP}{CHECK_FLAGS[0]:<{WIDTH}}check installation{EOL}" + \
-                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{DEF_OPEN}{Parameters._DEF_DEBUG}{CLOSE}{EOL*2}"
+                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode"
             
             print(HELP_MSG)
             
