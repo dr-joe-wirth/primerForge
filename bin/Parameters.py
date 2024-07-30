@@ -58,7 +58,7 @@ class Parameters():
         self.helpRequested:bool
         self.log:Log
         self.pickles:dict[int,str]
-        self.keepPickles:bool
+        self.keepIntermediateFiles:bool
         self.allContigsFna:str
         self.queryFn:str
         
@@ -407,7 +407,7 @@ class Parameters():
         self.maxPcr = Parameters._DEF_MAX_PCR
         self.maxTmDiff = Parameters._DEF_MAX_TM_DIFF
         self.numThreads = Parameters._DEF_NUM_THREADS
-        self.keepPickles = Parameters._DEF_KEEP
+        self.keepIntermediateFiles = Parameters._DEF_KEEP
         self.debug = Parameters._DEF_DEBUG
         self.helpRequested = Parameters._DEF_HELP
         
@@ -576,12 +576,12 @@ class Parameters():
                 
                 # update keep to True if requested
                 if opt in KEEP_FLAGS:
-                    self.keepPickles = True
+                    self.keepIntermediateFiles = True
                 
                 # update debug to True if requested
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
-                    self.keepPickles = True
+                    self.keepIntermediateFiles = True
             
             # update disallowed to match pcr parameters unless it was already specified
             if self.disallowedLens is None:

@@ -279,8 +279,8 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     params.log.info(f"done {clock.getTimeString()}")    
 
 
-def __removePickles(params:Parameters) -> None:
-    """removes pickle files
+def __removeIntermediateFiles(params:Parameters) -> None:
+    """removes intermediate files
 
     Args:
         params (Parameters): a Parameters object
@@ -291,6 +291,10 @@ def __removePickles(params:Parameters) -> None:
     
     # remove the pickle directory
     os.rmdir(os.path.dirname(fn))
+    
+    # remove the isPcr files
+    os.remove(params.allContigsFna)
+    os.remove(params.queryFn)
 
 
 def _runner(params:Parameters) -> None:
@@ -390,9 +394,9 @@ def _runner(params:Parameters) -> None:
     # move the logger back
     params.log.rename(_runner.__name__)
     
-    # remove the pickles unless keeping them
-    if not params.keepPickles:
-        __removePickles(params)
+    # remove the intermediate files unless keeping them
+    if not params.keepIntermediateFiles:
+        __removeIntermediateFiles(params)
     
     # print the total runtime
     print(f"\n{MSG}{totalClock.getTimeString()}\n")
