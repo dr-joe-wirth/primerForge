@@ -603,6 +603,9 @@ class Parameters():
         # constant
         WIDTH = 34
         
+        # save the command
+        self.log.info(f'{"command:":<{WIDTH}}{" ".join(sys.argv)}')
+        
         # write the parameters to the log file
         self.log.info(f'{"version:":<{WIDTH}}{self.__version}')
         self.log.info(f'{"ingroup:":<{WIDTH}}{",".join(self.ingroupFns)}')
