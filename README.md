@@ -336,3 +336,6 @@ This error occurs if `primerForge` cannot find kmers that are shared in all the 
 
 ### `failed to find primer pairs that are absent in the outgroup`
 This error occurs if all the primer pairs `primerForge` identified cannot be used to distinguish the ingroup from the outgroup. This most often occurs because one or more members of the outgroup is too closely-related to the ingroup. To diagnose this, try repreating the command but include the `--debug` flag. This will report which outgroup genome is causing the number of shared kmers to drop to zero in the `primerForge.log` file. Alternatively, you can expand your search by widening the ranges passed to the flags `--pcr_prod` and/or `--bad_sizes`.
+
+## Contributing
+Thank you for your interest in contributing! Please see the [contributing guidelines](.github/CONTRIBUTING.md) for more information.
