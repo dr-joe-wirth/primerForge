@@ -13,7 +13,7 @@ from bin.Parameters import Parameters
 __JUNCTION_CHAR = "~"
 
 # functions
-def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool) -> set[str]:
+def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool, name:str) -> tuple[str,set[str]]:
     """gets all the kmers that are allowed
 
     Args:
@@ -21,6 +21,7 @@ def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool) -> set[str]:
         rev (str): the entire (concatenated) reverse sequence
         k (int): the length of the kmers
         first (bool): indicates if this is the first genome to be processed
+        name (str): the name of the input genome
 
     Returns:
         set[str]: a set of the allowed kmers
@@ -58,7 +59,7 @@ def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool) -> set[str]:
     else:
         out.symmetric_difference_update(rKmers)
     
-    return out
+    return name,out
 
 
 def __getAllAllowedKmers(params:Parameters) -> Automaton:
@@ -70,13 +71,15 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     Returns:
         Automaton: an Aho-Corasick automaton for substring searching
     """
+    # message
+    MSG = " shared kmers after processing "
+    
     # initialize variables
     tmp = dict()
     rec:SeqRecord
     args = list()
     out = Automaton()
     firstGenome = True
-    curLen = -float('inf')
     
     # for each file
     for fn in params.ingroupFns:
@@ -95,7 +98,7 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
         # for each kmer length
         for k in range(params.minLen, params.maxLen+1):
             # create a list of arguments for __getAllowedKmers
-            args.append((fwd, rev, k, firstGenome))
+            args.append((fwd, rev, k, firstGenome, os.path.basename(fn)))
         
         # reset first genome boolean
         firstGenome = False
@@ -106,22 +109,32 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     pool.close()
     pool.join()
     
-    # sort the list by kmer length (small to big)
-    allowed.sort(key=lambda x:len(next(iter(x))))
+    # sort the list by genome name
+    allowed.sort(key=lambda x: x[0], reverse=True)
+    
+    # save the first name that will be examined
+    prevName = allowed[-1][0]
     
     # save the shared kmers for each k
     while allowed != []:
         # remove the last item from the list
-        a = allowed.pop()
+        name,a = allowed.pop()
         
-        # if the same k, then only keep the shared kmers
-        if len(next(iter(a))) == curLen:
-            tmp[curLen].intersection_update(a)
+        # log the number of shared kmers after processing a genome
+        if name != prevName:
+            params.log.debug(f'{sum(map(len, tmp.values()))}{MSG}{prevName}')
+            prevName = name
         
-        # if the k is less, then make a new entry in the list
-        else:
-            curLen = len(next(iter(a)))
-            tmp[curLen] = a
+        # save the intersection for this k if it already exists
+        try:
+            tmp[len(next(iter(a)))].intersection_update(a)
+        
+        # otherwise save the entire set for this k
+        except KeyError:
+            tmp[len(next(iter(a)))] = a
+    
+    # log the number of shared kmers after processing the last genome
+    params.log.debug(f'{sum(map(len, tmp.values()))}{MSG}{prevName}')
     
     # collapse the dictionary into an Automaton for substring searching
     for k,kmers in tmp.items():
