@@ -408,6 +408,7 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     """
     # constants
     SHARED_KMER_NUM = 0
+    CANDID_KMER_NUM = 1
     
     # messages
     GAP = " "*4
@@ -493,5 +494,8 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     # log status
     params.log.info(f'{GAP}done {clock.getTimeString()}')
     params.log.info(f'{MSG_3A}{numCand}{MSG_3B}')
+    
+    # dump the candidate kmers to file
+    params.dumpObj(out, params.pickles[CANDID_KMER_NUM], "candidate kmers", prefix=GAP)
 
     return out

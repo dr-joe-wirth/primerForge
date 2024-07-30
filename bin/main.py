@@ -90,9 +90,6 @@ def __getCandidates(params:Parameters, sharedExists:bool, clock:Clock) -> dict[s
     params.log.rename(__getCandidates.__name__)
     params.log.info(f"done {clock.getTimeString()}")
     
-    # dump the candidates to file
-    params.dumpObj(candidateKmers, params.pickles[__CAND_NUM], "candidate kmers", prefix=" "*4)
-    
     return candidateKmers
 
 
@@ -211,7 +208,8 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
         clock (Clock): a Clock object
     """
     # messages
-    MSG = "writing primer pairs to "
+    MSG_A = "writing "
+    MSG_B = " primer pairs to "
     
     # contants
     EOL = "\n"
@@ -240,8 +238,8 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     
     # print status
     params.log.rename(__writePrimerPairs.__name__)
-    params.log.info(f"{MSG}'{os.path.relpath(params.resultsFn)}'")
-    clock.printStart(f"{MSG}'{os.path.relpath(params.resultsFn)}'")
+    params.log.info(f"{MSG_A}{len(pairs)}{MSG_B}'{os.path.relpath(params.resultsFn)}'")
+    clock.printStart(f"{MSG_A}{len(pairs)}{MSG_B}'{os.path.relpath(params.resultsFn)}'")
     
     # get the names of genomes, and create headers with the same order
     names = list(next(iter(pairs.values())).keys())
