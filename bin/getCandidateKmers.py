@@ -413,7 +413,8 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     # messages
     GAP = " "*4
     MSG_1 = f"{GAP}getting shared ingroup kmers that appear once in each genome"
-    MSG_2 = f"{GAP}evaluating kmers"
+    MSG_2A = f"{GAP}evaluating "
+    MSG_2B = " kmers"
     MSG_3A = f"{GAP}identified "
     MSG_3B = " candidate kmers"
     ERR_MSG_1 = "failed to identify a set of kmers shared between the ingroup genomes"
@@ -451,8 +452,8 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
         params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers", prefix=GAP)
     
     # print status
-    clock.printStart(MSG_2)
-    params.log.info(MSG_2)
+    clock.printStart(f'{MSG_2A}{len(kmers)}{MSG_2B}')
+    params.log.info(f'{MSG_2A}{len(kmers)}{MSG_2B}')
     
     # go through each genome name
     names = list(next(iter(kmers.values())).keys())
