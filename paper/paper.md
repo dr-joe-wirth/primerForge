@@ -62,7 +62,9 @@ from another set of genomes via PCR amplification. `primerForge` relies on the
 `khmer` package to extract k-mers from genomic sequences and the `primer3-py`
 package to evaluate specific characteristics of primer pairs including melting
 temperature, hairpin potential, and dimer formation
-[@10.12688/f1000research.6924.1; @10.1093/nar/gks596].
+[@10.12688/f1000research.6924.1; @10.1093/nar/gks596]. It also uses _in silico_
+PCR via the `isPcr` program to validate and filter the primer pairs
+[@10.1093/bib/bbs038].
 
 There are many use cases for what `primerForge` offers. One use case would be
 surveillance of an outbreak clone of a particular pathogen. A laboratory could
