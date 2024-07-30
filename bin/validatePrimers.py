@@ -146,11 +146,6 @@ def _validatePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict
     __makeQueryFile(params, pairs)
     pcrs = __runPcr(params)
     
-    # clean up if not debugging
-    if not params.debug:
-        os.remove(params.allContigsFna)
-        os.remove(params.queryFn)
-    
     # filter out bad pairs
     __filterPairs(pairs, pcrs)
     
