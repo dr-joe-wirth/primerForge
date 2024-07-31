@@ -219,7 +219,7 @@ flowchart TB
     final --> write
 ```
 
-## Example using `Mycloplasma mycoides` genomes
+## Example using _Mycloplasma mycoides_ genomes
 This example assumes you have already installed `primerForge` [as described above](#installation).
 
 ### Motivation
@@ -248,8 +248,8 @@ If you cannot download the genbank files using `wget`, you can download them man
 We will use the following flags to specify specific parameters for this example:
 
   * The `--ingroup` and `--outgroup` flags are both file patterns for the ingroup and outgroup genomes, respectively. It is important that this pattern is enclosed in double-quotes as shown below.
-  * The `--pcr_prod` flag indicates that what sizes we want for ingroup products (500bp to 2,000bp)
-  * The `--bad_sizes` flag indicates that what sizes we do not want for outgroup products (300bp to 3,000bp).
+  * The `--pcr_prod` flag indicates what sizes we want for ingroup products (500bp to 2,000bp)
+  * The `--bad_sizes` flag indicates what sizes we do not want for outgroup products (300bp to 3,000bp).
   * The `--primer_len` flag indicates what length our primers can be (18bp to 24bp)
 
 You can get a list of all available flags using the command `primerForge --help`.
