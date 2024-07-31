@@ -219,14 +219,14 @@ flowchart TB
     final --> write
 ```
 
-## Example using `Mycloplasma mycoides` genomes
+## Example using _Mycloplasma mycoides_ genomes
 This example assumes you have already installed `primerForge` [as described above](#installation).
 
 ### Motivation
-In this example, we will use `primerForge` to find pairs ofprimers between 18bp and 24bp that can be used to differentiate three strains of _Mycoplasma mycoides_ subspecies mycoides (the "ingroup") from two strains of _Mycoplasma mycoides_ subspecies capri (the "outgroup"). The primer pairs identified by `primerForge` are predicted to produce a single PCR product between 500bp and 2000bp in the ingroup. These same primer pairs are predicted to produce PCR products <300bp, >3000bp, or no PCR products at all.
+In this example, we will use `primerForge` to find pairs of primers between 18bp and 24bp that can be used to differentiate three strains of _Mycoplasma mycoides_ subspecies mycoides (the "ingroup") from two strains of _Mycoplasma mycoides_ subspecies capri (the "outgroup"). The primer pairs identified by `primerForge` are predicted to produce a single PCR product between 500bp and 2000bp in the ingroup. These same primer pairs are predicted to produce PCR products <300bp, >3000bp, or no PCR products at all in the outgroup.
 
 ### preparing the workspace
-In order to get started, create a directory called `mycoplasma_test` and move into:
+In order to get started, create a directory called `mycoplasma_test` and move into it:
 
 ```bash
 mkdir ./mycoplasma_test
@@ -235,21 +235,21 @@ cd ./mycoplasma_test
 
 Next, download the following _Mycoplasma mycoides_ genomes using the following commands:
 ```bash
-wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz | gzip -d > ./i1.gbff
-wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz | gzip -d > ./i2.gbff
-wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345.1_ASM303434v1/GCF_003034345.1_ASM303434v1_genomic.gbff.gz | gzip -d > ./i3.gbff
-wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz | gzip -d > ./o1.gbff
-wget -q -O- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz | gzip -d > ./o2.gbff
+curl ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz | gzip -d > ./i1.gbff
+curl ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz | gzip -d > ./i2.gbff
+curl ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345.1_ASM303434v1/GCF_003034345.1_ASM303434v1_genomic.gbff.gz | gzip -d > ./i3.gbff
+curl ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz | gzip -d > ./o1.gbff
+curl ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz | gzip -d > ./o2.gbff
 ```
 
-If you cannot download the genbank files using `wget`, you can download them manually from NCBI by replacing `ftp://` with `http://` and copying and pasting each address into your web browser (eg. `http://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz`) and then using `gzip -d` on the downloaded file to uncompress it. Finally, be sure to rename each file as shown above (eg. `mv GCF_003034305.1_ASM303430v1_genomic.gbff i1.gbff`).
+If you cannot download the genbank files using `curl`, you can download them manually from NCBI by replacing `ftp://` with `http://` and copying and pasting each address into your web browser (eg. `http://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz`) and then using `gzip -d` on the downloaded file to uncompress it. Finally, be sure to rename each file as shown above (eg. `mv GCF_003034305.1_ASM303430v1_genomic.gbff i1.gbff`).
 
 ### Running `primerForge`
 We will use the following flags to specify specific parameters for this example:
 
   * The `--ingroup` and `--outgroup` flags are both file patterns for the ingroup and outgroup genomes, respectively. It is important that this pattern is enclosed in double-quotes as shown below.
-  * The `--pcr_prod` flag indicates that what sizes we want for ingroup products (500bp to 2,000bp)
-  * The `--bad_sizes` flag indicates that what sizes we do not want for outgroup products (300bp to 3,000bp).
+  * The `--pcr_prod` flag indicates what sizes we want for ingroup products (500bp to 2,000bp)
+  * The `--bad_sizes` flag indicates what sizes we do not want for outgroup products (300bp to 3,000bp).
   * The `--primer_len` flag indicates what length our primers can be (18bp to 24bp)
 
 You can get a list of all available flags using the command `primerForge --help`.
