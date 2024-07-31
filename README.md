@@ -223,7 +223,7 @@ flowchart TB
 This example assumes you have already installed `primerForge` [as described above](#installation).
 
 ### Motivation
-In this example, we will use `primerForge` to find pairs ofprimers between 18bp and 24bp that can be used to differentiate three strains of _Mycoplasma mycoides_ subspecies mycoides (the "ingroup") from two strains of _Mycoplasma mycoides_ subspecies capri (the "outgroup"). The primer pairs identified by `primerForge` are predicted to produce a single PCR product between 500bp and 2000bp in the ingroup. These same primer pairs are predicted to produce PCR products <300bp, >3000bp, or no PCR products at all.
+In this example, we will use `primerForge` to find pairs of primers between 18bp and 24bp that can be used to differentiate three strains of _Mycoplasma mycoides_ subspecies mycoides (the "ingroup") from two strains of _Mycoplasma mycoides_ subspecies capri (the "outgroup"). The primer pairs identified by `primerForge` are predicted to produce a single PCR product between 500bp and 2000bp in the ingroup. These same primer pairs are predicted to produce PCR products <300bp, >3000bp, or no PCR products at all in the outgroup.
 
 ### preparing the workspace
 In order to get started, create a directory called `mycoplasma_test` and move into:
