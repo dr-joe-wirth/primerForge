@@ -89,33 +89,37 @@ Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
 |Dataset|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
-|`swga2` plasmid example|pcDNA|not provided|ingroup|
-|`swga2` plasmid example|pLTR|not provided|outgroup|
-|`primerForge` _Mycoplamsa mycoides_ example|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
-|`primerForge` _Mycoplamsa mycoides_ example|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
-|`primerForge` _Mycoplamsa mycoides_ example|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
-|`primerForge` _Mycoplamsa mycoides_ example|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
-|`primerForge` _Mycoplamsa mycoides_ example|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
-|`primerForge` _Escherichia coli_ example|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
-|`primerForge` _Escherichia coli_ example|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
-|`primerForge` _Escherichia coli_ example|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
-|`primerForge` _Escherichia coli_ example|_Escherichia coli_ K12 str. MG1655|GCF_000005845|outgroup|
-|`primerForge` _Escherichia coli_ example|_Salmonella enterica_ subsp. enterica serovar Typhimurium str. LT2|GCF_000006945|outgroup|
+|plasmid<sup>1</sup>|pcDNA|not provided|ingroup|
+|plasmid<sup>1</sup>|pLTR|not provided|outgroup|
+|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
+|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
+|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
+|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
+|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
+|_E. coli_|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
+|_E. coli_|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
+|_E. coli_|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
+|_E. coli_|_Escherichia coli_ K12 str. MG1655|GCF_000005845|outgroup|
+|_E. coli_|_Salmonella enterica_ subsp. enterica serovar Typhimurium str. LT2|GCF_000006945|outgroup|
 |SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00230/2020|MT520374|ingroup|
 |SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00229/2020|MT520263|ingroup|
 |SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00257/2020|MT520479|ingroup|
 |SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
+<sup>1</sup>: The plasmid dataset is provided as an example in the `swga2` repository
+
+<sup>2</sup>: The _M. mycoides_ is provided as an example in the `primerForge` repository
+
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
 |program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs<sup>1</sup>|`isPcr`-compatible pairs<sup>2</sup>|validated pairs<sup>3</sup>|optimized pairs<sup>4</sup>|
 |:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
-|`swga2`|`swga2` plasmid example|23:21|0.136|94|22|22|11|
-|`primerForge`|`swga2` plasmid example|00:10|0.051|3,210|3,210|3,168|2,934|
-|`swga2`|`primerForge` _Mycoplasma mycoides_ example|05:13|0.221|run failed|NA|NA|NA|
-|`primerForge`|`primerForge` _Mycoplasma mycoides_ example|02:52|1.478|1446|1,446|989|884|
-|`swga2`|`primerForge` _Escherichia coli_ example|21:10|4.452|run failed|NA|NA|NA|
-|`primerForge`|`primerForge` _Escherichia coli_ example|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
+|`swga2`|plasmid|23:21|0.136|94|22|22|11|
+|`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
+|`swga2`|_M. mycoides_|05:13|0.221|run failed|NA|NA|NA|
+|`primerForge`|_M. mycoides_|02:52|1.478|1446|1,446|989|884|
+|`swga2`|_E. coli_|21:10|4.452|run failed|NA|NA|NA|
+|`primerForge`|_E. coli_|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
 |`primerForge`|SARS-CoV-2|00:19|0.122|39|39|15|15|
 
@@ -134,15 +138,14 @@ Although many of the primer pairs predicted by `primerForge` were not validated
 by `isPcr`, this can be attributed to the fact that `primerForge` allows primer
 pairs to produce PCR products in the outgroup provided they are outside of the
 user-specified range. For example, 1,118,742 of the 1,132,237 primer pairs
-(98.8 %) identified by `primerForge` in the "`primerForge` _Escherichia coli_
-example"  dataset that were not validated by `isPcr` were predicted to produce
-a PCR product in one or more of the outgroup genomes. Similarly, 453 of the 457
-primer pairs identified in the "`primerForge` _Mycoplasma mycoides_ example"
-dataset that were not validated with `isPcr` for the same reason. The remaining
-invalidated primer pairs can be attributed to the fact that the `isPcr`
-parameters `tileSize`, `minGood`, and `minPerfect` were set to very low values
-in order to directly compare the results of `primerForge` with those produced
-by `swga2`.
+(98.8 %) identified by `primerForge` in the _E. coli_ dataset that were not
+validated by `isPcr` were predicted to produce a PCR product in one or more of
+the outgroup genomes. Similarly, 453 of the 457 primer pairs identified in the
+_M. mycoides_ dataset were not validated with `isPcr` for the same reason. The
+remaining invalidated primer pairs can be attributed to the fact that the
+`isPcr` parameters `tileSize`, `minGood`, and `minPerfect` were set to very low
+values in order to directly compare the results of `primerForge` with those
+produced by `swga2`.
 
 In addition to the improvements observed in \autoref{tab:comparisons},
 `primerForge` also allows the user to specify PCR product size ranges, specify
