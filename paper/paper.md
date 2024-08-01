@@ -87,24 +87,24 @@ comparisons are shown in \autoref{tab:comparisons}.
 
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
-|Dataset|Name|NCBI Accession|Group|
+|Dataset[^1]|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
-|plasmid[^1]|pcDNA|not provided|ingroup|
-|plasmid[^1]|pLTR|not provided|outgroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
+|plasmid|pcDNA|not provided|ingroup|
+|plasmid|pLTR|not provided|outgroup|
+|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
+|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
+|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
+|_M. mycoides_|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
+|_M. mycoides_|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
 |_E. coli_|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
 |_E. coli_|_Escherichia coli_ K12 str. MG1655|GCF_000005845|outgroup|
 |_E. coli_|_Salmonella enterica_ subsp. enterica serovar Typhimurium str. LT2|GCF_000006945|outgroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00230/2020|MT520374|ingroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00229/2020|MT520263|ingroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00257/2020|MT520479|ingroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate Wuhan-Hu-1|NC_045512|outgroup|
+|SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00230/2020|MT520374|ingroup|
+|SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00229/2020|MT520263|ingroup|
+|SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00257/2020|MT520479|ingroup|
+|SARS-CoV-2|SARS-CoV-2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
 [^1]: The plasmid dataset is provided as an example in the `swga2` repository.
 The _M. mycoides_ is provided as an example in the `primerForge` repository.
