@@ -89,13 +89,13 @@ Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
 |Dataset|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
-|plasmid<sup>1</sup>|pcDNA|not provided|ingroup|
-|plasmid<sup>1</sup>|pLTR|not provided|outgroup|
-|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
-|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
-|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
-|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
-|_M. mycoides_<sup>2</sup>|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
+|plasmid[^1]|pcDNA|not provided|ingroup|
+|plasmid[^1]|pLTR|not provided|outgroup|
+|_M. mycoides_[^2]|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
+|_M. mycoides_[^2]|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
+|_M. mycoides_[^2]|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
+|_M. mycoides_[^2]|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
+|_M. mycoides_[^2]|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
 |_E. coli_|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
@@ -106,13 +106,13 @@ Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 |SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00257/2020|MT520479|ingroup|
 |SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
-<sup>1</sup>: The plasmid dataset is provided as an example in the `swga2` repository
+[^1]: The plasmid dataset is provided as an example in the `swga2` repository
 
-<sup>2</sup>: The _M. mycoides_ is provided as an example in the `primerForge` repository
+[^2]: The _M. mycoides_ is provided as an example in the `primerForge` repository
 
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
-|program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs<sup>1</sup>|`isPcr`-compatible pairs<sup>2</sup>|validated pairs<sup>3</sup>|optimized pairs<sup>4</sup>|
+|program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs[^1]|`isPcr`-compatible pairs[^2]|validated pairs[^3]|optimized pairs[^4]|
 |:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
 |`swga2`|plasmid|23:21|0.136|94|22|22|11|
 |`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
@@ -123,15 +123,15 @@ Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
 |`primerForge`|SARS-CoV-2|00:19|0.122|39|39|15|15|
 
-<sup>1</sup>: the number of primer pairs identified by the program
+[^1]: the number of primer pairs identified by the program
 
-<sup>2</sup>: the number of primer pairs that generated PCR products with
+[^2]: the number of primer pairs that generated PCR products with
 `isPcr`
 
-<sup>3</sup>: the number of primer pairs that produced a PCR product in every
+[^3]: the number of primer pairs that produced a PCR product in every
 ingroup genome and no products in any of the outgroup genomes
 
-<sup>4</sup>: the number of valid primer pairs that produced exactly one PCR
+[^4]: the number of valid primer pairs that produced exactly one PCR
 product in each ingroup genome
 
 Although many of the primer pairs predicted by `primerForge` were not validated
