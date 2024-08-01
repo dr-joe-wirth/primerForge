@@ -87,41 +87,48 @@ comparisons are shown in \autoref{tab:comparisons}.
 
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
-|Dataset|Name|NCBI Accession|Group|
-|:------|:--:|:------------:|:---:|
-|plasmid[^1]|pcDNA|not provided|ingroup|
-|plasmid[^1]|pLTR|not provided|outgroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
-|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
-|_E. coli_|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
-|_E. coli_|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
-|_E. coli_|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
-|_E. coli_|_Escherichia coli_ K12 str. MG1655|GCF_000005845|outgroup|
-|_E. coli_|_Salmonella enterica_ subsp. enterica serovar Typhimurium str. LT2|GCF_000006945|outgroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00230/2020|MT520374|ingroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00229/2020|MT520263|ingroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate SARS-CoV-2/human/USA/MA_MGH_00257/2020|MT520479|ingroup|
-|SARS-CoV-2|Severe acute respiratory syndrome coronavirus 2 isolate Wuhan-Hu-1|NC_045512|outgroup|
-
-[^1]: The plasmid dataset is provided as an example in the `swga2` repository.
-The _M. mycoides_ is provided as an example in the `primerForge` repository.
++-------------+------------------------------------------------------------------+--------------+--------+
+|Dataset[^1]  |Name                                                              |NCBI Accession|Group   |
++:===========:+:=================================================================+:============:+:======:+
+|plasmid      |pcDNA                                                             |not provided  |ingroup |
+|             |pLTR                                                              |not provided  |outgroup|
++-------------+------------------------------------------------------------------+--------------+--------+
+|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. KH3J                   |GCF_003034305 |ingroup |
+|             |_Mycoplasma mycoides_ subsp. mycoides str. B345/93                |GCF_003034275 |ingroup |
+|             |_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa             |GCF_003034345 |ingroup |
+|             |_Mycoplasma mycoides_ subsp. capri str. GM12                      |GCF_900489555 |outgroup|
+|             |_Mycoplasma mycoides_ subsp. capri str. 80/93                     |GCF_018389745 |outgroup|
++-------------+------------------------------------------------------------------+--------------+--------+
+|_E. coli_    |_Escherichia coli_ O157 str. 644-PT8                              |GCF_001650295 |ingroup |
+|             |_Escherichia coli_ O157 str. AR-0428                              |GCF_008727175 |ingroup |
+|             |_Escherichia coli_ O157 str. FDAARGOS_293                         |GCF_002208865 |ingroup |
+|             |_Escherichia coli_ K12 str. MG1655                                |GCF_000005845 |outgroup|
+|             |_Salmonella enterica_ subsp. enterica serovar Typhimurium str. LT2|GCF_000006945 |outgroup|
++-------------+------------------------------------------------------------------+--------------+--------+
+|SARS-CoV-2   |SARS-CoV-2 isolate MA_MGH_00230/2020                              |MT520374      |ingroup |
+|             |SARS-CoV-2 isolate MA_MGH_00229/2020                              |MT520263      |ingroup |
+|             |SARS-CoV-2 isolate MA_MGH_00257/2020                              |MT520479      |ingroup |
+|             |SARS-CoV-2 isolate Wuhan-Hu-1                                     |NC_045512     |outgroup|
++=============+==================================================================+==============+========+
+[^1]: The plasmid dataset is provided as an example in the `swga2` repository. The _M. mycoides_ is provided as an example in the `primerForge` repository.
 
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
-|program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs[^2]|`isPcr`-compatible pairs[^3]|validated pairs[^4]|optimized pairs[^5]|
-|:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
-|`swga2`|plasmid|23:21|0.136|94|22|22|11|
-|`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
-|`swga2`|_M. mycoides_|05:13|0.221|run failed|NA|NA|NA|
-|`primerForge`|_M. mycoides_|02:52|1.478|1446|1,446|989|884|
-|`swga2`|_E. coli_|21:10|4.452|run failed|NA|NA|NA|
-|`primerForge`|_E. coli_|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
-|`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
-|`primerForge`|SARS-CoV-2|00:19|0.122|39|39|15|15|
-
++-------------+-------------+---------------+--------+----------------+----------------------------+-------------------+-------------------+
+|Dataset      |Program      |Runtime (mm:ss)|RAM (Gb)|primer pairs[^2]|`isPcr`-compatible pairs[^3]|validated pairs[^4]|optimized pairs[^5]|
++:===========:+:===========:+:=============:+:======:+:==============:+:==========================:+:=================:+:=================:+
+|plasmid      |`swga2`      |23:21          |0.136   |94              |22                          |22                 |11                 |
+|             |`primerForge`|00:10          |0.051   |3,210           |3,210                       |3,168              |2,934              |
++-------------+-------------+---------------+--------+----------------+----------------------------+-------------------+-------------------+
+|_M. mycoides_|`swga2`      |05:13          |0.221   |run failed      |NA                          |NA                 |NA                 |
+|             |`primerForge`|02:52          |1.478   |1,446           |1,446                       |989                |884                |
++-------------+-------------+---------------+--------+----------------+----------------------------+-------------------+-------------------+
+|_E. coli_    |`swga2`      |21:10          |4.452   |run failed      |NA                          |NA                 |NA                 |
+|             |`primerForge`|83:33          |10.329  |1,451,164       |1,451,164                   |318,927            |125,932            |
++-------------+-------------+---------------+--------+----------------+----------------------------+-------------------+-------------------+
+|SARS-CoV-2   |`swga2`      |10:38          |0.141   |63              |7                           |0                  |0                  |
+|             |`primerForge`|00:19          |0.122   |39              |39                          |15                 |15                 |
++=============+=============+===============+========+================+============================+===================+===================+
 [^2]: the number of primer pairs identified by the program
 
 [^3]: the number of primer pairs that generated PCR products with
