@@ -87,15 +87,15 @@ comparisons are shown in \autoref{tab:comparisons}.
 
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
-|Dataset[^1]|Name|NCBI Accession|Group|
+|Dataset|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
-|plasmid|pcDNA|not provided|ingroup|
-|plasmid|pLTR|not provided|outgroup|
-|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
-|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
-|_M. mycoides_|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
-|_M. mycoides_|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
-|_M. mycoides_|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
+|plasmid[^1]|pcDNA|not provided|ingroup|
+|plasmid[^1]|pLTR|not provided|outgroup|
+|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
+|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
+|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
+|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
+|_M. mycoides_[^1]|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
 |_E. coli_|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
