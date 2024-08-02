@@ -85,9 +85,10 @@ the following additional parameters: `-tileSize=8`, `-minGood=8`, and
 by `swga2` were too short to use the default value of 15. The results of these
 comparisons are shown in \autoref{tab:comparisons}.
 
-Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
+Table: Datasets used to compare `primerForge` to `swga2`.
 \su{1}The plasmid dataset is provided as an example in the `swga2` repository.
 \su{2}The _M. mycoides_ is provided as an example in the `primerForge` repository.
+\label{tab:sequences}
 
 |Dataset|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
@@ -108,14 +109,15 @@ Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 |SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00257/2020|MT520479|ingroup|
 |SARS-CoV-2|SARS-CoV-2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
-Table:\label{tab:comparisons} Comparing `swga2` to `primerForge`
-\su{1}The number of primer pairs identified by the program
+Table: Comparing `swga2` to `primerForge` using `isPcr`.
+\su{1}The number of primer pairs identified by the program.
 \su{2}The number of primer pairs that generated PCR products with
-`isPcr`
+`isPcr`.
 \su{3}The number of primer pairs that produced a PCR product in every
-ingroup genome and no products in any of the outgroup genomes
+ingroup genome and no products in any of the outgroup genomes.
 \su{4}The number of valid primer pairs that produced exactly one PCR
-product in each ingroup genome
+product in each ingroup genome.
+\label{tab:comparisons} 
 
 |program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs\su{1}|`isPcr`-compatible pairs\su{2}|validated pairs\su{3}|optimized pairs\su{4}|
 |:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
@@ -127,8 +129,6 @@ product in each ingroup genome
 |`primerForge`|_E. coli_|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
 |`primerForge`|SARS-CoV-2|00:19|0.122|39|39|15|15|
-
-
 
 Although many of the primer pairs predicted by `primerForge` were not validated
 by `isPcr`, this can be attributed to the fact that `primerForge` allows primer
