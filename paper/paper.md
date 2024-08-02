@@ -79,8 +79,8 @@ compare the performance of `primerForge` to that of `swga2`. To do this, the
 sequence files listed in \autoref{tab:sequences} were used as inputs. The
 default parameters were used except that the melting temperature range was set
 at 55°C to 68°C and only a single processor was used. The primer pairs
-identified by the `swga2` and `primerForge` were evaluated using `isPcr` with
-the following additional parameters: `-tileSize=8`, `-minGood=8`, and
+identified by `swga2` and `primerForge` were evaluated using `isPcr` with the
+following additional parameters: `-tileSize=8`, `-minGood=8`, and
 `-minPerfect=8`. These parameters were necessary because the primers identified
 by `swga2` were too short to use the default value of 15. The results of these
 comparisons are shown in \autoref{tab:comparisons}.
