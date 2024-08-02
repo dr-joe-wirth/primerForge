@@ -85,20 +85,17 @@ the following additional parameters: `-tileSize=8`, `-minGood=8`, and
 by `swga2` were too short to use the default value of 15. The results of these
 comparisons are shown in \autoref{tab:comparisons}.
 
-Table: Datasets used to compare `primerForge` to `swga2`.
-\su{1}The plasmid dataset is provided as an example in the `swga2` repository.
-\su{2}The _M. mycoides_ is provided as an example in the `primerForge` repository.
-\label{tab:sequences}
+Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
 |Dataset|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
-|plasmid\su{1}|pcDNA|not provided|ingroup|
-|plasmid\su{1}|pLTR|not provided|outgroup|
-|_M. mycoides_\su{2}|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
-|_M. mycoides_\su{2}|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
-|_M. mycoides_\su{2}|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
-|_M. mycoides_\su{2}|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
-|_M. mycoides_\su{2}|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
+|plasmid^1^|pcDNA|not provided|ingroup|
+|plasmid^1^|pLTR|not provided|outgroup|
+|_M. mycoides_^2^|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
+|_M. mycoides_^2^|_Mycoplasma mycoides_ subsp. mycoides str. B345/93|GCF_003034275.1|ingroup|
+|_M. mycoides_^2^|_Mycoplasma mycoides_ subsp. mycoides str. Gemu Goffa|GCF_003034345.1|ingroup|
+|_M. mycoides_^2^|_Mycoplasma mycoides_ subsp. capri str. GM12|GCF_900489555.1|outgroup|
+|_M. mycoides_^2^|_Mycoplasma mycoides_ subsp. capri str. 80/93|GCF_018389745.1|outgroup|
 |_E. coli_|_Escherichia coli_ O157 str. 644-PT8|GCF_001650295.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. AR-0428|GCF_008727175.1|ingroup|
 |_E. coli_|_Escherichia coli_ O157 str. FDAARGOS_293|GCF_002208865.2|ingroup|
@@ -109,17 +106,13 @@ Table: Datasets used to compare `primerForge` to `swga2`.
 |SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00257/2020|MT520479|ingroup|
 |SARS-CoV-2|SARS-CoV-2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
-Table: Comparing `swga2` to `primerForge` using `isPcr`.
-\su{1}The number of primer pairs identified by the program.
-\su{2}The number of primer pairs that generated PCR products with
-`isPcr`.
-\su{3}The number of primer pairs that produced a PCR product in every
-ingroup genome and no products in any of the outgroup genomes.
-\su{4}The number of valid primer pairs that produced exactly one PCR
-product in each ingroup genome.
-\label{tab:comparisons} 
+^1^: The plasmid dataset is provided as an example in the `swga2` repository.
 
-|program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs\su{1}|`isPcr`-compatible pairs\su{2}|validated pairs\su{3}|optimized pairs\su{4}|
+^2^: The _M. mycoides_ is provided as an example in the `primerForge` repository.
+
+Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
+
+|program|dataset|runtime (mm:ss)|RAM (Gb)|primer pairs^1^|`isPcr`-compatible pairs^2^|validated pairs^3^|optimized pairs^4^|
 |:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
 |`swga2`|plasmid|23:21|0.136|94|22|22|11|
 |`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
@@ -129,6 +122,17 @@ product in each ingroup genome.
 |`primerForge`|_E. coli_|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
 |`primerForge`|SARS-CoV-2|00:19|0.122|39|39|15|15|
+
+^1^: The number of primer pairs identified by the program
+
+^2^: The number of primer pairs that generated PCR products with
+`isPcr`
+
+^3^: The number of primer pairs that produced a PCR product in every
+ingroup genome and no products in any of the outgroup genomes
+
+^4^: The number of valid primer pairs that produced exactly one PCR
+product in each ingroup genome
 
 Although many of the primer pairs predicted by `primerForge` were not validated
 by `isPcr`, this can be attributed to the fact that `primerForge` allows primer
