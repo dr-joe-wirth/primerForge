@@ -87,7 +87,7 @@ comparisons are shown in \autoref{tab:comparisons}.
 
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
-|Dataset ^[1]|Name|NCBI Accession|Group|
+|Dataset [1]|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
 |plasmid|pcDNA|not provided|ingroup|
 |plasmid|pLTR|not provided|outgroup|
@@ -106,7 +106,7 @@ Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 |SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00257/2020|MT520479|ingroup|
 |SARS-CoV-2|SARS-CoV-2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
-^[1]: The plasmid dataset is provided as an example in the `swga2` repository.
+[1]: The plasmid dataset is provided as an example in the `swga2` repository.
 The _M. mycoides_ is provided as an example in the `primerForge` repository.
 
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
