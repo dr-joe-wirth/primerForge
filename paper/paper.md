@@ -117,7 +117,7 @@ repository.
 
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
-|Program|Dataset|Runtime (mm:ss)|RAM (Gb)|Primer Pairs^1^|`isPcr`-compatible Pairs^2^|Validated Pairs^3^|Optimized Pairs^4^|
+|Program|Dataset|Runtime (mm:ss)|RAM (GB)|Primer Pairs^1^|`isPcr`-compatible Pairs^2^|Validated Pairs^3^|Optimized Pairs^4^|
 |:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
 |`swga2`|plasmid|23:21|0.136|94|22|22|11|
 |`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
@@ -147,17 +147,18 @@ _M. mycoides_ dataset were not validated with `isPcr` for the same reason. The
 remaining invalidated primer pairs can be attributed to the fact that the
 `isPcr` parameters `tileSize`, `minGood`, and `minPerfect` were set to very low
 values in order to directly compare the results of `primerForge` with those
-produced by `swga2`.
+produced by `swga2`. The use of these `isPcr` parameters also explains the
+decreased number of optimized primer pairs.
 
 In addition to the improvements observed in \autoref{tab:comparisons},
-`primerForge` also allows the user to specify PCR product size ranges, specify
-primer size ranges, specify melting temperature ranges, specify the difference
-in melting temperature between the forward and reverse primers, exclude PCR
-product sizes from the outgroup genomes, and use sequences in genbank file
-format. Both `primerForge` and `swga2` can take advantage of parallel
-processing, which speeds up runtimes. For example, `primerForge` ran on the
-"`primerForge` _Escherichia coli_ example" dataset in 37 minutes and 7 seconds
-when using 8 cpus.
+`primerForge` also allows the user to specify desired PCR product size ranges,
+specify primer size ranges, specify melting temperature ranges, specify the
+allowed difference in melting temperature between the forward and reverse
+primers, exclude certain PCR product sizes from the outgroup genomes, and use
+sequences in genbank file format. Both `primerForge` and `swga2` can take
+advantage of parallel processing, which speeds up runtimes. For example,
+`primerForge` ran on the _E. coli_ dataset in 37 minutes and 7 seconds and
+used 10.07 GB RAM when using 8 cpus.
 
 # Acknowledgements
 This work was made possible by support from the Advanced Molecular Detection
