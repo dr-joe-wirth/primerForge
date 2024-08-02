@@ -112,7 +112,8 @@ PCR products when amplified with the primer pairs identified by the software.
 The "outgroup" indicates genomes that should that should not produce PCR
 products, or should produce PCR product sizes outside a user-specified range.  
 ^2^ The plasmid dataset is provided as an example in the `swga2` repository.  
-^3^ The _M. mycoides_ is provided as an example in the `primerForge` repository.
+^3^ The _M. mycoides_ dataset is provided as an example in the `primerForge`
+repository.
 
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
