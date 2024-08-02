@@ -87,7 +87,7 @@ comparisons are shown in \autoref{tab:comparisons}.
 
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
-|Dataset [^1]|Name|NCBI Accession|Group|
+|Dataset ^[1]|Name|NCBI Accession|Group|
 |:------|:--:|:------------:|:---:|
 |plasmid|pcDNA|not provided|ingroup|
 |plasmid|pLTR|not provided|outgroup|
@@ -129,7 +129,7 @@ Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 ^[4]: the number of primer pairs that produced a PCR product in every
 ingroup genome and no products in any of the outgroup genomes
 
-^[5]: the number of valid primer pairs that produced exactly one PCR
+[^5]: the number of valid primer pairs that produced exactly one PCR
 product in each ingroup genome
 
 Although many of the primer pairs predicted by `primerForge` were not validated
