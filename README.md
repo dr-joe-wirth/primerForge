@@ -57,9 +57,6 @@ git clone https://github.com/dr-joe-wirth/primerForge.git
 
 Once installed and cloned, run the following commands to run the unit tests:
 
-> [!NOTE]
-> Running `results_test.py` may take up to 30 minutes to complete
-
 ```bash
 python3 -m unittest discover -s ./primerForge/bin/unit_tests/ -p "*_test.py"
 ```
