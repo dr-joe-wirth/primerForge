@@ -106,7 +106,7 @@ Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 |SARS-CoV-2|SARS-CoV-2 isolate human/USA/MA_MGH_00257/2020|MT520479|ingroup|
 |SARS-CoV-2|SARS-CoV-2 isolate Wuhan-Hu-1|NC_045512|outgroup|
 
-[^1]: The plasmid dataset is provided as an example in the `swga2` repository. The _M. mycoides_ is provided as an example in the `primerForge` repository.
+^[1]: The plasmid dataset is provided as an example in the `swga2` repository. The _M. mycoides_ is provided as an example in the `primerForge` repository.
 
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
@@ -129,7 +129,7 @@ Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 ^[4]: the number of primer pairs that produced a PCR product in every
 ingroup genome and no products in any of the outgroup genomes
 
-[^5]: the number of valid primer pairs that produced exactly one PCR
+^[5]: the number of valid primer pairs that produced exactly one PCR
 product in each ingroup genome
 
 Although many of the primer pairs predicted by `primerForge` were not validated
