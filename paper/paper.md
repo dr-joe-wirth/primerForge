@@ -128,6 +128,7 @@ Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 ^3^ The number of primer pairs that produced a PCR product in every
 ingroup genome and no products in any of the outgroup genomes  
 ^4^ The number of valid primer pairs that produced exactly one PCR
+
 product in each ingroup genome
 
 Although many of the primer pairs predicted by `primerForge` were not validated
