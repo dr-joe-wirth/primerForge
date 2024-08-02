@@ -111,7 +111,8 @@ other within each dataset. The "ingroup" indicates genomes that should produce
 PCR products when amplified with the primer pairs identified by the software.
 The "outgroup" indicates genomes that should that should not produce PCR
 products, or should produce PCR product sizes outside a user-specified range.  
-^2^ The plasmid dataset is provided as an example in the `swga2` repository.  
+^2^ The plasmid dataset is provided as [an example in the `swga2`
+repository](https://github.com/songlab-cal/swga2/tree/master/examples/plasmid_example).  
 ^3^ The _M. mycoides_ dataset is provided as an example in the `primerForge`
 repository.
 
