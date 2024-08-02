@@ -122,7 +122,7 @@ Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 |`swga2`|plasmid|23:21|0.136|94|22|22|11|
 |`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
 |`swga2`|_M. mycoides_|05:13|0.221|run failed|NA|NA|NA|
-|`primerForge`|_M. mycoides_|02:52|1.478|1446|1,446|989|884|
+|`primerForge`|_M. mycoides_|02:52|1.478|1,446|1,446|989|884|
 |`swga2`|_E. coli_|21:10|4.452|run failed|NA|NA|NA|
 |`primerForge`|_E. coli_|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
