@@ -5,7 +5,8 @@
 software to identify primers that can be used to distinguish genomes
 
 ## Installation
-`primerForge` is incompatible with versions python3.8 and below and python3.12 and above.
+> [!NOTE]
+> `primerForge` is incompatible with versions python3.8 and below and python3.12 and above.
 
 ### `pip` installation
 `primerForge` can be installed with the following commands:
