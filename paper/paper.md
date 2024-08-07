@@ -88,7 +88,7 @@ comparisons are shown in \autoref{tab:comparisons}.
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
 |Dataset|Name|NCBI Accession|Group^1^|
-|:------|:--:|:------------:|:---:|
+|:-----------|:---------------------------:|:-------------:|:--------:|
 |plasmid^2^|pcDNA|not provided|ingroup|
 |plasmid^2^|pLTR|not provided|outgroup|
 |_M. mycoides_^3^|_Mycoplasma mycoides_ subsp. mycoides str. KH3J|GCF_003034305.1|ingroup|
@@ -119,7 +119,7 @@ repository.
 Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
 
 |Program|Dataset|Runtime (mm:ss)|RAM (GB)|Primer Pairs^1^|`isPcr`-compatible Pairs^2^|Validated Pairs^3^|Optimized Pairs^4^|
-|:-----:|:-----:|:-------------:|:------:|:-----------:|:-----------------------:|:--------------:|:--------------:|
+|:-----------:|:-----------:|:-------:|:--------:|:-----------:|:----------------:|:---------:|:---------:|
 |`swga2`|plasmid|23:21|0.136|94|22|22|11|
 |`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
 |`swga2`|_M. mycoides_|05:13|0.221|run failed|NA|NA|NA|
