@@ -1,6 +1,5 @@
 import os
 from Bio import SeqIO
-from Bio.Seq import Seq
 from bin.Clock import Clock
 from khmer import Countgraph
 from bin.Primer import Primer
