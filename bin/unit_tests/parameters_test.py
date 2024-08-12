@@ -89,7 +89,6 @@ class ParametersTest(unittest.TestCase):
                         '-d', ParametersTest.TM_DIFF,
                         '-n', ParametersTest.THREADS]
         
-
         # sys.argv with custom values using long args for genbank file format
         self.long1   =  ['primerForge.py',
                         '--ingroup', ParametersTest.IG_PATTERN_GB,
@@ -104,7 +103,7 @@ class ParametersTest(unittest.TestCase):
                         '--tm_diff', ParametersTest.TM_DIFF,
                         '--num_threads', ParametersTest.THREADS]
         
-        # sys.argv with custom values using long args for genbank file format
+        # sys.argv with custom values using long args for fasta file format
         self.long2   =  ['primerForge.py',
                         '--ingroup', ParametersTest.IG_PATTERN_FA,
                         '--out', ParametersTest.OUT_FN,
@@ -407,6 +406,100 @@ class ParametersTest(unittest.TestCase):
         # check dictionaries
         obj  = {1:'one', 2:'two'}
         self._dumpLoadTest(params, obj)
+
+    def testJ_equality(self) -> None:
+        """make sure equality overload works
+        """
+        # create parameters objects for comparing
+        sys.argv = self.basic1
+        basic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.basic2
+        basic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.short1
+        short1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.short2
+        short2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.long1
+        long1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.long2
+        long2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.help1
+        help1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.help2
+        help2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.vers1
+        vers1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.vers2
+        vers2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.debug1
+        debugBasic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.debug2
+        debugBasic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.debug3
+        debugShort1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.debug4
+        debugLong1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        sys.argv = self.long1[:-2] + ['--num_threads', '1']
+        oneThreadLong1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        
+        # the same objects should be equal
+        self.assertEqual(basic1, basic1)
+        self.assertEqual(basic2, basic2)
+        self.assertEqual(short1, short1)
+        self.assertEqual(short2, short2)
+        self.assertEqual(long1, long1)
+        self.assertEqual(long2, long2)
+        self.assertEqual(help1, help1)
+        self.assertEqual(help2, help2)
+        self.assertEqual(vers1, vers1)
+        self.assertEqual(vers2, vers2)
+        self.assertEqual(debugBasic1, debugBasic1)
+        self.assertEqual(debugBasic2, debugBasic2)
+        self.assertEqual(debugShort1, debugShort1)
+        self.assertEqual(debugLong1, debugLong1)
+        self.assertEqual(oneThreadLong1, oneThreadLong1)
+        
+        # all basics and debug basics should be equal
+        self.assertEqual(basic1, basic2)
+        self.assertEqual(basic1, debugBasic1)
+        self.assertEqual(basic1, debugBasic2)
+        
+        # long1, short1, debug variants, and thread variants should be equal
+        self.assertEqual(long1, short1)
+        self.assertEqual(long1, debugLong1)
+        self.assertEqual(long1, debugShort1)
+        self.assertEqual(long1, oneThreadLong1)
+        
+        # help and vers should be equal
+        self.assertEqual(help1, help2)
+        self.assertEqual(help1, vers1)
+        self.assertEqual(help2, vers2)
+        
+        # different files should not be equal
+        self.assertNotEqual(long1, long2)
+        self.assertNotEqual(short1, short2)
+        self.assertNotEqual(long1, short2)
+        self.assertNotEqual(short1, long2)
+        
+        # different input values with same files should not be equal
+        self.assertNotEqual(basic1, short1)
+        self.assertNotEqual(basic2, short1)
+        self.assertNotEqual(basic1, long1)
+        self.assertNotEqual(basic2, long1)
 
 
 if __name__ == "__main__":
