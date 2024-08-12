@@ -418,10 +418,6 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     Returns:
         dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
-    # constants
-    SHARED_KMER_NUM = 0
-    CANDID_KMER_NUM = 1
-    
     # messages
     GAP = " "*4
     MSG_1 = f"{GAP}getting shared ingroup kmers that appear once in each genome"
@@ -442,7 +438,7 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     
     if sharedExists:
         # load existing shared kmers from file
-        kmers = params.loadObj(params.pickles[SHARED_KMER_NUM])
+        kmers = params.loadObj(params.pickles[Parameters._SHARED])
 
     else:
         # get all non-duplicated kmers that are shared in the ingroup
@@ -461,7 +457,7 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
             raise RuntimeError(ERR_MSG_1)
         
         # dump the shared kmers to file
-        params.dumpObj(kmers, params.pickles[SHARED_KMER_NUM], "shared kmers", prefix=GAP)
+        params.dumpObj(kmers, params.pickles[Parameters._SHARED], "shared kmers", prefix=GAP)
     
     # print status
     clock.printStart(f'{MSG_2A}{len(kmers)}{MSG_2B}')
@@ -509,6 +505,6 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     params.log.info(f'{MSG_3A}{numCand}{MSG_3B}')
     
     # dump the candidate kmers to file
-    params.dumpObj(out, params.pickles[CANDID_KMER_NUM], "candidate kmers", prefix=GAP)
+    params.dumpObj(out, params.pickles[Parameters._CAND], "candidate kmers", prefix=GAP)
 
     return out
