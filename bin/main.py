@@ -12,13 +12,8 @@ from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 # global constants
 __version__ = "1.3.3"
 __author__ = "Joseph S. Wirth"
-__SHARED_NUM = 0
-__CAND_NUM   = 1
-__PAIR_1_NUM = 2
-__PAIR_2_NUM = 3
-__PAIR_3_NUM = 4
 
-
+# functions
 def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
     """gets booleans for checkpointing
 
@@ -29,11 +24,11 @@ def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
         tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; validated pairs
     """
     # determine if each pickle exists
-    sharedExists = os.path.exists(params.pickles[__SHARED_NUM])
-    candidExists = os.path.exists(params.pickles[__CAND_NUM])
-    unfiltExists = os.path.exists(params.pickles[__PAIR_1_NUM])
-    filterExists = os.path.exists(params.pickles[__PAIR_2_NUM])
-    validsExists = os.path.exists(params.pickles[__PAIR_3_NUM])
+    sharedExists = os.path.exists(params.pickles[Parameters._SHARED])
+    candidExists = os.path.exists(params.pickles[Parameters._CAND])
+    unfiltExists = os.path.exists(params.pickles[Parameters._PAIR_1])
+    filterExists = os.path.exists(params.pickles[Parameters._PAIR_2])
+    validsExists = os.path.exists(params.pickles[Parameters._PAIR_3])
     
     return sharedExists, candidExists, unfiltExists, filterExists, validsExists
 
@@ -124,7 +119,7 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     params.log.info(f"{MSG_2A}{len(pairs)}{MSG_2B}")
     
     # dump the pairs to file
-    params.dumpObj(pairs, params.pickles[__PAIR_1_NUM], "unfiltered pairs", prefix=" "*4)
+    params.dumpObj(pairs, params.pickles[Parameters._PAIR_1], "unfiltered pairs", prefix=" "*4)
     
     return pairs
 
@@ -165,7 +160,7 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         params.log.info(f"{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}")
         
         # dump the results
-        params.dumpObj(pairs, params.pickles[__PAIR_2_NUM], "filtered pairs", prefix=GAP)
+        params.dumpObj(pairs, params.pickles[Parameters._PAIR_2], "filtered pairs", prefix=GAP)
 
 
 def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
@@ -196,7 +191,7 @@ def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
     params.log.info(f'{GAP}{MSG_1A}{startingNum - finalNum}{MSG_1B}{finalNum}{MSG_1C}')
     
     # dump the results
-    params.dumpObj(pairs, params.pickles[__PAIR_3_NUM], "validated pairs", prefix=GAP)
+    params.dumpObj(pairs, params.pickles[Parameters._PAIR_3], "validated pairs", prefix=GAP)
 
 
 def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
@@ -302,9 +297,60 @@ def _runner(params:Parameters) -> None:
         * gets primer pairs that are present in all ingroup
         * removes primer pairs that are present in the outgroup
         * writes data to file
+
+    Args:
+        params (Parameters): a Parameters object
+
+    Raises:
+        BaseException: if checkpointing, params don't match original run
     """
     # messages
     MSG  = 'total runtime: '
+    
+    # helper function to generate the error message
+    def generateErrorMessage(current:Parameters, old:Parameters) -> str:
+        # constants
+        GAP = 4*" "
+        ERR_PREFIX = "current parameters do not match parameters on checkpointed run:\n"
+        
+        # evaluate the important variables
+        badIngroup = set(current.ingroupFns) != set(old.ingroupFns)
+        badOutgroup = set(current.outgroupFns) != set(old.outgroupFns)
+        badPrimerLens = current.minLen != old.minLen or current.maxLen != old.maxLen
+        badPrimerGc = current.minGc != old.minGc or current.maxGc != old.maxGc
+        badPrimerTm = current.minTm != old.minTm or current.maxTm != old.maxTm
+        badPrimerTmDiff = current.maxTmDiff != old.maxTmDiff
+        badPcrLens = current.minPcr != old.minPcr or current.maxPcr != old.maxPcr
+        badBadLens = current.disallowedLens != old.disallowedLens
+        
+        # create the message add the offending data to it
+        out = ERR_PREFIX + GAP
+        if badIngroup:
+            out += f"current ingroup:     {GAP}{current.ingroupFns}\n"
+            out += f"checkpointed ingroup:{GAP}{old.ingroupFns}\n\n"
+        if badOutgroup:
+            out += f"current outgroup:     {GAP}{current.outgroupFns}\n"
+            out += f"checkpointed outgroup:{GAP}{old.outgroupFns}\n\n"
+        if badPrimerLens:
+            out += f"current allowed primer lengths:     {GAP}{current.minLen} - {current.maxLen}\n"
+            out += f"checkpointed allowed primer lengths:{GAP}{old.minLen} - {old.maxLen}\n\n"
+        if badPrimerGc:
+            out += f"current allowed primer G+C (mol %):     {GAP}{current.minGc} - {current.maxGc}\n"
+            out += f"checkpointed allowed primer G+C (mol %):{GAP}{old.minGc} - {old.maxGc}\n\n"
+        if badPrimerTm:
+            out += f"current allowed primer melting temps (°C):     {GAP}{current.minTm} - {current.maxTm}\n"
+            out += f"checkpointed allowed primer melting temps (°C):{GAP}{old.minTm} - {old.maxTm}\n\n"
+        if badPrimerTmDiff:
+            out += f"current allowed primer melting temp difference (°C):     {GAP}{current.maxTmDiff}\n"
+            out += f"checkpointed allowed primer melting temp difference (°C):{GAP}{old.maxTmDiff}\n\n"
+        if badPcrLens:
+            out += f"current allowed ingroup PCR product sizes:     {GAP}{current.minPcr} - {current.maxPcr}\n"
+            out += f"checkpointed allowed ingroup PCR product sizes:{GAP}{old.minPcr} - {old.maxPcr}\n\n"
+        if badBadLens:
+            out += f"current disallowed outgroup PCR product sizes:     {GAP}{min(current.disallowedLens)} - {max(current.disallowedLens)}\n"
+            out += f"checkpointed disallowed outgroup PCR product sizes:{GAP}{min(old.disallowedLens)} - {max(old.disallowedLens)}\n\n"
+        
+        return out
     
     # start the timers
     totalClock = Clock()
@@ -314,12 +360,23 @@ def _runner(params:Parameters) -> None:
     params.log.rename(_runner.__name__)
     
     # get the checkpoint status
-    sharedExists, candExists, unfiltExists, filtExists, validExists = __getCheckpoint(params)
+    checkpoints = __getCheckpoint(params)
+    sharedExists, candExists, unfiltExists, filtExists, validExists = checkpoints
+    
+    # if any checkpointing is occurring then load old parameters and make sure it is congruent
+    if any(checkpoints):
+        oldParams = params.loadObj(params.pickles[Parameters._PARAMS])
+        
+        if params != oldParams:
+            raise BaseException(generateErrorMessage(params, oldParams))
+    
+    # save the current parameters
+    params.dumpObj(params, params.pickles[Parameters._PARAMS], 'Parameters')
     
     # jump straight to the end if possible
     if validExists:
         # load data
-        pairs = params.loadObj(params.pickles[__PAIR_3_NUM])
+        pairs = params.loadObj(params.pickles[Parameters._PAIR_3])
         
         # write data to file
         __writePrimerPairs(params, pairs, clock)
@@ -327,7 +384,7 @@ def _runner(params:Parameters) -> None:
     # otherwise jump to validatoin if possible
     elif filtExists:
         # load data
-        pairs = params.loadObj(params.pickles[__PAIR_2_NUM])
+        pairs = params.loadObj(params.pickles[Parameters._PAIR_2])
         
         # validate pairs
         __validatePairs(params, pairs)
@@ -338,7 +395,7 @@ def _runner(params:Parameters) -> None:
     # otherwise jump to outgroup removal if possible
     elif unfiltExists:
         # load data
-        pairs = params.loadObj(params.pickles[__PAIR_1_NUM])
+        pairs = params.loadObj(params.pickles[Parameters._PAIR_1])
         
         # remove outgroup
         __removeOutgroup(params, pairs)
@@ -352,7 +409,7 @@ def _runner(params:Parameters) -> None:
     # otherwise jump to pair retrieval
     elif candExists:
         # load data
-        candidateKmers = params.loadObj(params.pickles[__CAND_NUM])
+        candidateKmers = params.loadObj(params.pickles[Parameters._CAND])
         
         # get unfiltered pairs
         pairs = __getUnfilteredPairs(params, candidateKmers, clock)
