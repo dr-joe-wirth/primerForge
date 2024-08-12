@@ -37,6 +37,7 @@ class Parameters():
     _DEF_DEBUG = False
     _DEF_HELP = False
     
+    # overloads
     def __init__(self, author:str, version:str, initializeLog:bool=True) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
@@ -88,6 +89,58 @@ class Parameters():
             # get the ispcr query filename
             self.queryFn = os.path.join(os.path.dirname(self.resultsFn), Parameters.__QUERY_FN)
 
+    def __eq__(self, other:Parameters) -> bool:
+        """equality overload
+
+        Args:
+            other (Parameters): another Parameters object
+
+        Raises:
+            TypeError: can only compare Parameters to Parameters
+
+        Returns:
+            bool: are objects equal?
+        """
+        # only compare to Parameters
+        if not type(other) is Parameters:
+            raise TypeError(f"cannot compare Parameters object to type '{type(other)}'")
+        
+        # determine if ingroup files match
+        if self.ingroupFns is None:
+            sameIngroup = self.ingroupFns == other.ingroupFns
+        else:
+            sameIngroup = set(self.ingroupFns) == set(other.ingroupFns)
+        
+        # determine if outgroup files match
+        if self.outgroupFns is None:
+            sameOutgroup = self.outgroupFns == other.outgroupFns
+        else:  
+            sameOutgroup = set(self.outgroupFns) == set(other.outgroupFns)
+        
+        # determine if other important attributes match
+        samePrimerLens = self.minLen == other.minLen and self.maxLen == other.maxLen
+        samePrimerGc = self.minGc == other.minGc and self.maxGc == other.maxGc
+        samePrimerTm = self.minTm == other.minTm and self.maxTm == other.maxTm
+        samePcrLen = self.minPcr == other.minPcr and self.maxPcr == other.maxPcr
+        sameTmDiff = self.maxTmDiff == other.maxTmDiff
+        sameBadLens = self.disallowedLens == other.disallowedLens
+        
+        # evaluate important attributes; all must be equivalent
+        return all((sameIngroup, sameOutgroup, samePrimerLens, samePrimerGc,
+                    samePrimerTm, samePcrLen, sameTmDiff, sameBadLens))
+    
+    def __ne__(self, other:Parameters) -> bool:
+        """inequality overload
+
+        Args:
+            other (Parameters): another Parameters object
+
+        Returns:
+            bool: are objects not equal?
+        """
+        return not self == other
+    
+    # private methods
     def __checkOutputFile(fn:str) -> None:
         """checks if an output file is valid
 
@@ -597,6 +650,7 @@ class Parameters():
             # check for existing files
             Parameters.__checkOutputFile(self.resultsFn)
     
+    # public methods
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
         """
