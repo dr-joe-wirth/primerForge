@@ -314,8 +314,8 @@ def _runner(params:Parameters) -> None:
         ERR_PREFIX = "current parameters do not match parameters on checkpointed run:\n"
         
         # evaluate the important variables
-        badIngroup = set(current.ingroupFns) != set(old.ingroupFns)
-        badOutgroup = set(current.outgroupFns) != set(old.outgroupFns)
+        badIngroup = set(map(os.path.relpath, current.ingroupFns)) != set(map(os.path.relpath, old.ingroupFns))
+        badOutgroup = set(map(os.path.relpath, current.outgroupFns)) != set(map(os.path.relpath, old.outgroupFns))
         badPrimerLens = current.minLen != old.minLen or current.maxLen != old.maxLen
         badPrimerGc = current.minGc != old.minGc or current.maxGc != old.maxGc
         badPrimerTm = current.minTm != old.minTm or current.maxTm != old.maxTm
