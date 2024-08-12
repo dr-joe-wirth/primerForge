@@ -116,13 +116,13 @@ class Parameters():
         if self.ingroupFns is None:
             sameIngroup = self.ingroupFns == other.ingroupFns
         else:
-            sameIngroup = set(self.ingroupFns) == set(other.ingroupFns)
+            sameIngroup = set(map(os.path.abspath, self.ingroupFns)) == set(map(os.path.abspath, other.ingroupFns))
         
         # determine if outgroup files match
         if self.outgroupFns is None:
             sameOutgroup = self.outgroupFns == other.outgroupFns
         else:  
-            sameOutgroup = set(self.outgroupFns) == set(other.outgroupFns)
+            sameOutgroup = set(map(os.path.abspath, self.outgroupFns)) == set(map(os.path.abspath, other.outgroupFns))
         
         # determine if other important attributes match
         samePrimerLens = self.minLen == other.minLen and self.maxLen == other.maxLen
