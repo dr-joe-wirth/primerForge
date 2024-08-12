@@ -13,11 +13,12 @@ class Parameters():
     __ALL_CONTIGS_FNA = ".all_contigs.fna"
     __QUERY_FN = ".ispcr_query.tsv"
     __PICKLE_DIR = "_pickles"
-    __PICKLE_FNS = {0: "sharedKmers.p",
-                    1: "candidates.p",
-                    2: "pairs.p",
-                    3: "pairs_noOutgroup.p",
-                    4: "pairs_noOutgroup_validated.p"}
+    __PICKLE_FNS = {0: "parameters.p",
+                    1: "sharedKmers.p",
+                    2: "candidates.p",
+                    3: "pairs.p",
+                    4: "pairs_noOutgroup.p",
+                    5: "pairs_noOutgroup_validated.p"}
     
     # default values
     _DEF_RESULTS_FN = 'results.tsv'
