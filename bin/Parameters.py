@@ -409,7 +409,7 @@ class Parameters():
         ERR_MSG_5  = 'invalid format'
         ERR_MSG_6  = 'can only specify one primer length or a range (min,max)'
         ERR_MSG_7  = 'primer lengths are not integers'
-        ERR_MSG_8  = 'minimum primer length is 10bp'
+        ERR_MSG_8  = 'minimum primer length is'
         ERR_MSG_9  = 'must specify a range of GC values (min,max)'
         ERR_MSG_10 = 'gc values are not numeric'
         ERR_MSG_11 = 'must specify a range of Tm values (min, max)'
@@ -564,7 +564,7 @@ class Parameters():
                     
                     # make sure that the minimum is within the allowed range
                     if min(primerRange) < Parameters._MIN_LEN:
-                        raise ValueError(ERR_MSG_8)
+                        raise ValueError(f"{ERR_MSG_8} {Parameters._MIN_LEN} bp")
                     
                     # save values
                     self.minLen = min(primerRange)
