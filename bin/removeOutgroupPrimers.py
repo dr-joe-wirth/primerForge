@@ -1,7 +1,7 @@
 from bin.Clock import Clock
 from bin.Primer import Primer
-from Bio.SeqRecord import SeqRecord
 from ahocorasick import Automaton
+from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
 # global constant
