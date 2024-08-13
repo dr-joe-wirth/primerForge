@@ -9,6 +9,7 @@ class Parameters():
     """
     # constants
     _DATA_EXT = "_data.tsv"
+    _MIN_LEN = 10
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __ALL_CONTIGS_FNA = ".all_contigs.fna"
     __QUERY_FN = ".ispcr_query.tsv"
@@ -337,6 +338,7 @@ class Parameters():
             ValueError: invalid file format
             ValueError: invalid primer length: wrong num arguments
             ValueError: invalid primer length: not int
+            ValueError: invalid primer length: below minimum threshold
             ValueError: invalid GC: not two values
             ValueError: invalid GC: not numeric
             ValueError: invalid Tm: not two values
@@ -407,15 +409,16 @@ class Parameters():
         ERR_MSG_5  = 'invalid format'
         ERR_MSG_6  = 'can only specify one primer length or a range (min,max)'
         ERR_MSG_7  = 'primer lengths are not integers'
-        ERR_MSG_8  = 'must specify a range of GC values (min,max)'
-        ERR_MSG_9  = 'gc values are not numeric'
-        ERR_MSG_10 = 'must specify a range of Tm values (min, max)'
-        ERR_MSG_11 = 'Tm values are not numeric'
-        ERR_MSG_12 = 'can only specify one PCR product length or a range (min,max)'
-        ERR_MSG_13 = 'PCR product lengths are not integers'
-        ERR_MSG_14 = 'max Tm difference is not numeric'
-        ERR_MSG_15 = 'num threads is not an integer'
-        ERR_MSG_16 = 'must specify one or more ingroup files'
+        ERR_MSG_8  = 'minimum primer length is 10bp'
+        ERR_MSG_9  = 'must specify a range of GC values (min,max)'
+        ERR_MSG_10 = 'gc values are not numeric'
+        ERR_MSG_11 = 'must specify a range of Tm values (min, max)'
+        ERR_MSG_12 = 'Tm values are not numeric'
+        ERR_MSG_13 = 'can only specify one PCR product length or a range (min,max)'
+        ERR_MSG_14 = 'PCR product lengths are not integers'
+        ERR_MSG_15 = 'max Tm difference is not numeric'
+        ERR_MSG_16 = 'num threads is not an integer'
+        ERR_MSG_17 = 'must specify one or more ingroup files'
 
         def printHelp():
             GAP = " "*4
@@ -559,6 +562,10 @@ class Parameters():
                     except:
                         raise ValueError(ERR_MSG_7)
                     
+                    # make sure that the minimum is within the allowed range
+                    if min(primerRange) < Parameters._MIN_LEN:
+                        raise ValueError(ERR_MSG_8)
+                    
                     # save values
                     self.minLen = min(primerRange)
                     self.maxLen = max(primerRange)
@@ -568,13 +575,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     gcRange = arg.split(SEP)
                     if len(gcRange) != 2:
-                        raise ValueError(ERR_MSG_8)
+                        raise ValueError(ERR_MSG_9)
                     
                     # make sure the values are numeric
                     try:
                         gcRange = [float(x) for x in gcRange]
                     except:
-                        raise ValueError(ERR_MSG_9)
+                        raise ValueError(ERR_MSG_10)
                 
                     # save values
                     self.minGc = min(gcRange)
@@ -585,13 +592,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     tmRange = arg.split(SEP)
                     if len(tmRange) != 2:
-                        raise ValueError(ERR_MSG_10)
+                        raise ValueError(ERR_MSG_11)
                 
                     # make sure the values are numeric
                     try:
                         tmRange = [float(x) for x in tmRange]
                     except:
-                        raise ValueError(ERR_MSG_11)
+                        raise ValueError(ERR_MSG_12)
                 
                     # save values
                     self.minTm = min(tmRange)
@@ -602,13 +609,13 @@ class Parameters():
                     # expecting one or two values
                     pcrRange = arg.split(SEP)
                     if len(pcrRange) not in {1,2}:
-                        raise ValueError(ERR_MSG_12)
+                        raise ValueError(ERR_MSG_13)
                     
                     # coerce to integers
                     try:
                         pcrRange = [int(x) for x in pcrRange]
                     except:
-                        raise ValueError(ERR_MSG_13)
+                        raise ValueError(ERR_MSG_14)
                 
                     # save values
                     self.minPcr = min(pcrRange)
@@ -624,7 +631,7 @@ class Parameters():
                     try:
                         self.maxTmDiff = float(arg)
                     except:
-                        raise ValueError(ERR_MSG_14)
+                        raise ValueError(ERR_MSG_15)
                 
                 # get the number of threads to use
                 elif opt in THREADS_FLAGS:
@@ -632,7 +639,7 @@ class Parameters():
                     try:
                         self.numThreads = int(arg)
                     except:
-                        raise ValueError(ERR_MSG_15)
+                        raise ValueError(ERR_MSG_16)
                 
                 # update keep to True if requested
                 if opt in KEEP_FLAGS:
@@ -649,7 +656,7 @@ class Parameters():
             
             # make sure an input file was specified
             if self.ingroupFns is None:
-                raise ValueError(ERR_MSG_16)
+                raise ValueError(ERR_MSG_17)
             
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
