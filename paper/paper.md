@@ -116,18 +116,18 @@ repository](https://github.com/songlab-cal/swga2/tree/master/examples/plasmid_ex
 ^3^ The _M. mycoides_ dataset is provided as an example in the `primerForge`
 repository.
 
-Table: \label{tab:comparisons} Comparing `swga2` to `primerForge`
+Table: \label{tab:comparisons} Comparing `swga2 v0.0.1` to `primerForge v1.3.5`
 
 |Program|Dataset|Runtime (mm:ss)|RAM (GB)|Primer Pairs^1^|`isPcr`-compatible Pairs^2^|Validated Pairs^3^|Optimized Pairs^4^|
 |:-------------:|:-------------:|:-------:|:-----:|:---------:|:-------:|:---------:|:---------:|
 |`swga2`|plasmid|23:21|0.136|94|22|22|11|
-|`primerForge`|plasmid|00:10|0.051|3,210|3,210|3,168|2,934|
+|`primerForge`|plasmid|00:10|0.054|3,004|3,004|2,977|2,934|
 |`swga2`|_M. mycoides_|05:13|0.221|run failed|NA|NA|NA|
-|`primerForge`|_M. mycoides_|02:52|1.478|1,446|1,446|989|884|
+|`primerForge`|_M. mycoides_|02:25|1.490|1,096|1,096|942|884|
 |`swga2`|_E. coli_|21:10|4.452|run failed|NA|NA|NA|
-|`primerForge`|_E. coli_|83:33|10.329|1,451,164|1,451,164|318,927|125,932|
+|`primerForge`|_E. coli_|61:09|10.645|1,150,858|1,148,425|301,380|125,357|
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
-|`primerForge`|SARS-CoV-2|00:19|0.122|39|39|15|15|
+|`primerForge`|SARS-CoV-2|00:20|0.118|15|15|15|15|
 
 ^1^ The number of primer pairs identified by the program.  
 ^2^ The number of primer pairs that generated PCR products with
@@ -140,16 +140,15 @@ product in each ingroup genome.
 Although many of the primer pairs predicted by `primerForge` were not validated
 by `isPcr`, this can be attributed to the fact that `primerForge` allows primer
 pairs to produce PCR products in the outgroup provided they are outside of the
-user-specified range. For example, 1,118,742 of the 1,132,237 primer pairs
-(98.8 %) identified by `primerForge` in the _E. coli_ dataset that were not
-validated by `isPcr` were predicted to produce a PCR product in one or more of
-the outgroup genomes. Similarly, 453 of the 457 primer pairs identified in the
-_M. mycoides_ dataset were not validated with `isPcr` for the same reason. The
-remaining invalidated primer pairs can be attributed to the fact that the
-`isPcr` parameters `tileSize`, `minGood`, and `minPerfect` were set to very low
-values in order to directly compare the results of `primerForge` with those
-produced by `swga2`. The use of these `isPcr` parameters also explains the
-decreased number of optimized primer pairs.
+user-specified range. For example, all of the 847,045 primer pairs identified by
+`primerForge` in the _E. coli_ dataset that were compatible with, but not
+validated by, `isPcr` were predicted to produce a PCR product in one or more of
+the outgroup genomes. Similarly, all 154 primer pairs identified by
+`primerForge` but not validated by `isPcr` in the _M. mycoides_ dataset were not
+validated for the same reason. The decreased number of optimized primer pairs
+can be attributed to the fact that the `isPcr` parameters `tileSize`, `minGood`,
+and `minPerfect` were set to low values in order to directly compare the results
+of `primerForge` with those produced by `swga2`. 
 
 In addition to the improvements observed in \autoref{tab:comparisons},
 `primerForge` also allows the user to specify desired PCR product size ranges,
