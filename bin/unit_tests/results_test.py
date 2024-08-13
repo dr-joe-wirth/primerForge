@@ -34,7 +34,6 @@ class ResultsTest(unittest.TestCase):
     # constants
     TEST_DIR = os.path.join(str(pathlib.Path(__file__).parent.parent.parent), "test_dir")
     RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
-    BINDING_SITES_FN = os.path.join(TEST_DIR, "bindingSites.p")
     FAKE_FN = 'fakefile'
     PCRLEN = "length"
     CONTIG = "contig"
@@ -107,26 +106,11 @@ class ResultsTest(unittest.TestCase):
         clock.printStart('reading genomic sequences into memory')
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
         clock.printDone()
-
-        # load the binding sites if the file already exists
-        if os.path.exists(ResultsTest.BINDING_SITES_FN):
-            clock.printStart('loading binding sites from file')
-            with open(ResultsTest.BINDING_SITES_FN, 'rb') as fh:
-                cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = pickle.load(fh)
-            clock.printDone()
         
-        # otherwise calculate and dump the binding sites
-        else:
-            # calculate the binding sites
-            clock.printStart('getting binding sites for all kmers and primers', end='...\n', spin=False)
-            cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = ResultsTest._getKmerBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
-            clock.printDone()
-            
-            # dump the binding sites
-            clock.printStart('dumping binding sites to file')
-            with open(ResultsTest.BINDING_SITES_FN, 'wb') as fh:
-                pickle.dump(cls.bindingSites, fh)
-            clock.printDone()
+        # calculate the binding sites
+        clock.printStart('getting binding sites for all kmers and primers', end='...\n', spin=False)
+        cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = ResultsTest._getKmerBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
+        clock.printDone()
     
     # functions for setting up the class
     def _getNumThreads() -> int:
