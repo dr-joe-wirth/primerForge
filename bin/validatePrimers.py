@@ -69,7 +69,8 @@ def __runPcr(params:Parameters) -> dict[tuple[str,str],set[tuple[str,int]]]:
     """
     # constants
     CMD = 'isPcr'
-    ARGS = ['stdout', '-out=bed']
+    ARGS = ['stdout', '-out=bed', '-minGood=6', '-minPerfect=8']
+    TILE = '-tileSize='
     EMPTY = ['']
     
     # initialize output
@@ -78,6 +79,7 @@ def __runPcr(params:Parameters) -> dict[tuple[str,str],set[tuple[str,int]]]:
     # build command
     cmd = [CMD, params.allContigsFna, params.queryFn]
     cmd.extend(ARGS)
+    cmd.append(TILE + str(Parameters._MIN_LEN))
     
     # run the command
     results = subprocess.run(cmd, capture_output=True, check=True)
