@@ -439,7 +439,7 @@ class ResultsTest(unittest.TestCase):
         """loads genome sequences into memory
 
         Returns:
-            dict[str,list[SeqRecord]]: key=genome name; val=dict: key=contig name; val=dict: key=strand; val=sequence
+            dict[str,dict[str,dict[str,Seq]]]: key=genome name; val=dict: key=contig name; val=dict: key=strand; val=sequence
         """
         # initialize output
         out = dict()
