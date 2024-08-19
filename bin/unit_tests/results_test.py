@@ -422,7 +422,7 @@ class ResultsTest(unittest.TestCase):
             fn (str): the filename (basename)
 
         Returns:
-            dict[str,SeqRecord]: key=contig name; val=dict: key=strand; val=sequence
+            dict[str,dict[str,Seq]]: key=contig name; val=dict: key=strand; val=sequence
         """
         # initialize variables
         out = dict()
