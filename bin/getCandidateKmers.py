@@ -238,6 +238,32 @@ def __reorganizeDataByPosition(name:str, kmers:dict[str,dict[str,tuple[str,int,s
     return out
 
 
+def __removeRedundantKmerGroups(positions:dict[str,dict[int,list[tuple[str,str]]]], seen:set[tuple[str]]) -> None:
+    """removes redundant groups of kmers from the positions dictionary
+
+    Args:
+        positions (dict[str,dict[int,list[tuple[str,str]]]]): the dictionary produced by __reorganizeDataByPosition
+        seen (set[tuple[str]]): a set of kmer groups that have already been processed
+    """
+    # for each contig
+    for contig in positions.keys():
+        # get a list of kmer positions to allow on-the-fly deleting
+        starts = list(positions[contig].keys())
+        
+        # for each start position
+        for start in starts:
+            # extract the group of kmers for this position
+            group = tuple(sorted(x[0] for x in positions[contig][start]))
+            
+            # remove this from the dictionary if its kmer group has been seen
+            if group in seen:
+                del positions[contig][start]
+            
+            # mark previously unseen groups as seen
+            else:
+                seen.add(group)
+
+
 def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[str,str]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
     """evaluates all the primers at a single position in the genome; designed for parallel calls
 
@@ -383,12 +409,13 @@ def __buildOutput(kmers:dict[str,dict[str,tuple[str,int,str]]], candidates:list[
     return out
 
 
-def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,str]]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
+def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,str]]], seen:set[tuple[str]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
     """gets candidate primers for a single genome
 
     Args:
         name (str): the name of the genome to get primers for
         kmers (dict[Seq,dict[str,tuple[str,int,int]]]): the dictionary produced by __getSharedKmers
+        seen (set[tuple[str]]): a set of kmer groups (tuple of strings) that have already been processed
         params (Parameters): a Parameters object
 
     Returns:
@@ -396,6 +423,9 @@ def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,
     """
     # reorganize data by each unique start positions for one genome
     positions = __reorganizeDataByPosition(name, kmers)
+    
+    # remove groups of kmers that have already been seen
+    __removeRedundantKmerGroups(positions, seen)
     
     # get a list of the kmers that pass the evaulation
     candidates = __evaluateAllKmers(positions, params.minGc, params.maxGc, params.minTm, params.maxTm, params.numThreads)
@@ -431,6 +461,7 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     # initialize variables
     clock = Clock()
     numCand = 0
+    seen = set()
     out = dict()
     
     # setup debugger
@@ -467,7 +498,7 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     names = list(next(iter(kmers.values())).keys())
     for name in names:
         # get the candidate kmers for the genome
-        candidates = __getCandidatesForOneGenome(name, kmers, params)
+        candidates = __getCandidatesForOneGenome(name, kmers, seen, params)
         
         # for each genome in the candidates
         for genome in candidates.keys():
@@ -479,6 +510,9 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
                 # store a set of all the candidates for this contig
                 out[genome][contig] = out[genome].get(contig, set())
                 out[genome][contig].update(candidates[genome][contig])
+    
+    # done with seen; remove it
+    del seen
     
     # for each genome
     for name in out.keys():
