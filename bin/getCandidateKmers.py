@@ -1,10 +1,9 @@
-import os
 from Bio import SeqIO
 from bin.Clock import Clock
 from khmer import Countgraph
 from bin.Primer import Primer
-import multiprocessing, primer3
 from ahocorasick import Automaton
+import multiprocessing, os, primer3
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
@@ -73,38 +72,41 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     # message
     MSG = " shared kmers after processing "
     
+    # generator for getting arguments
+    def generateArgs():
+        # initialize variables
+        firstGenome = True
+        rec:SeqRecord
+        
+        # for each file
+        for fn in params.ingroupFns:
+            # create lists of the contig sequences as strings
+            fwd = list()
+            rev = list()
+            for rec in SeqIO.parse(fn, params.format):
+                fwd.append(str(rec.seq))
+                rev.append(str(rec.seq.reverse_complement()))
+            
+            # concatenate contig sequences separated by junction characters
+            # this will prevent the creation of "chimeric junction kmers"
+            fwd = (__JUNCTION_CHAR * params.maxLen).join(fwd)
+            rev = (__JUNCTION_CHAR * params.maxLen).join(rev)
+            
+            # for each kmer length
+            for k in range(params.minLen, params.maxLen+1):
+                # create a list of arguments for __getAllowedKmers
+                yield (fwd, rev, k, firstGenome, os.path.basename(fn))
+            
+            # reset first genome boolean
+            firstGenome = False
+    
     # initialize variables
     tmp = dict()
-    rec:SeqRecord
-    args = list()
     out = Automaton()
-    firstGenome = True
-    
-    # for each file
-    for fn in params.ingroupFns:
-        # create lists of the contig sequences as strings
-        fwd = list()
-        rev = list()
-        for rec in SeqIO.parse(fn, params.format):
-            fwd.append(str(rec.seq))
-            rev.append(str(rec.seq.reverse_complement()))
-        
-        # concatenate contig sequences separated by junction characters
-        # this will prevent the creation of "chimeric junction kmers"
-        fwd = (__JUNCTION_CHAR * params.maxLen).join(fwd)
-        rev = (__JUNCTION_CHAR * params.maxLen).join(rev)
-        
-        # for each kmer length
-        for k in range(params.minLen, params.maxLen+1):
-            # create a list of arguments for __getAllowedKmers
-            args.append((fwd, rev, k, firstGenome, os.path.basename(fn)))
-        
-        # reset first genome boolean
-        firstGenome = False
     
     # identify the allowed kmers for each k and each genome in parallel
     pool = multiprocessing.Pool(params.numThreads)
-    allowed = pool.starmap(__getAllowedKmers, args)
+    allowed = pool.starmap(__getAllowedKmers, generateArgs())
     pool.close()
     pool.join()
     
@@ -355,19 +357,18 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], minGc:flo
     Returns:
         list[Primer]: a list of suitable primers as Primer objects
     """
-    # initialize a list of arguments
-    args = list()
-
-    # each contig needs to be evalutated
-    for contig in kmers.keys():
-        # each start position within the contig needs to be evaluated
-        for start in kmers[contig].keys():
-            # save arguments to pass in parallel
-            args.append((contig, start, kmers[contig][start], minGc, maxGc, minTm, maxTm))
+    # generator function for getting arguments
+    def generateArgs():
+        # each contig needs to be evalutated
+        for contig in kmers.keys():
+            # each start position within the contig needs to be evaluated
+            for start in kmers[contig].keys():
+                # save arguments to pass in parallel
+                yield (contig, start, kmers[contig][start], minGc, maxGc, minTm, maxTm)
 
     # parallelize primer evaluations
     pool = multiprocessing.Pool(processes=numThreads)
-    results = pool.starmap(__evaluateKmersAtOnePosition, args)
+    results = pool.starmap(__evaluateKmersAtOnePosition, generateArgs())
     pool.close()
     pool.join()
 

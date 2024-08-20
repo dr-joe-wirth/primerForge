@@ -229,53 +229,56 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
             return primer.seq[-1] in GC
         if direction == REV:
             return primer.seq[0] in GC
-
+    
+    # generator function for getting arguments
+    def generateArgs(lookup:dict):
+        # for each bin pair
+        for contig,num1,num2 in binPairs:
+            # indicate if a suitable primer pair has been found
+            found = False
+            
+            # extract the lists of primers for these bins
+            bin1 = bins[contig][num1]
+            bin2 = bins[contig][num2]
+            
+            # go through each possible forward primer
+            for idx,fwd in enumerate(bin1):
+                # only consider fwd primers with 3' GC
+                if isThreePrimeGc(fwd):
+                    # go through each possible reverse primer
+                    for jdx,rev in enumerate(bin2):
+                        # only consider rev primers with 3' GC
+                        if isThreePrimeGc(rev, REV):
+                            # determine if the pair is suitable and its PCR product length
+                            suitable,pcrLen = __isPairSuitable(fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff)
+                            
+                            if suitable:
+                                # cast the bin pair as a string to reduce memory footprint
+                                binPair = str((contig, num1, num2))
+                                
+                                # store the indices of these primers within their respective bins
+                                lookup[binPair] = (idx, jdx, pcrLen)
+                                
+                                # add data to the argument list
+                                yield (str(fwd), str(rev.reverseComplement()), fwd.Tm, rev.Tm, binPair)
+                                
+                                # indicate that a suitable primer pair has been found and break out of the loop
+                                found = True
+                                break
+                    
+                    # move to the next bin pair if a suitable primer pair has been found
+                    if found:
+                        break
+    
     # initialize variables
     out = list()
-    args = list()
     lookup = dict()
     
-    # for each bin pair
-    for contig,num1,num2 in binPairs:
-        # indicate if a suitable primer pair has been found
-        found = False
-        
-        # extract the lists of primers for these bins
-        bin1 = bins[contig][num1]
-        bin2 = bins[contig][num2]
-        
-        # go through each possible forward primer
-        for idx,fwd in enumerate(bin1):
-            # only consider fwd primers with 3' GC
-            if isThreePrimeGc(fwd):
-                # go through each possible reverse primer
-                for jdx,rev in enumerate(bin2):
-                    # only consider rev primers with 3' GC
-                    if isThreePrimeGc(rev, REV):
-                        # determine if the pair is suitable and its PCR product length
-                        suitable,pcrLen = __isPairSuitable(fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff)
-                        
-                        if suitable:
-                            # cast the bin pair as a string to reduce memory footprint
-                            binPair = str((contig, num1, num2))
-                            
-                            # store the indices of these primers within their respective bins
-                            lookup[binPair] = (idx, jdx, pcrLen)
-                            
-                            # add data to the argument list
-                            args.append((str(fwd), str(rev.reverseComplement()), fwd.Tm, rev.Tm, binPair))
-                            
-                            # indicate that a suitable primer pair has been found and break out of the loop
-                            found = True
-                            break
-                
-                # move to the next bin pair if a suitable primer pair has been found
-                if found:
-                    break
-    
     # evaluate pairs of primers for heterodimer potential in parallel
-    with multiprocessing.Pool(params.numThreads) as pool:
-        pairs = pool.starmap(__evaluateOnePair, args)
+    pool = multiprocessing.Pool(params.numThreads)
+    pairs = pool.starmap(__evaluateOnePair, generateArgs(lookup))
+    pool.close()
+    pool.join()
     
     # for each valid pair
     for pair in [x for x in pairs if x is not None]:
