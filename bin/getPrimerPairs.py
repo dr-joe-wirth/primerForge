@@ -232,7 +232,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
             return primer.seq[0] in GC
     
     # generator function for getting arguments
-    def generateArgs() -> Generator[tuple[str, str, float, float, str]]:
+    def generateArgs() -> Generator[tuple[str, str, float, float, str],None,None]:
         """ generates arguments for __evaluateOnePair
         """
         # for each bin pair

@@ -78,7 +78,7 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     MSG = " shared kmers after processing "
     
     # generator for getting arguments
-    def generateArgs() -> Generator[tuple[str,str,int,bool,str]]:
+    def generateArgs() -> Generator[tuple[str,str,int,bool,str],None,None]:
         """generator to provide arguments to __getAllowedKmers
         """
         # initialize variables
@@ -365,7 +365,7 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], minGc:flo
         list[Primer]: a list of suitable primers as Primer objects
     """
     # generator function for getting arguments
-    def generateArgs() -> Generator[tuple[str,int,list[tuple[str,str]],float,float,float,float]]:
+    def generateArgs() -> Generator[tuple[str,int,list[tuple[str,str]],float,float,float,float],None,None]:
         """ generates arguments for __evaluateKmersAtOnePosition
         """
         # each contig needs to be evalutated

@@ -34,7 +34,7 @@ def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
     return sharedExists, candidExists, unfiltExists, filterExists, validsExists
 
 
-def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, Generator[SeqRecord]]:
+def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, Generator[SeqRecord,None,None]]:
     """reads sequence data into file
 
     Args:
@@ -42,7 +42,7 @@ def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, Generator[SeqR
         frmt (str): the format of the sequence files
 
     Returns:
-        dict[str, Generator[SeqRecord]]: key=genome name; val=a sequence iterator
+        dict[str, Generator[SeqRecord,None,None]]: key=genome name; val=a generator that yields contigs
     """
     # initialize output
     out = dict()
