@@ -1,5 +1,6 @@
 from Bio import SeqIO
 from bin.Clock import Clock
+from typing import Generator
 from khmer import Countgraph
 from bin.Primer import Primer
 from ahocorasick import Automaton
@@ -22,7 +23,7 @@ def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool, name:str) -> tuple[st
         name (str): the name of the input genome
 
     Returns:
-        set[str]: a set of the allowed kmers
+        tuple[str, set[str]]: name of the input genome; a set of the allowed kmers
     """
     # helper functions
     def isOneEndGc(seq:str) -> bool:
@@ -32,9 +33,13 @@ def __getAllowedKmers(fwd:str, rev:str, k:int, first:bool, name:str) -> tuple[st
         return seq[-1] in GC or seq[0] in GC
     
     def appearsOnce(seq:str, kh:Countgraph) -> bool:
+        """evaluates if the sequence appears once in the countgraph
+        """
         return kh.get(seq) == 1
     
     def atJunction(seq:str) -> bool:
+        """ evaluates if the sequence is touching a junction
+        """
         return __JUNCTION_CHAR in seq
     
     # create count graphs for both strands
@@ -73,7 +78,9 @@ def __getAllAllowedKmers(params:Parameters) -> Automaton:
     MSG = " shared kmers after processing "
     
     # generator for getting arguments
-    def generateArgs():
+    def generateArgs() -> Generator[tuple[str,str,int,bool,str]]:
+        """generator to provide arguments to __getAllowedKmers
+        """
         # initialize variables
         firstGenome = True
         rec:SeqRecord
@@ -266,13 +273,13 @@ def __removeRedundantKmerGroups(positions:dict[str,dict[int,list[tuple[str,str]]
                 seen.add(group)
 
 
-def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[str,str]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
+def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str,str]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
     """evaluates all the primers at a single position in the genome; designed for parallel calls
 
     Args:
         contig (str): the name of the contig
         start (int): the start position in the sequence
-        posL (list[tuple[str,int]]): a list of tuples: kmer, strand
+        positions (list[tuple[str,int]]): a list of positions (kmer, strand)
         minGc (float): the minimum percent GC allowed
         maxGc (float): the maximum percent GC allowed
         minTm (float): the minimum melting temperature allowed
@@ -328,16 +335,16 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, posL:list[tuple[str,str]
     idx = 0
     
     # continue to iterate through each primer in the list until a primer is found 
-    for idx in range(len(posL)):
+    for idx in range(len(positions)):
         # extract data from the list
-        seq,strand = posL[idx]
+        seq,strand = positions[idx]
         
         # create a Primer object
         primer = Primer(seq, contig, start, len(seq), strand)
         
         # evaluate the primer's percent GC, Tm, hairpin potential, and homodimer potential; save if passes
         if isGcWithinRange(primer) and isTmWithinRange(primer): # O(1)
-            if noLongRepeats(primer): # O(1)
+            if noLongRepeats(primer):
                 if noHairpins(primer):
                     if noHomodimers(primer):
                         return primer
@@ -358,7 +365,9 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], minGc:flo
         list[Primer]: a list of suitable primers as Primer objects
     """
     # generator function for getting arguments
-    def generateArgs():
+    def generateArgs() -> Generator[tuple[str,int,list[tuple[str,str]],float,float,float,float]]:
+        """ generates arguments for __evaluateKmersAtOnePosition
+        """
         # each contig needs to be evalutated
         for contig in kmers.keys():
             # each start position within the contig needs to be evaluated
@@ -415,7 +424,7 @@ def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,
 
     Args:
         name (str): the name of the genome to get primers for
-        kmers (dict[Seq,dict[str,tuple[str,int,int]]]): the dictionary produced by __getSharedKmers
+        kmers (dict[str,dict[str,tuple[str,int,str]]]): the dictionary produced by __getSharedKmers
         seen (set[tuple[str]]): a set of kmer groups (tuple of strings) that have already been processed
         params (Parameters): a Parameters object
 

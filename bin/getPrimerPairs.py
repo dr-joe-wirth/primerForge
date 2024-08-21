@@ -1,4 +1,5 @@
 from Bio.Seq import Seq
+from typing import Generator
 from bin.Primer import Primer
 from itertools import combinations
 import multiprocessing, os, primer3
@@ -107,7 +108,7 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
         maxProdLen (int): the maximum pcr product size
 
     Returns:
-        list[tuple[str,int,int]]: list of tuples: contig, bin1 number, bin2 number
+        list[tuple[str,int,int]]: list of bin pairs (contig, bin1 number, bin2 number)
     """
     # initialize output
     out = list()
@@ -231,7 +232,9 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
             return primer.seq[0] in GC
     
     # generator function for getting arguments
-    def generateArgs(lookup:dict):
+    def generateArgs() -> Generator[tuple[str, str, float, float, str]]:
+        """ generates arguments for __evaluateOnePair
+        """
         # for each bin pair
         for contig,num1,num2 in binPairs:
             # indicate if a suitable primer pair has been found
@@ -276,7 +279,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
     
     # evaluate pairs of primers for heterodimer potential in parallel
     pool = multiprocessing.Pool(params.numThreads)
-    pairs = pool.starmap(__evaluateOnePair, generateArgs(lookup))
+    pairs = pool.starmap(__evaluateOnePair, generateArgs())
     pool.close()
     pool.join()
     

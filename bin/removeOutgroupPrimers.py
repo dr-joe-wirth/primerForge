@@ -1,4 +1,5 @@
 from bin.Clock import Clock
+from typing import Generator
 from bin.Primer import Primer
 from ahocorasick import Automaton
 from Bio.SeqRecord import SeqRecord
@@ -164,11 +165,11 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
                     pairs[pair][name] = (",".join(contigs), ",".join(map(str,pcrLens)), ())
 
 
-def _removeOutgroupPrimers(outgroup:dict[str,list[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], params:Parameters) -> None:
+def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], params:Parameters) -> None:
     """removes primers found in the outgroup that produce disallowed product sizes
 
     Args:
-        outgroup (dict[str,list[SeqRecord]]): key=genome name; val=list of contigs (or a generator)
+        outgroup (dict[str,Generator[SeqRecord]]): key=genome name; val=contig generator
         pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
         params (Parameters): a Parameters object
 

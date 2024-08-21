@@ -1,6 +1,7 @@
 import os
 from Bio import SeqIO
 from bin.Clock import Clock
+from typing import Generator
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
@@ -21,7 +22,7 @@ def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
         params (Parameters): a Parameters object
 
     Returns:
-        tuple[bool,bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; validated pairs
+        tuple[bool,bool,bool,bool,bool]: each boolean indicates if the pickle exists: shared kmers; candidate kmers; unfiltered pairs; filtered pairs; validated pairs
     """
     # determine if each pickle exists
     sharedExists = os.path.exists(params.pickles[Parameters._SHARED])
@@ -33,7 +34,7 @@ def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
     return sharedExists, candidExists, unfiltExists, filterExists, validsExists
 
 
-def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord]]:
+def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, Generator[SeqRecord]]:
     """reads sequence data into file
 
     Args:
@@ -41,7 +42,7 @@ def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, list[SeqRecord
         frmt (str): the format of the sequence files
 
     Returns:
-        dict[str, list[SeqRecord]]: key=genome name; val=a sequence iterator; functionally a list of SeqRecords
+        dict[str, Generator[SeqRecord]]: key=genome name; val=a sequence iterator
     """
     # initialize output
     out = dict()
@@ -308,7 +309,9 @@ def _runner(params:Parameters) -> None:
     MSG  = 'total runtime: '
     
     # helper function to generate the error message
-    def generateErrorMessage(current:Parameters, old:Parameters) -> str:
+    def createErrorMessage(current:Parameters, old:Parameters) -> str:
+        """creates an informative error message based on conflicting parameters
+        """
         # constants
         GAP = 4*" "
         ERR_PREFIX = "current parameters do not match parameters on checkpointed run:\n"
@@ -368,7 +371,7 @@ def _runner(params:Parameters) -> None:
         oldParams = params.loadObj(params.pickles[Parameters._PARAMS])
         
         if params != oldParams:
-            raise BaseException(generateErrorMessage(params, oldParams))
+            raise BaseException(createErrorMessage(params, oldParams))
     
     # save the current parameters
     params.dumpObj(params, params.pickles[Parameters._PARAMS], 'Parameters')
