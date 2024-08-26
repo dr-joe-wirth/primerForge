@@ -125,7 +125,7 @@ Table: \label{tab:comparisons} Comparing `swga2 v0.0.1` to `primerForge v1.3.5`
 |`swga2`|_M. mycoides_|05:13|0.221|run failed|NA|NA|NA|
 |`primerForge`|_M. mycoides_|02:25|1.490|1,096|1,096|942|884|
 |`swga2`|_E. coli_|21:10|4.452|run failed|NA|NA|NA|
-|`primerForge`|_E. coli_|61:09|10.645|1,150,858|1,148,425|301,380|125,357|
+|`primerForge`|_E. coli_|81:09|10.645|1,150,858|1,148,425|301,380|125,357|
 |`swga2`|SARS-CoV-2|10:38|0.141|63|7|0|0|
 |`primerForge`|SARS-CoV-2|00:20|0.118|15|15|15|15|
 
