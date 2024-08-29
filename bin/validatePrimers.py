@@ -1,9 +1,10 @@
-import os, subprocess
 from Bio import SeqIO
 from bin.Clock import Clock
+from typing import Generator
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+import multiprocessing, os, subprocess
 
 
 # global constants
@@ -38,38 +39,45 @@ def __makeFastaFile(params:Parameters) -> None:
                 SeqIO.write(SeqRecord(contig.seq, contig.id, '', ''), fh, OUT_FORMAT)
 
 
-def __makeQueryFile(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
-    """makes the query file for 
+def __makeQueryString(pairs:list[tuple[Primer,Primer]]) -> str:
+    """makes the query string from a list of primer pairs
 
     Args:
-        params (Parameters): a Parameters object
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
+        pairs (list[tuple[Primer,Primer]]): a list of primer pairs
+    
+    Returns:
+        str: the query string
     """
-    # open the file
-    with open(params.queryFn, 'w') as fh:
-        for pair in pairs.keys():
-            # recast the pair as a strings
-            fwd,rev = map(str, pair)
-            
-            # the "key" column will be the pair separated by a pipe
-            key = __KEY_SEP.join((fwd,rev))
-            
-            # write the data for each pair to file; one per line
-            fh.write(__ROW_SEP.join((key,fwd,rev)) + "\n")
+    # initialize the output
+    out = ""
+    
+    # for each pair
+    for pair in pairs:
+        # recast the pair as a strings
+        fwd,rev = map(str, pair)
+        
+        # the "key" column will be the pair separated by a pipe
+        key = __KEY_SEP.join((fwd,rev))
+        
+        # save the data for each pair; one per line
+        out += __ROW_SEP.join((key,fwd,rev)) + "\n"
+    
+    return out
 
 
-def __runPcr(params:Parameters) -> dict[tuple[str,str],set[tuple[str,int]]]:
-    """runs isPcr on the primer pairs
+def __runOnePcr(allContigsFna:str, query:str) -> dict[tuple[str,str],set[tuple[str,int]]]:
+    """runs isPcr on a properly formatted query string
 
     Args:
-        params (Parameters): a Parameters object
+        allContigsFna (str): the filename containing all the contigs
+        query (str): the query to search
 
     Returns:
-        dict[tuple[str,str],set[tuple[str,int]]]: key=primer pair (as strings); val=pcr product size
+        dict[tuple[str,str],set[tuple[str,int]]]: key=primer pair (as strings); val=(contig, pcr product size)
     """
     # constants
     CMD = 'isPcr'
-    ARGS = ['stdout', '-out=bed', '-minGood=6', '-minPerfect=8']
+    ARGS = ['stdin', 'stdout', '-out=bed', '-minGood=6', '-minPerfect=8']
     TILE = '-tileSize='
     EMPTY = ['']
     
@@ -77,15 +85,17 @@ def __runPcr(params:Parameters) -> dict[tuple[str,str],set[tuple[str,int]]]:
     out = dict()
     
     # build command
-    cmd = [CMD, params.allContigsFna, params.queryFn]
+    cmd = [CMD, allContigsFna]
     cmd.extend(ARGS)
     cmd.append(TILE + str(Parameters._MIN_LEN))
     
-    # run the command
-    results = subprocess.run(cmd, capture_output=True, check=True)
+    # run the command; inject the query string using a pipe
+    results = subprocess.run(cmd, input=query.encode(), capture_output=True, check=True)
     
-    # convert the results to a list of values; do not keep empty lines
-    results = list(map(lambda x: x.split(__ROW_SEP), results.stdout.decode().split('\n')))
+    # convert the results to a collection of rows (lists of strings)
+    results = map(lambda x: x.split(__ROW_SEP), results.stdout.decode().split('\n'))
+    
+    # do not keep empty rows
     results = [x for x in results if x != EMPTY]
     
     # for each result
@@ -100,6 +110,50 @@ def __runPcr(params:Parameters) -> dict[tuple[str,str],set[tuple[str,int]]]:
         out[pair].add((contig, size))
     
     return out
+
+
+def __runAllPcrs(params:Parameters, pairs:list[tuple[Primer,Primer]]) -> dict[tuple[str,str],set[tuple[str,int]]]:
+    """runs all pcrs in parallel
+
+    Args:
+        params (Parameters): a Parameters object
+        pairs (list[tuple[Primer,Primer]]): a list of primer pairs
+
+    Returns:
+        dict[tuple[str,str],set[tuple[str,int]]]: key=primer pair; val=(contig, pcr product size)
+    """
+    # helper function
+    def genArgs() -> Generator[tuple[str,str],None,None]:
+        """generates arguments for __runOnePcr
+        """
+        # constant
+        MAX_CHUNK = 2000
+        
+        # initialize values for iteration
+        numPairs = len(pairs)
+        chunk = min((MAX_CHUNK, numPairs // params.numThreads))
+        start = 0
+        end = chunk
+        
+        # keep iterating until all the pairs have been evaluated
+        while start <= numPairs:
+            # make the query for this chunk
+            query = __makeQueryString(pairs[start:end])
+            
+            # update the start and end for the next chunk
+            start = end
+            end += chunk
+            
+            yield (params.allContigsFna, query)
+    
+    # run pcrs in parallel
+    pool = multiprocessing.Pool(params.numThreads)
+    results = pool.starmap(__runOnePcr, genArgs())
+    pool.close()
+    pool.join()
+    
+    # combine the results and return them
+    return {k:v for r in results for k,v in r.items()}
 
 
 def __filterPairs(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], pcrs:dict[tuple[str,str],list[tuple[str,int]]]) -> None:
@@ -143,10 +197,11 @@ def _validatePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict
     clock.printStart(MSG_1)
     params.log.info(MSG_1)
     
-    # create the fasta and query files and run isPcr
+    # create the fasta file
     __makeFastaFile(params)
-    __makeQueryFile(params, pairs)
-    pcrs = __runPcr(params)
+    
+    # run isPcr in parallel
+    pcrs = __runAllPcrs(params, list(pairs.keys()))
     
     # filter out bad pairs
     __filterPairs(pairs, pcrs)
