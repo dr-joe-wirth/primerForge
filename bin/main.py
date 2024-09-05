@@ -1,4 +1,4 @@
-import os
+import os, shutil
 from Bio import SeqIO
 from bin.Clock import Clock
 from typing import Generator
@@ -279,14 +279,10 @@ def __removeIntermediateFiles(params:Parameters) -> None:
     Args:
         params (Parameters): a Parameters object
     """
-    # remove all the pickle files
-    for fn in params.pickles.values():
-        os.remove(fn)
+    # remove the pickle directory along with any pickles
+    shutil.rmtree(os.path.dirname(next(iter(params.pickles.values()))))
     
-    # remove the pickle directory
-    os.rmdir(os.path.dirname(fn))
-    
-    # remove the isPcr files
+    # remove the isPcr query file
     os.remove(params.allContigsFna)
 
 
