@@ -288,7 +288,6 @@ def __removeIntermediateFiles(params:Parameters) -> None:
     
     # remove the isPcr files
     os.remove(params.allContigsFna)
-    os.remove(params.queryFn)
 
 
 def _runner(params:Parameters) -> None:

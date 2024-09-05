@@ -12,7 +12,6 @@ class Parameters():
     _MIN_LEN = 10
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __ALL_CONTIGS_FNA = ".all_contigs.fna"
-    __QUERY_FN = ".ispcr_query.tsv"
     __PICKLE_DIR = "_pickles"
     _PARAMS = 0
     _SHARED = 1
@@ -69,7 +68,6 @@ class Parameters():
         self.pickles:dict[int,str]
         self.keepIntermediateFiles:bool
         self.allContigsFna:str
-        self.queryFn:str
         
         # save author and version as private attributes
         self.__author:str = author
@@ -93,9 +91,6 @@ class Parameters():
             
             # get the all contigs fasta filename
             self.allContigsFna = os.path.join(os.path.dirname(self.resultsFn), Parameters.__ALL_CONTIGS_FNA)
-            
-            # get the ispcr query filename
-            self.queryFn = os.path.join(os.path.dirname(self.resultsFn), Parameters.__QUERY_FN)
 
     def __eq__(self, other:Parameters) -> bool:
         """equality overload
