@@ -23,9 +23,9 @@ authors:
     orcid: 0000-0002-9320-6774
     affiliation: "1"
 affiliations:
- - name: Centers for Disease Control and Prevention, Atlanta, GA, USA
+ - name: Centers for Disease Control and Prevention, Atlanta, GA, United States
    index: "1"
- - name: Oak Ridge Institute for Science and Education, Oak Ridge, TN, USA
+ - name: Oak Ridge Institute for Science and Education, Oak Ridge, TN, United States
    index: "2"
 date: 15 April 2024
 bibliography: paper.bib
@@ -33,7 +33,11 @@ bibliography: paper.bib
 # Summary
 In both molecular epidemiology and microbial ecology, it is useful to be able
 to categorize specific strains of microorganisms in either an ingroup or an
-outgroup in a given population. While whole genome sequencing and downstream
+outgroup in a given population, e.g. to distinguish a pathogenic strain of
+interest from its non-virulent relatives. An "ingroup" refers to a group of
+microbes that are the primary focus of study or interest. Conversely, an
+"outgroup" consists of microbes that are closely-related to, but have evolved
+separately from, the ingroup. While whole genome sequencing and downstream
 phylogenetic analyses can be employed to do this, these techniques are often
 slow and can be resource intensive. Additionally, the laboratory would have to
 sequence the whole genome to use these tools to determine whether or not a new
@@ -73,17 +77,18 @@ which could help inform if the population were to grow, shrink, or migrate.
 
 # Comparing `primerForge` to `swga2`
 Another software package, `swga2`, was developed to choose sets of primers that
-selectively amplify one set of genomes but not in another set of genomes
-[@10.1371/journal.pcbi.1010137]. Given this similarity, it was important to
-compare the performance of `primerForge` to that of `swga2`. To do this, the
-sequence files listed in \autoref{tab:sequences} were used as inputs. The
-default parameters were used except that the melting temperature range was set
-at 55°C to 68°C and only a single processor was used. The primer pairs
-identified by `swga2` and `primerForge` were evaluated using `isPcr` with the
-following additional parameters: `-tileSize=8`, `-minGood=8`, and
-`-minPerfect=8`. These parameters were necessary because the primers identified
-by `swga2` were too short to use the default value of 15. The results of these
-comparisons are shown in \autoref{tab:comparisons}.
+selectively amplify PCR products in one set of genomes (the ingroup) but not in
+another set of genomes (the outgroup) [@10.1371/journal.pcbi.1010137]. Given
+this similarity, it was important to compare the performance of `primerForge` to
+that of `swga2`. To do this, the sequence files listed in
+\autoref{tab:sequences} were used as inputs. The default parameters were used
+except that the melting temperature range was set at 55°C to 68°C and only a
+single processor was used. The primer pairs identified by `swga2` and
+`primerForge` were evaluated using `isPcr` with the following additional
+parameters: `-tileSize=8`, `-minGood=8`, and `-minPerfect=8`. These parameters
+were necessary because the primers identified by `swga2` were too short to use
+the default value of 15. The results of these comparisons are shown in
+\autoref{tab:comparisons}.
 
 Table: \label{tab:sequences} Datasets used to compare `primerForge` to `swga2`.
 
