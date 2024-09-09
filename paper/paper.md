@@ -23,7 +23,7 @@ authors:
     orcid: 0000-0002-9320-6774
     affiliation: "1"
 affiliations:
- - name: Centers for Disease Control and Prevention, Atlanta, GA, United States
+ - name: Enteric Diseases Laboratory Branch, Centers for Disease Control and Prevention, Atlanta, GA, United States
    index: "1"
  - name: Oak Ridge Institute for Science and Education, Oak Ridge, TN, United States
    index: "2"
