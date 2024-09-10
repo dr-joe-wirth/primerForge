@@ -5,6 +5,7 @@ from typing import Generator
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _getPrimerPairs
 from bin.validatePrimers import _validatePrimerPairs
 from bin.getCandidateKmers import _getAllCandidateKmers
@@ -241,6 +242,9 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     names = list(next(iter(pairs.values())).keys())
     headers = getHeaders(names)
     
+    # sort the primer pairs
+    sortedPairs = _sortPairs(params, pairs)
+    
     # open the file
     with open(params.resultsFn, 'w') as fh:
         # write the headers
@@ -248,7 +252,7 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
         fh.flush()
         
         # for each primer pair
-        for fwd,rev in pairs.keys():
+        for fwd,rev in sortedPairs:
             # save the primer pair data
             row = [fwd.seq,
                    round(fwd.Tm, NUM_DEC),
