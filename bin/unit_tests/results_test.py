@@ -12,13 +12,15 @@ from khmer import Countgraph
 from bin.Primer import Primer
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _formsDimers
 import gzip, os, pickle, primer3, signal, subprocess, time, unittest
 
 class Result():
     """class to save results for easy lookup
     """
-    def __init__(self, fwdTm:float, fwdGc:float, revTm:float, revGc:float, additional:dict[str,dict[str,list]]) -> Result:
+    def __init__(self, rowNum:int, fwdTm:float, fwdGc:float, revTm:float, revGc:float, additional:dict[str,dict[str,list]]) -> Result:
+        self.rowNum:int  = rowNum
         self.fwdTm:float = fwdTm
         self.fwdGc:float = fwdGc
         self.revTm:float = revTm
@@ -361,10 +363,14 @@ class ResultsTest(unittest.TestCase):
         out = dict()
         key = dict()
         header = True
+        rowNum = -1
         
         # go through each line in the file
         with open(fn, 'r') as fh:
             for line in fh:
+                # increment the row number
+                rowNum += 1
+                
                 # convert the line to a row of columns
                 line = line.rstrip()
                 row = line.split(SEP_1)
@@ -411,7 +417,7 @@ class ResultsTest(unittest.TestCase):
                             additional[name][ResultsTest.CONTIG] = row[idx].split(SEP_2)
                     
                     # store the result for this primer pair
-                    out[(fwd,rev)] = Result(ftm,fgc,rtm,rgc,additional)
+                    out[(fwd,rev)] = Result(rowNum,ftm,fgc,rtm,rgc,additional)
         
         return out
 
@@ -990,6 +996,39 @@ class ResultsTest(unittest.TestCase):
                         # and the pcr lengths should not be disallowed
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
+    
+    def testT_allPairsWritten(self) -> None:
+        """verifies that all primer pairs were written to file
+        """
+        # unpickle the pairs
+        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            pairs:dict[tuple[Primer,Primer]] = pickle.load(fh)
+        
+        # convert the pairs to a set of pairs as Seq
+        expected = {(f.seq,r.seq) for f,r in pairs.keys()}
+        
+        # get the pairs saved in the results as a set
+        observed = set(self.results.keys())
+        
+        # make sure that the pairs match
+        self.assertEqual(len(expected), len(observed), f'expected {len(expected)} primer pairs but observed {len(observed)}')
+        self.assertSetEqual(expected, observed, 'expected pairs do not match those written to file')
+    
+    def testU_arePairsSortedCorrectly(self) -> None:
+        """verifies that the pairs were written in the correct order
+        """
+        # load the pairs from the pickle
+        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            pairs:dict[tuple[Primer,Primer]] = pickle.load(fh)
+        
+        # get the expected sort order as a tuples of Seq
+        expected = [(f.seq,r.seq) for f,r in _sortPairs(self.params, pairs)]
+        
+        # get the observed order that was written
+        observed  = sorted(self.results.keys(), key=lambda x: self.results[x].rowNum)
+        
+        # check that the order is conserved
+        self.assertListEqual(expected, observed, 'expected sort order does not match the order written to file')
 
 
 if __name__ == "__main__":
