@@ -45,13 +45,13 @@ def __minDiffFromRange(intgr:int, rng:range) -> int:
     return min((lower, upper))
 
 
-def __sortOutgroupProducts(metadata:dict[str,tuple[str,int,tuple[str,int,int]]], outgroup:list[str], disallowed:range) -> tuple[int,int]:
+def __sortOutgroupProducts(metadata:dict[str,tuple[str,int,tuple[str,int,int]]], outgroup:list[str], ingroupPcrLens:range) -> tuple[int,int]:
     """evaluates the outgroup products for a primer pair in order to sort the pair
 
     Args:
         metadata (dict[str,tuple[str,int,tuple[str,int,int]]]): the metadata for a primer pair
         outgroup (list[str]): a list of outgroup filenames
-        disallowed (range): the range that outgroup products are not allowed to be in
+        ingroupPcrLens (range): the range that ingroup PCR products are within
 
     Returns:
         tuple[int,int]: minimum distance from the range (negated); the number of outgroup products
@@ -76,7 +76,7 @@ def __sortOutgroupProducts(metadata:dict[str,tuple[str,int,tuple[str,int,int]]],
         products = [y for x in products for y in x]
         
         # get the smallest value distance from the disallowed range
-        minDiff = min(map(lambda x:__minDiffFromRange(x, disallowed), products))
+        minDiff = min(map(lambda x:__minDiffFromRange(x, ingroupPcrLens), products))
     
     # return the minimum distance (negated so larger differences are sorted first) and the number of products
     return -minDiff, len(products)
@@ -208,7 +208,7 @@ def _sortPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple
         list[tuple[Primer,Primer]]: a list of sorted primer pairs
     """
     # sort the results using the following criteria (in order):
-    #  * largest difference from the disallowed range for outgroup PCR products
+    #  * largest difference from the ingroup product range for outgroup PCR products
     #  * fewest number of outgroup PCR products
     #  * lowest G+C difference between the pair
     #  * lowest Tm difference between the pair
@@ -217,7 +217,9 @@ def _sortPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple
     #  * lowest Tm (sum) for hairpins
     #  * lowest variance in ingroup PCR product sizes
     #  * largest median ingroup PCR product size
-    return sorted(pairs.keys(), key=lambda p: (__sortOutgroupProducts(pairs[p], params.outgroupFns, params.disallowedLens),
+    return sorted(pairs.keys(), key=lambda p: (__sortOutgroupProducts(pairs[p],
+                                                                      params.outgroupFns,
+                                                                      range(params.minPcr, params.maxPcr+1)),
                                                __getGcDiff(p),
                                                __getTmDiff(p),
                                                __getHeteroDimerTemp(p),
