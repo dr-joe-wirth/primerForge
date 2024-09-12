@@ -111,6 +111,12 @@ class ResultsTest(unittest.TestCase):
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
         clock.printDone()
         
+        # load the pairs from the pickle
+        clock.printStart('unpickling pairs')
+        with open(ResultsTest.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            cls.pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
+        clock.printDone()
+        
         # calculate the binding sites
         clock.printStart('getting binding sites for all kmers and primers', end='...\n', spin=False)
         cls.bindingSites:dict[Seq,dict[str,dict[str,dict[str,list[int]]]]] = ResultsTest._getKmerBindingSites(cls.results, cls.sequences, cls.params.minLen, cls.params.maxLen)
@@ -1011,12 +1017,8 @@ class ResultsTest(unittest.TestCase):
     def testU_arePairsSortedCorrectly(self) -> None:
         """verifies that the pairs were written in the correct order
         """
-        # load the pairs from the pickle
-        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
-            pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
-        
         # get the expected sort order as a tuples of Seq
-        expected = [(f.seq,r.seq) for f,r in _sortPairs(self.params, pairs)]
+        expected = [(f.seq,r.seq) for f,r in _sortPairs(self.params, self.pairs)]
         
         # get the observed order that was written
         observed  = sorted(self.results.keys(), key=lambda x: self.results[x].rowNum)
@@ -1025,14 +1027,10 @@ class ResultsTest(unittest.TestCase):
         self.assertListEqual(expected, observed, 'expected sort order does not match the order written to file')
     
     def testV_primerTmsWereCorrect(self) -> None:
-        """verifies that the pcr product data was populated correctly during runtime
+        """verifies that the homodimer Tms and hairpin Tms were stored correctly
         """
-        # load the pairs from the pickle
-        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
-            pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
-        
         # get a set of the non-redundant primer sequences
-        primers = {x for p in pairs.keys() for x in p}
+        primers = {x for p in self.pairs.keys() for x in p}
         
         # for each primer
         for primer in primers:
@@ -1045,22 +1043,20 @@ class ResultsTest(unittest.TestCase):
             self.assertAlmostEqual(primer.rcHomodimer, primer3.calc_homodimer_tm(str(primer.reverseComplement())), places=3)
     
     def testW_productTmsWereCorrect(self) -> None:
-        # load the pairs from the pickle
-        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
-            pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
-        
+        """verifies that heterodimer Tm was correct for all PCR products
+        """
         # for each pair
-        for fwd,rev in pairs.keys():
-            # calculate the heterodimer Tm
+        for fwd,rev in self.pairs.keys():
+            # calculate the heterodimer Tm for this pair
             dimerTm = primer3.calc_heterodimer_tm(str(fwd), str(rev))
             
             # for each product
-            for name in pairs[(fwd,rev)].keys():
-                product = pairs[(fwd,rev)][name]
+            for name in self.pairs[(fwd,rev)].keys():
+                product = self.pairs[(fwd,rev)][name]
                 
                 # check that the dimer Tm was saved correctly
                 self.assertAlmostEqual(dimerTm, product.dimerTm, places=3)
 
-
+# entrypoint
 if __name__ == "__main__":
     unittest.main()
