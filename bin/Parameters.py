@@ -177,11 +177,9 @@ class Parameters():
             if proceed == YN[1]:
                 raise FileExistsError(f"{WARN_MSG_A}{fn}{WARN_MSG_B}")
         
-        # make sure the file can be written
+        # make sure we can write the file to the output directory
         try:
-            fh = open(fn, 'w')
-            fh.close()
-            os.remove(fn)
+            os.access(os.path.dirname(fn), os.W_OK)
         except:
             raise ValueError(f"{ERR_MSG}{fn}")
 
