@@ -316,18 +316,26 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
     def noHairpins(primer:Primer) -> bool:
         """verifies that the primer does not form hairpins
         """
+        # save the hairpin Tms
+        primer.hairpinTm = primer3.calc_hairpin_tm(str(primer))
+        primer.rcHairpin = primer3.calc_hairpin_tm(str(primer.reverseComplement()))
+        
         # hairpin tm should be less than (minTm - 5°); need to check both strands
-        fwdOk = primer3.calc_hairpin_tm(str(primer)) < (minTm - FIVE_DEGREES)
-        revOk = primer3.calc_hairpin_tm(str(primer.reverseComplement())) < (minTm - FIVE_DEGREES)
+        fwdOk = primer.hairpinTm < (minTm - FIVE_DEGREES)
+        revOk = primer.rcHairpin < (minTm - FIVE_DEGREES)
         
         return fwdOk and revOk
 
     def noHomodimers(primer:Primer) -> bool:
         """verifies that the primer does not form homodimers
         """
+        # save the homodimer Tms
+        primer.homodimerTm = primer3.calc_homodimer_tm(str(primer))
+        primer.rcHomodimer = primer3.calc_homodimer_tm(str(primer.reverseComplement()))
+        
         # homodimer tm should be less than (minTm - 5°); need to check both strands
-        fwdOk = primer3.calc_homodimer_tm(str(primer)) < (minTm - FIVE_DEGREES)
-        revOk = primer3.calc_homodimer_tm(str(primer.reverseComplement())) < (minTm - FIVE_DEGREES)
+        fwdOk = primer.homodimerTm < (minTm - FIVE_DEGREES)
+        revOk = primer.rcHomodimer < (minTm - FIVE_DEGREES)
         
         return fwdOk and revOk
     
@@ -403,18 +411,34 @@ def __buildOutput(kmers:dict[str,dict[str,tuple[str,int,str]]], candidates:list[
         # identify which sequence is present in the genome
         try:
             entry = kmers[cand.seq]
+            hairpinTm = cand.hairpinTm
+            rcHairpin = cand.rcHairpin
+            homodimerTm = cand.homodimerTm
+            rcHomodimer = cand.rcHomodimer
+        
         except:
             entry = kmers[cand.seq.reverse_complement()]
+            hairpinTm = cand.rcHairpin
+            rcHairpin = cand.hairpinTm
+            homodimerTm = cand.rcHomodimer
+            rcHomodimer = cand.homodimerTm
         
         # for each genome
         for name in entry.keys():
             # extract the data from the entry
             contig, start, strand = entry[name]
-        
-            # save a Primer object in this contig's list
+
+            # create the new primer for this genome
+            primer = Primer(cand.seq, contig, start, len(cand.seq), strand)
+            primer.hairpinTm = hairpinTm
+            primer.rcHairpin = rcHairpin
+            primer.homodimerTm = homodimerTm
+            primer.rcHomodimer = rcHomodimer
+            
+            # save the Primer in this contig's list
             out[name] = out.get(name, dict())
             out[name][contig] = out[name].get(contig, list())
-            out[name][contig].append(Primer(cand.seq, contig, start, len(cand.seq), strand))
+            out[name][contig].append(primer)
     
     return out
 
