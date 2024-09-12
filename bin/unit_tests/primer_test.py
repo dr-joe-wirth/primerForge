@@ -28,6 +28,26 @@ class PrimerTest(unittest.TestCase):
         self.fwd_2 = Primer(PrimerTest.FWD_SEQ, PrimerTest.CNTG_2, PrimerTest.FSTR_2, len(PrimerTest.FWD_SEQ), Primer.MINUS)
         self.rev_1 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_1, PrimerTest.RSTR_1, len(PrimerTest.REV_SEQ), Primer.MINUS)
         self.rev_2 = Primer(PrimerTest.REV_SEQ, PrimerTest.CNTG_2, PrimerTest.RSTR_2, len(PrimerTest.REV_SEQ), Primer.PLUS)
+        
+        # save the hairpin Tms
+        self.fwd_1.hairpinTm = primer3.calc_hairpin_tm(PrimerTest.FWD_SEQ)
+        self.fwd_1.rcHairpin = primer3.calc_hairpin_tm(str(Seq(PrimerTest.FWD_SEQ).reverse_complement()))
+        self.fwd_2.hairpinTm = primer3.calc_hairpin_tm(PrimerTest.FWD_SEQ)
+        self.fwd_2.rcHairpin = primer3.calc_hairpin_tm(str(Seq(PrimerTest.FWD_SEQ).reverse_complement()))
+        self.rev_1.hairpinTm = primer3.calc_hairpin_tm(PrimerTest.REV_SEQ)
+        self.rev_1.rcHairpin = primer3.calc_hairpin_tm(str(Seq(PrimerTest.REV_SEQ).reverse_complement()))
+        self.rev_2.hairpinTm = primer3.calc_hairpin_tm(PrimerTest.REV_SEQ)
+        self.rev_2.rcHairpin = primer3.calc_hairpin_tm(str(Seq(PrimerTest.REV_SEQ).reverse_complement()))
+        
+        # save the homodimer Tms
+        self.fwd_1.homodimerTm = primer3.calc_homodimer_tm(PrimerTest.FWD_SEQ)
+        self.fwd_1.rcHomodimer = primer3.calc_homodimer_tm(str(Seq(PrimerTest.FWD_SEQ).reverse_complement()))
+        self.fwd_2.homodimerTm = primer3.calc_homodimer_tm(PrimerTest.FWD_SEQ)
+        self.fwd_2.rcHomodimer = primer3.calc_homodimer_tm(str(Seq(PrimerTest.FWD_SEQ).reverse_complement()))
+        self.rev_1.homodimerTm = primer3.calc_homodimer_tm(PrimerTest.REV_SEQ)
+        self.rev_1.rcHomodimer = primer3.calc_homodimer_tm(str(Seq(PrimerTest.REV_SEQ).reverse_complement()))
+        self.rev_2.homodimerTm = primer3.calc_homodimer_tm(PrimerTest.REV_SEQ)
+        self.rev_2.rcHomodimer = primer3.calc_homodimer_tm(str(Seq(PrimerTest.REV_SEQ).reverse_complement()))
     
     def tearDown(self) -> None:
         return super().tearDown()
@@ -235,6 +255,18 @@ class PrimerTest(unittest.TestCase):
         self.assertEqual(rc_f2.contig, self.fwd_2.contig)
         self.assertEqual(rc_r1.contig, self.rev_1.contig)
         self.assertEqual(rc_r2.contig, self.rev_2.contig)
+        
+        # check hairpin Tm
+        self.assertEqual(rc_f1.hairpinTm, self.fwd_1.rcHairpin)
+        self.assertEqual(rc_f2.hairpinTm, self.fwd_2.rcHairpin)
+        self.assertEqual(rc_f1.rcHairpin, self.fwd_1.hairpinTm)
+        self.assertEqual(rc_f2.rcHairpin, self.fwd_2.hairpinTm)
+        
+        # check homodimer Tm
+        self.assertEqual(rc_f1.homodimerTm, self.fwd_1.rcHomodimer)
+        self.assertEqual(rc_f2.homodimerTm, self.fwd_2.rcHomodimer)
+        self.assertEqual(rc_f1.rcHomodimer, self.fwd_1.homodimerTm)
+        self.assertEqual(rc_f2.rcHomodimer, self.fwd_2.homodimerTm)
 
 
 if __name__ == "__main__":

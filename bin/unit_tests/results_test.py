@@ -10,6 +10,7 @@ from bin.Clock import Clock
 from bin.main import _runner
 from khmer import Countgraph
 from bin.Primer import Primer
+from bin.Product import Product
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.sortPrimerPairs import _sortPairs
@@ -755,8 +756,11 @@ class ResultsTest(unittest.TestCase):
             fwd = Primer(fwd, '', 100, len(fwd), Primer.PLUS)
             rev = Primer(rev, '', 100, len(rev), Primer.MINUS)
 
+            # check dimer Tm
+            forms,tm = _formsDimers(str(fwd),str(rev.reverseComplement()),fwd.Tm, rev.Tm)
+            
             # check for primer dimers; both primers need to be on the same strand
-            self.assertFalse(_formsDimers(str(fwd),str(rev.reverseComplement()),fwd.Tm, rev.Tm), f'primer dimers present in {fwd}, {rev}')
+            self.assertFalse(forms, f'primer dimers present in {fwd}, {rev}')
 
     def testL_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
@@ -1009,7 +1013,7 @@ class ResultsTest(unittest.TestCase):
         """
         # load the pairs from the pickle
         with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
-            pairs:dict[tuple[Primer,Primer]] = pickle.load(fh)
+            pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
         
         # get the expected sort order as a tuples of Seq
         expected = [(f.seq,r.seq) for f,r in _sortPairs(self.params, pairs)]
@@ -1019,6 +1023,43 @@ class ResultsTest(unittest.TestCase):
         
         # check that the order is conserved
         self.assertListEqual(expected, observed, 'expected sort order does not match the order written to file')
+    
+    def testV_primerTmsWereCorrect(self) -> None:
+        """verifies that the pcr product data was populated correctly during runtime
+        """
+        # load the pairs from the pickle
+        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
+        
+        # get a set of the non-redundant primer sequences
+        primers = {x for p in pairs.keys() for x in p}
+        
+        # for each primer
+        for primer in primers:
+            # check hairpin Tms
+            self.assertAlmostEqual(primer.hairpinTm, primer3.calc_hairpin_tm(str(primer)), places=3)
+            self.assertAlmostEqual(primer.rcHairpin, primer3.calc_hairpin_tm(str(primer.reverseComplement())), places=3)
+            
+            # check homodimer Tms
+            self.assertAlmostEqual(primer.homodimerTm, primer3.calc_homodimer_tm(str(primer)), places=3)
+            self.assertAlmostEqual(primer.rcHomodimer, primer3.calc_homodimer_tm(str(primer.reverseComplement())), places=3)
+    
+    def testW_productTmsWereCorrect(self) -> None:
+        # load the pairs from the pickle
+        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
+        
+        # for each pair
+        for fwd,rev in pairs.keys():
+            # calculate the heterodimer Tm
+            dimerTm = primer3.calc_heterodimer_tm(str(fwd), str(rev))
+            
+            # for each product
+            for name in pairs[(fwd,rev)].keys():
+                product = pairs[(fwd,rev)][name]
+                
+                # check that the dimer Tm was saved correctly
+                self.assertAlmostEqual(dimerTm, product.dimerTm, places=3)
 
 
 if __name__ == "__main__":
