@@ -1,12 +1,13 @@
 from bin.Clock import Clock
 from typing import Generator
 from bin.Primer import Primer
+from bin.Product import Product
 from ahocorasick import Automaton
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 
 # global constant
-__NULL_PRODUCT = ("NA", 0, ())
+__NULL_PRODUCT = ("NA", 0)
 
 
 # functions
@@ -23,7 +24,7 @@ def __getAutomaton(pairs:list[tuple[Primer,Primer]]) -> Automaton:
     out = Automaton()
     
     # add each kmer in the pairs to the automaton once and make the automaton
-    for kmer in {str(x) for y in pairs for x in y}:
+    for kmer in {str(primer) for pair in pairs for primer in pair}:
         out.add_word(kmer, kmer)
     out.make_automaton()
 
@@ -121,16 +122,22 @@ def __getOutgroupProductSizes(kmers:dict[str,dict[str,list[int]]], fwd:str, rev:
     return out
 
 
-def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer],set[tuple[str,int,tuple]]]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer],set[tuple[str,int]]]], pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
     """adds the outgroup results to the pairs dictionary
 
     Args:
-        outgroupProducts (dict[str,dict[tuple[Primer,Primer],set[tuple[str,int,tuple]]]]): key=genome name; val=dict: key=primer pair; val=set of tuples: contig, pcrLen, binpair
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; val=dict: key=genome name; val=tuple: contig, pcrLen, binpair
+        outgroupProducts (dict[str,dict[tuple[Primer,Primer],set[tuple[str,int]]]]): key=genome name; val=dict: key=primer pair; val=set of tuples: contig, pcrLen
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): key=Primer pair; val=dict: key=genome name; val=Product
     
     Returns:
         does not return. modifies the pairs dictionary
     """
+    # constant
+    FAKE_BIN = -1
+    
+    # get the name of an ingroup genome
+    ingroupName = next(iter([n for v in pairs.values() for n in v.keys() if n not in outgroupProducts.keys()]))
+    
     # for each pair remaining to process
     for pair in pairs.keys():
         # for each outgroup genome
@@ -140,7 +147,7 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
 
             # if there is only one primer size, then save it
             if len(result) == 1:
-                pairs[pair][name] = result.pop()
+                contig, size = result.pop()
             
             # otherwise
             else:
@@ -150,27 +157,31 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
                 
                 # if there is only one primer size, then save it
                 if len(result) == 1:
-                    pairs[pair][name] = result.pop()
+                    contig, size = result.pop()
                 
                 # otherwise
                 else:
                     # combine all contigs and pcrLens into separate lists
                     contigs = list()
                     pcrLens = list()
-                    for contig,pcrLen,binPair in result:
+                    for contig,pcrLen in result:
                         contigs.append(contig)
                         pcrLens.append(pcrLen)
                     
-                    # convert the contigs and lengths to comma-separated strings; add empty bin pair
-                    pairs[pair][name] = (",".join(contigs), ",".join(map(str,pcrLens)), ())
+                    # convert the contigs and lengths to comma-separated strings
+                    contig = ",".join(contigs)
+                    size = ",".join(map(str, pcrLens))
+                
+            # create and save the Product for this pair
+            pairs[pair][name] = Product(contig, size, FAKE_BIN, FAKE_BIN, pairs[pair][ingroupName].dimerTm)
 
 
-def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord,None,None]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], params:Parameters) -> None:
+def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord,None,None]], pairs:dict[tuple[Primer,Primer],dict[str,Product]], params:Parameters) -> None:
     """removes primers found in the outgroup that produce disallowed product sizes
 
     Args:
         outgroup (dict[str,Generator[SeqRecord,None,None]]): key=genome name; val=contig generator
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): key=Primer pair; dict:key=genome name; val=Product
         params (Parameters): a Parameters object
 
     Raises:
@@ -274,7 +285,7 @@ def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord,None,None]], pa
                     
                     # if the pcr product lengths are not disallowed, then save them in the dictionary
                     if not done:
-                        outgroupProducts[name][(fwd,rev)].update({(contig, x, ()) for x in products})
+                        outgroupProducts[name][(fwd,rev)].update({(contig, x) for x in products})
         
     # log the number of pairs removed and remaining from the last genome if debugging
     params.log.debug(f"{MSG_5A}{startNumPairs - len(pairs)}{MSG_5B}{name}{MSG_5C}{len(pairs)}{MSG_5D}")

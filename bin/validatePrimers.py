@@ -2,6 +2,7 @@ from Bio import SeqIO
 from bin.Clock import Clock
 from typing import Generator
 from bin.Primer import Primer
+from bin.Product import Product
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 import multiprocessing, os, subprocess
@@ -117,10 +118,10 @@ def __runAllPcrs(params:Parameters, pairs:list[tuple[Primer,Primer]]) -> dict[tu
 
     Args:
         params (Parameters): a Parameters object
-        pairs (list[tuple[Primer,Primer]]): a list of primer pairs
+        pairs (list[tuple[Primer,Primer]]): a list of Primer pairs
 
     Returns:
-        dict[tuple[str,str],set[tuple[str,int]]]: key=primer pair; val=(contig, pcr product size)
+        dict[tuple[str,str],set[tuple[str,int]]]: key=Primer pair; val=(contig, pcr product size)
     """
     # helper function
     def genArgs() -> Generator[tuple[str,str],None,None]:
@@ -156,29 +157,29 @@ def __runAllPcrs(params:Parameters, pairs:list[tuple[Primer,Primer]]) -> dict[tu
     return {k:v for r in results for k,v in r.items()}
 
 
-def __filterPairs(pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], pcrs:dict[tuple[str,str],list[tuple[str,int]]]) -> None:
+def __filterPairs(pairs:dict[tuple[Primer,Primer],dict[str,Product]], pcrs:dict[tuple[str,str],list[tuple[str,int]]]) -> None:
     """filters primer pairs based on isPcr results; does not return
 
     Args:
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
-        pcrs (dict[tuple[str,str],list[tuple[str,int]]]): the dictionary produced by __runPcr
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): key=Primer pair; dict:key=genome name; val=Product
+        pcrs (dict[tuple[str,str],list[tuple[str,int]]]): the dictionary produced by __runAllPcrs
     """
     # for each pair
     for pair,observed in pcrs.items():
         # get a set of the expected product sizes (contig, size)
-        expected = {x[:2] for x in pairs[pair].values() if x[0] != 'NA'}
+        expected = {(x.contig, x.size) for x in pairs[pair].values() if x.contig != 'NA'}
 
         # remove any pairs that do not match the observed product sizes
         if expected != observed:
             del pairs[pair]
 
 
-def _validatePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+def _validatePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
     """uses in silico PCR to validate primer pairs
 
     Args:
         params (Parameters): a Parameters object
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): key=Primer pair; dict:key=genome name; val=tuple: contig, pcr product size, bin pair (contig, num1, num2)
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): key=Primer pair; dict:key=genome name; val=Product
 
     Raises:
         RuntimeError: no valid primer pairs

@@ -1,6 +1,7 @@
+import os, numpy
 from typing import Union
-import os, numpy, primer3
 from bin.Primer import Primer
+from bin.Product import Product
 from bin.Parameters import Parameters
 
 
@@ -45,11 +46,11 @@ def __minDiffFromRange(intgr:int, rng:range) -> int:
     return min((lower, upper))
 
 
-def __sortOutgroupProducts(metadata:dict[str,tuple[str,int,tuple[str,int,int]]], outgroup:list[str], ingroupPcrLens:range) -> tuple[int,int]:
+def __sortOutgroupProducts(metadata:dict[str,Product], outgroup:list[str], ingroupPcrLens:range) -> tuple[int,int]:
     """evaluates the outgroup products for a primer pair in order to sort the pair
 
     Args:
-        metadata (dict[str,tuple[str,int,tuple[str,int,int]]]): the metadata for a primer pair
+        metadata (dict[str,Product]): the metadata for a primer pair
         outgroup (list[str]): a list of outgroup filenames
         ingroupPcrLens (range): the range that ingroup PCR products are within
 
@@ -63,7 +64,7 @@ def __sortOutgroupProducts(metadata:dict[str,tuple[str,int,tuple[str,int,int]]],
     outgroup = frozenset(map(os.path.basename, outgroup))
     
     # get the outgroup products that are >0bp
-    products = [v[1] for k,v in metadata.items() if k in outgroup and v != 0]
+    products = [v.size for k,v in metadata.items() if k in outgroup and v.size != 0]
     
     # handle situations where there are no products (best case)
     if products == []:
@@ -92,14 +93,10 @@ def __getHomopolymerTemps(pair:tuple[Primer,Primer]) -> float:
         float: the sum of both primer's homodimer melting temperatures
     """
     # parse the pair as strings
-    fwd,rev = map(str, pair)
+    fwd,rev = pair
     
-    # calculate dimer tms
-    fDimer = primer3.calc_homodimer_tm(fwd)
-    rDimer = primer3.calc_homodimer_tm(rev)
-    
-    # return the sum of these temps
-    return fDimer + rDimer
+    # return the sum of the dimer temps
+    return fwd.homodimerTm + rev.homodimerTm
 
 
 def __getHairpinTemps(pair:tuple[Primer,Primer]) -> float:
@@ -112,17 +109,13 @@ def __getHairpinTemps(pair:tuple[Primer,Primer]) -> float:
         float: the sum of the hairpin melting tempertures
     """
     # parse the pair as strings
-    fwd,rev = map(str, pair)
-
-    # calculate hairpin tms
-    fHairpin = primer3.calc_hairpin_tm(fwd)
-    rHairpin = primer3.calc_hairpin_tm(rev)
+    fwd,rev = pair
     
-    # return the sum of these temps
-    return fHairpin + rHairpin
+    # return the sum of the hairpin temps
+    return fwd.hairpinTm + rev.hairpinTm
 
 
-def __getHeteroDimerTemp(pair:tuple[Primer,Primer]) -> float:
+def __getHeteroDimerTemp(products:dict[str,Product]) -> float:
     """gets the heterodimer melting temperature for a pair of primers
 
     Args:
@@ -131,11 +124,8 @@ def __getHeteroDimerTemp(pair:tuple[Primer,Primer]) -> float:
     Returns:
         float: the heterodimer melting temperature
     """
-    
-    # parse the pair as strings
-    fwd,rev = map(str, pair)
-
-    return primer3.calc_heterodimer_tm(fwd, rev)
+    # all products have the same dimerTm; extract it from the first one
+    return next(iter(products.values())).dimerTm
 
 
 def __getGcDiff(pair:tuple[Primer,Primer]) -> float:
@@ -168,30 +158,30 @@ def __getTmDiff(pair:tuple[Primer,Primer]) -> float:
     return abs(fwd.Tm - rev.Tm)
 
 
-def __sortIngroupProducts(metadata:dict[str,tuple[str,int,tuple[str,int,int]]], ingroup:list[str]) -> tuple[float,float]:
+def __sortIngroupProducts(metadata:dict[str,Product], ingroup:list[str]) -> tuple[float,float]:
     """calculates the median product size for the ingroup genomes
 
     Args:
-        metadata (dict[str,tuple[str,int,tuple[str,int,int]]]): the metadata for a primer pair
+        metadata (dict[str,Product]): the metadata for a primer pair
 
     Returns:
-        float: the median PCR product size for the ingroup genomes
+        tuple[float,float]: variance of product sizes; median product size (negated)
     """
     # determine the genome names from the ingroup file names
     ingroup = frozenset(map(os.path.basename, ingroup))
     
     # extract the sizes from the metadata for the pair
-    products = [size for name,(contig,size,binpair) in metadata.items() if name in ingroup]
+    products = [prod.size for name,prod in metadata.items() if name in ingroup]
     
     # calculate the variance and the median of the 
     variance = numpy.var(products)
     median = numpy.var(products)
     
-    # return the variance and the median (negated to prioritze larger product sizes)
+    # return the variance and the median (negated to prioritize larger product sizes)
     return variance, -median
 
 
-def _sortPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> list[tuple[Primer,Primer]]:
+def _sortPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> list[tuple[Primer,Primer]]:
     """sorts pairs of primers based on several characteristics:
           * first by difference in GC
           * next by difference in Tm
@@ -222,7 +212,7 @@ def _sortPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple
                                                                       range(params.minPcr, params.maxPcr+1)),
                                                __getGcDiff(p),
                                                __getTmDiff(p),
-                                               __getHeteroDimerTemp(p),
+                                               __getHeteroDimerTemp(pairs[p]),
                                                __getHomopolymerTemps(p),
                                                __getHairpinTemps(p),
                                                __sortIngroupProducts(pairs[p], params.ingroupFns)))
