@@ -1,0 +1,46 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Wirth
+  given-names: Joseph S.
+  orcid: "https://orcid.org/0000-0002-9750-2845"
+- family-names: Katz
+  given-names: Lee S.
+  orcid: "https://orcid.org/0000-0002-2533-9161"
+- family-names: Williams
+  given-names: Grant M.
+  orcid: "https://orcid.org/0000-0002-6033-485X"
+- family-names: Chen
+  given-names: Jessica C.
+  orcid: "https://orcid.org/0000-0002-9320-6774"
+doi: 10.5281/zenodo.13759569
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Wirth
+    given-names: Joseph S.
+    orcid: "https://orcid.org/0000-0002-9750-2845"
+  - family-names: Katz
+    given-names: Lee S.
+    orcid: "https://orcid.org/0000-0002-2533-9161"
+  - family-names: Williams
+    given-names: Grant M.
+    orcid: "https://orcid.org/0000-0002-6033-485X"
+  - family-names: Chen
+    given-names: Jessica C.
+    orcid: "https://orcid.org/0000-0002-9320-6774"
+  date-published: 2024-09-16
+  doi: 10.21105/joss.06850
+  issn: 2475-9066
+  issue: 101
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 6850
+  title: "primerForge: a Python program for identifying primer pairs
+    capable of distinguishing groups of genomes from each other"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.06850"
+  volume: 9
+title: "primerForge: a Python program for identifying primer pairs
+  capable of distinguishing groups of genomes from each other"

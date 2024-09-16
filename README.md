@@ -1,8 +1,12 @@
 <img src="assets/logo.png" alt="Logo" width="250" height="250">
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.06850/status.svg)](https://doi.org/10.21105/joss.06850)
+
 # primerForge
 
 software to identify primers that can be used to distinguish genomes
+
+If you use this software, please cite [our article](https://doi.org/10.21105/joss.06850) in the Journal of Open Source Software.
 
 ## Installation
 > [!NOTE]

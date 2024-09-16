@@ -424,6 +424,8 @@ class Parameters():
             WIDTH = 21
             HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
                        f"{GAP}{self.__author}, 2024{EOL*2}" + \
+                       f"If you use this software, please cite our article:{EOL}" + \
+                       f"{GAP}https://doi.org/10.21105/joss.06850{EOL*2}" + \
                        f"usage:{EOL}" + \
                        f"{GAP}primerForge [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
                        f"required arguments:{EOL}" + \
