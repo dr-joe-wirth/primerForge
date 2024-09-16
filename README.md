@@ -90,6 +90,21 @@ optional arguments:
     --debug              run in debug mode (default: False)
 ```
 
+## Results
+The results produced by `primerForge` list one primer pair per line, and these pairs are sorted based on the following criteria (in order of importance):
+
+  * largest difference from the ingroup PCR product range for outgroup PCR products
+  * lowest number of outgroup PCR products
+  * lowest G+C difference between the pair
+  * lowest Tm difference between the pair
+  * lowest Tm for heterodimers
+  * lowest Tm (sum) for homodimers
+  * lowest Tm (sum) for hairpins
+  * lowest variance in ingroup PCR product sizes
+  * largest median ingroup PCR product size
+
+See [the example](#examining-the-results) for details about the file format.
+
 ## Workflow
 
 ```mermaid
@@ -208,8 +223,8 @@ flowchart TB
     ispcr["filter pairs using isPcr"]
     final(["final primer pairs"])
     dump5[/"dump to file"/]
-    write[/"write pairs to file"/]
-
+    write[/"sort pairs and
+            write to file"/]
 
     noout --> ispcr
     ispcr --> final
@@ -223,7 +238,7 @@ This example assumes you have already installed `primerForge` [as described abov
 ### Motivation
 In this example, we will use `primerForge` to find pairs of primers between 18bp and 24bp that can be used to differentiate three strains of _Mycoplasma mycoides_ subspecies mycoides (the "ingroup") from two strains of _Mycoplasma mycoides_ subspecies capri (the "outgroup"). The primer pairs identified by `primerForge` are predicted to produce a single PCR product between 500bp and 2000bp in the ingroup. These same primer pairs are predicted to produce PCR products <300bp, >3000bp, or no PCR products at all in the outgroup.
 
-### preparing the workspace
+### Preparing the workspace
 In order to get started, create a directory called `mycoplasma_test` and move into it:
 
 ```bash
@@ -252,7 +267,7 @@ We will use the following flags to specify specific parameters for this example:
 
 You can get a list of all available flags using the command `primerForge --help`.
 
-Run `primerForge` using the following command (requires at least 3 Gb of RAM):
+Run `primerForge` using the following command (requires at least 2 Gb of RAM):
 
 ```bash
 primerForge --ingroup "./i*gbff" --outgroup "./o*gbff" --pcr_prod 500,2000 --bad_sizes 300,3000 --primer_len 18,24
@@ -261,43 +276,43 @@ primerForge --ingroup "./i*gbff" --outgroup "./o*gbff" --pcr_prod 500,2000 --bad
 After running the command, you should see something like this printed to the screen:
 
 ```text
+dumping Parameters to '_pickles/parameters.p' ... done 00:00:00.49
 identifying kmers suitable for use as primers in all 3 ingroup genome sequences
-    getting shared ingroup kmers that appear once in each genome ... done 00:01:19.32
-    dumping shared kmers to '_pickles/sharedKmers.p' ... done 00:00:07.34
-    evaluating kmers ... done 00:03:20.11
+    getting shared ingroup kmers that appear once in each genome ... done 00:01:36.15
+    dumping shared kmers to '_pickles/sharedKmers.p' ... done 00:00:11.22
+    evaluating 2430140 kmers ... done 00:01:51.73
     identified 30413 candidate kmers
-done 00:04:49.18
-    dumping candidate kmers to '_pickles/candidates.p' ... done 00:00:01.03
-identifying pairs of primers found in all ingroup sequences ... done 00:00:11.60
+    dumping candidate kmers to '_pickles/candidates.p' ... done 00:00:01.55
+done 00:03:42.94
+identifying pairs of primers found in all ingroup sequences ... done 00:00:11.62
     identified 16050 primer pairs shared in all ingroup sequences
-    dumping unfiltered pairs to '_pickles/pairs.p' ... done 00:00:00.54
+    dumping unfiltered pairs to '_pickles/pairs.p' ... done 00:00:00.56
 removing primer pairs present in the outgroup sequences
-    getting outgroup PCR products ... done 00:00:01.01
-    filtering primer pairs ... done 00:00:00.53
-    processing outgroup results ... done 00:00:00.52
+    getting outgroup PCR products ... done 00:00:01.03
+    filtering primer pairs ... done 00:00:00.54
+    processing outgroup results ... done 00:00:00.54
     removed 5905 pairs present in the outgroup (10145 pairs remaining)
-    dumping filtered pairs to '_pickles/pairs_noOutgroup.p' ... done 00:00:00.53
-validating primer pairs with isPcr ... done 00:00:01.97
-    removed 1665 pairs not validated by isPcr (8480 pairs remaining)
-    dumping validated pairs to '_pickles/pairs_noOutgroup_validated.p' ... done 00:00:00.53
-writing primer pairs to 'results.tsv' ... done 00:00:00.52
+    dumping filtered pairs to '_pickles/pairs_noOutgroup.p' ... done 00:00:00.54
+validating primer pairs with isPcr ... done 00:00:03.44
+    removed 3659 pairs not validated by isPcr (6486 pairs remaining)
+    dumping validated pairs to '_pickles/pairs_noOutgroup_validated.p' ... done 00:00:00.54
+writing 6486 primer pairs to 'results.tsv' ... done 00:00:11.62
 
-total runtime: 00:05:08.49
+total runtime: 00:04:14.50
 ```
 
-As we can see, `primerForge` found 30,413 kmers that were suitable for use as a primer in all three ingroup genomes. It then went on to identify 16,050 primer pairs that would produce PCR products between 500bp and 2000bp in the ingroup genomes. Next, it found that of those 16,050 pairs, 5,905 of them formed PCR products between 300bp and 3000bp in one or more of the outgroup genomes. Finally, it used `isPcr` to validate the remaining 10,145 primer pairs resulting in 8,480 primer pairs being written to file.
+As we can see, `primerForge` found 30,413 kmers that were suitable for use as a primer in all three ingroup genomes. It then went on to identify 16,050 primer pairs that would produce PCR products between 500bp and 2000bp in the ingroup genomes. Next, it found that of those 16,050 pairs, 5,905 of them formed PCR products between 300bp and 3000bp in one or more of the outgroup genomes. Finally, it used `isPcr` to validate the remaining 10,145 primer pairs resulting in 6,486 primer pairs being written to file.
 
+### Examining the results
 `primerForge` generated `results.tsv`, the file that contains the sequences and details for each primer pair, and `primerForge.log`. Here are a few lines from `results.tsv`:
 
 |fwd_seq|fwd_Tm|fwd_GC|rev_seq|rev_Tm|rev_GC|i1.gbff_contig|i1.gbff_length|i2.gbff_contig|i2.gbff_length|i3.gbff_contig|i3.gbff_length|o1.gbff_contig|o1.gbff_length|o2.gbff_contig|o2.gbff_length|
 |:------|:-----|:-----|:------|:-----|:-----|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
-|TATGCAACTAATCCCGAGTATCAC|56.1|41.7|TGTAAGTGGCGTTGTATCCC|55.5|50|NZ_LAUX01000130.1|521|NZ_LAUV01000074.1|521|NZ_LAUY01000118.1|521|NA|0|NA|0|
-|TGTTCCTTCACACTCAATAACAGC|57.3|41.7|AGAAGGAACAGTCGCTGAAG|55.4|50|NZ_LAUX01000081.1|1645|NZ_LAUV01000036.1|1645|NZ_LAUY01000073.1|1645|NZ_LS483503.1|3091|NZ_CP065583.1|3103|
-|AAGGAGAGTATCGCTTAGTTGATG|56|41.7|CAACAGCAGATGGTTTAGAAAGTG|56.4|41.7|NZ_LAUX01000079.1|788|NZ_LAUV01000035.1|788|NZ_LAUY01000072.1|788|NA|0|NA|0|
-|AAGGAGAGTATCGCTTAGTTGATG|56|41.7|ACTCCAATTGCTCTTCCTGAAG|56.2|45.5|NZ_LAUX01000079.1|1053|NZ_LAUV01000035.1|1053|NZ_LAUY01000072.1|1053|NA|0|NA|0|
-|TGAAATCACCAGCTATTGCATCAG|57.5|41.7|ACATTGCAACTCCTGAGATTTG|55.1|40.9|NZ_LAUX01000081.1|1998|NZ_LAUV01000036.1|1998|NZ_LAUY01000073.1|1998|NA|0|NA|0|
+|AGAAGCAAAGGATATGGGAACAAC|57.1|41.7|AAATCAACACCCTCAATAAGCTCC|57.1|41.7|NZ_LAUX01000078.1|804|NZ_LAUV01000035.1|804|NZ_LAUY01000092.1|804|NA|0|NA|0|
+|TCCATCTAATGAAGATCAACCAGG|55.9|41.7|CCCTAATTGTGATGAGTTGACAAC|55.9|41.7|NZ_LAUX01000010.1|710|NZ_LAUV01000042.1|713|NZ_LAUY01000078.1|710|NA|0|NA|0|
+|CATCAGCTGTTGTAAATAACCCAC|56.2|41.7|GTGGAGCTATGAAACCAATATCAG|55.3|41.7|NZ_LAUX01000117.1|1694|NZ_LAUV01000064.1|1694|NZ_LAUY01000018.1|1694|NZ_LS483503.1|3212|NA|0|
 
-The first six columns show the forward and reverse sequences (5' --> 3') as well as their melting temperatures and their G+C %. Next, for each genome it lists the contig and the PCR product size that is predicted be produced by this pair. For example, the first pair of primers are predicted to produce PCR products of 521bp the ingroup genomes, and the binding sites for this primer pair in the files `i1.gbff`, `i2.gbff`, and `i3.gbff` can be found in contigs `NZ_LAUX01000130.1`, `NZ_LAUV01000074.1`, and `NZ_LAUY01000118.1`, respectively. This same pair is not predicted to produce any PCR products in either outgroup genome. Similarly, the next pair is predicted to produce a PCR product size of 1,645bp in all three ingroup genomes and PCR products sizes of >3,000bp in both the outgroup genomes.
+The first six columns show the forward and reverse sequences (5' --> 3') as well as their melting temperatures and their G+C content (mol %). Next, for each genome it lists the contig and the PCR product size that is predicted be produced by this pair. For example, the first pair of primers are predicted to produce PCR products of 804bp the ingroup genomes, and the binding sites for this primer pair in the files `i1.gbff`, `i2.gbff`, and `i3.gbff` can be found in contigs `NZ_LAUX01000078.1`, `NZ_LAUV01000035.1`, and `NZ_LAUY01000092.1`, respectively. This same pair is not predicted to produce any PCR products in either outgroup genome. Similarly, the third pair is predicted to produce a PCR product size of 1,694bp in all three ingroup genomes, no products `o2.gbff`, and a PCR product >3,000bp in `o1.gbff`.
 
 If a primer pair is predicted to produce multiple products in an outgroup genome, then the contig column and the size column will list contigs and sizes in a comma-separated list linked by position. For example, if a primer pair was expected to produce a product of 1,990bp in `contig_1` and 2,024bp in `contig_2` in the genome file `example.gbff`, then the columns for this genome would look like this:
 

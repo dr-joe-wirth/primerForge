@@ -10,15 +10,18 @@ from bin.Clock import Clock
 from bin.main import _runner
 from khmer import Countgraph
 from bin.Primer import Primer
+from bin.Product import Product
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _formsDimers
 import gzip, os, pickle, primer3, signal, subprocess, time, unittest
 
 class Result():
     """class to save results for easy lookup
     """
-    def __init__(self, fwdTm:float, fwdGc:float, revTm:float, revGc:float, additional:dict[str,dict[str,list]]) -> Result:
+    def __init__(self, rowNum:int, fwdTm:float, fwdGc:float, revTm:float, revGc:float, additional:dict[str,dict[str,list]]) -> Result:
+        self.rowNum:int  = rowNum
         self.fwdTm:float = fwdTm
         self.fwdGc:float = fwdGc
         self.revTm:float = revTm
@@ -37,20 +40,22 @@ class ResultsTest(unittest.TestCase):
     FAKE_FN = 'fakefile'
     PCRLEN = "length"
     CONTIG = "contig"
+    INGROUP_FILES = ('i1.gbff', 'i2.gbff', 'i3.gbff')
+    OUTGROUP_FILES = ('o1.gbff', 'o2.gbff')
     
     # default ingroup and outgroup genomes (Mycoplasma mycoides)
-    DEFAULT_INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz',
-                        'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz',
-                        'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345.1_ASM303434v1/GCF_003034345.1_ASM303434v1_genomic.gbff.gz'}
-    DEFAULT_OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz',
-                        'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz'}
+    DEFAULT_INGROUP  = {INGROUP_FILES[0]:  'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/305/GCF_003034305.1_ASM303430v1/GCF_003034305.1_ASM303430v1_genomic.gbff.gz',
+                        INGROUP_FILES[1]:  'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/275/GCF_003034275.1_ASM303427v1/GCF_003034275.1_ASM303427v1_genomic.gbff.gz',
+                        INGROUP_FILES[2]:  'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/034/345/GCF_003034345.1_ASM303434v1/GCF_003034345.1_ASM303434v1_genomic.gbff.gz'}
+    DEFAULT_OUTGROUP = {OUTGROUP_FILES[0]: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/900/489/555/GCF_900489555.1_MMC68/GCF_900489555.1_MMC68_genomic.gbff.gz',
+                        OUTGROUP_FILES[1]: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/018/389/745/GCF_018389745.1_ASM1838974v1/GCF_018389745.1_ASM1838974v1_genomic.gbff.gz'}
     
     # alternate ingroup and outgroup genomes (Escherichia coli)
-    ALTRNTE_INGROUP  = {'i1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
-                        'i2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
-                        'i3.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
-    ALTRNTE_OUTGROUP = {'o1.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
-                        'o2.gbff': 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
+    ALTRNTE_INGROUP  = {INGROUP_FILES[0]:  'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/650/295/GCF_001650295.1_ASM165029v1/GCF_001650295.1_ASM165029v1_genomic.gbff.gz',
+                        INGROUP_FILES[1]:  'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/008/727/175/GCF_008727175.1_ASM872717v1/GCF_008727175.1_ASM872717v1_genomic.gbff.gz',
+                        INGROUP_FILES[2]:  'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/002/208/865/GCF_002208865.2_ASM220886v2/GCF_002208865.2_ASM220886v2_genomic.gbff.gz'}
+    ALTRNTE_OUTGROUP = {OUTGROUP_FILES[0]: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gbff.gz',
+                        OUTGROUP_FILES[1]: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz'}
     
     @classmethod
     def setUpClass(cls) -> None:
@@ -62,24 +67,23 @@ class ResultsTest(unittest.TestCase):
         # get the number of threads to use
         numThreads = ResultsTest._getNumThreads()
         
-        # determine which dataset to use
-        cls.ingroup:dict[str,str]
-        cls.outgroup:dict[str,str]
-        cls.ingroup, cls.outgroup = ResultsTest._selectDataset()
-        
         # make the test directory if it doesn't exist
         if not os.path.isdir(ResultsTest.TEST_DIR):
             os.mkdir(ResultsTest.TEST_DIR)
         
-        # get a list of all the genome files
-        allFiles = list(ResultsTest.ingroup.keys()) + list(ResultsTest.outgroup.keys())
-        allFiles = map(os.path.join, [ResultsTest.TEST_DIR]*len(allFiles), allFiles)
+        # get a list of the genome filenames
+        cls.seqFiles:list[str] = list(map(lambda x: os.path.join(ResultsTest.TEST_DIR, x),
+                                          ResultsTest.INGROUP_FILES + ResultsTest.OUTGROUP_FILES))
         
         # download genome files if necessary
-        if not all(map(os.path.exists, allFiles)):
+        if not all(map(os.path.exists, ResultsTest.seqFiles)):
+            # determine which dataset to use
+            ingroupFtp, outgroupFtp = ResultsTest._selectDataset()
+            
+            # download the files
             clock.printStart('downloading genomes')
-            ResultsTest._downloadGenomesForGroup(ResultsTest.ingroup)
-            ResultsTest._downloadGenomesForGroup(ResultsTest.outgroup)
+            ResultsTest._downloadGenomesForGroup(ingroupFtp)
+            ResultsTest._downloadGenomesForGroup(outgroupFtp)
             clock.printDone()
         
         # get the parameters
@@ -89,13 +93,13 @@ class ResultsTest(unittest.TestCase):
         # run primerForge if results file does not exist
         if not os.path.exists(ResultsTest.params.resultsFn):  
             # run primerForge
-            clock.printStart('running primerForge', end=' ...\n', spin=False)
+            clock.printStart('running primerForge', end=' ...\n\n', spin=False)
             _runner(ResultsTest.params)
             clock.printDone()
         
         # otherwise using existing file
         else:
-            print('running tests on existing files')
+            print('running tests on existing files\n')
         
         # load the results file into memory
         clock.printStart('reading results into memory')
@@ -105,6 +109,12 @@ class ResultsTest(unittest.TestCase):
         # load the genomic sequences into memory
         clock.printStart('reading genomic sequences into memory')
         cls.sequences:dict[str,dict[str,dict[str,Seq]]] = ResultsTest._loadGenomeSequences()
+        clock.printDone()
+        
+        # load the pairs from the pickle
+        clock.printStart('unpickling pairs')
+        with open(ResultsTest.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            cls.pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
         clock.printDone()
         
         # calculate the binding sites
@@ -361,10 +371,14 @@ class ResultsTest(unittest.TestCase):
         out = dict()
         key = dict()
         header = True
+        rowNum = -1
         
         # go through each line in the file
         with open(fn, 'r') as fh:
             for line in fh:
+                # increment the row number
+                rowNum += 1
+                
                 # convert the line to a row of columns
                 line = line.rstrip()
                 row = line.split(SEP_1)
@@ -411,7 +425,7 @@ class ResultsTest(unittest.TestCase):
                             additional[name][ResultsTest.CONTIG] = row[idx].split(SEP_2)
                     
                     # store the result for this primer pair
-                    out[(fwd,rev)] = Result(ftm,fgc,rtm,rgc,additional)
+                    out[(fwd,rev)] = Result(rowNum,ftm,fgc,rtm,rgc,additional)
         
         return out
 
@@ -441,18 +455,7 @@ class ResultsTest(unittest.TestCase):
         Returns:
             dict[str,dict[str,dict[str,Seq]]]: key=genome name; val=dict: key=contig name; val=dict: key=strand; val=sequence
         """
-        # initialize output
-        out = dict()
-        
-        # load ingroup sequences
-        for fn in ResultsTest.ingroup.keys():
-            out[fn] = ResultsTest._loadOneGenomeSequence(fn)
-        
-        # load outgroup sequences
-        for fn in ResultsTest.outgroup.keys():
-            out[fn] = ResultsTest._loadOneGenomeSequence(fn)
-        
-        return out
+        return {os.path.basename(fn):ResultsTest._loadOneGenomeSequence(fn) for fn in ResultsTest.seqFiles}
     
     def _kmerListToDict(klist:list[tuple[str,int]]) -> dict[str,list[int]]:
         """converts a list of kmers to a dictionary
@@ -759,8 +762,11 @@ class ResultsTest(unittest.TestCase):
             fwd = Primer(fwd, '', 100, len(fwd), Primer.PLUS)
             rev = Primer(rev, '', 100, len(rev), Primer.MINUS)
 
+            # check dimer Tm
+            forms,tm = _formsDimers(str(fwd),str(rev.reverseComplement()),fwd.Tm, rev.Tm)
+            
             # check for primer dimers; both primers need to be on the same strand
-            self.assertFalse(_formsDimers(str(fwd),str(rev.reverseComplement()),fwd.Tm, rev.Tm), f'primer dimers present in {fwd}, {rev}')
+            self.assertFalse(forms, f'primer dimers present in {fwd}, {rev}')
 
     def testL_ingroupHasOneProduct(self) -> None:
         """do all pairs produce one product size in the ingroup
@@ -771,7 +777,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the ingroup
         for pair in self.results.keys():
-            for name in ResultsTest.ingroup.keys():
+            for name in ResultsTest.INGROUP_FILES:
                 # there should be exactly one pcr product size for each ingroup genome
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.PCRLEN]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertEqual(len(self.results[pair].additional[name][ResultsTest.CONTIG]), 1, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
@@ -785,7 +791,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pari in the ingroup
         for pair in self.results.keys():
-            for name in ResultsTest.ingroup.keys():
+            for name in ResultsTest.INGROUP_FILES:
                 # make sure the pcr products are within the allowed range
                 self.assertGreaterEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.minPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
                 self.assertLessEqual(self.results[pair].additional[name][ResultsTest.PCRLEN][0], self.params.maxPcr, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
@@ -799,7 +805,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the outgroup
         for pair in self.results.keys():
-            for name in ResultsTest.outgroup.keys():
+            for name in ResultsTest.OUTGROUP_FILES:
                 # the length of the contig and pcr size lists should be equal
                 numContigs = len(self.results[pair].additional[name][ResultsTest.CONTIG])
                 numPcrLens = len(self.results[pair].additional[name][ResultsTest.PCRLEN])
@@ -815,7 +821,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the outgroup
         for pair in self.results.keys():
-            for name in ResultsTest.outgroup.keys():
+            for name in ResultsTest.OUTGROUP_FILES:
                 # for each pcr product saved
                 for idx in range(len(self.results[pair].additional[name][ResultsTest.CONTIG])):
                     # if the contig is NA, then the pcr size should be zero
@@ -835,7 +841,7 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair in the outgroup
         for pair in self.results.keys():
-            for name in ResultsTest.outgroup.keys():
+            for name in ResultsTest.OUTGROUP_FILES:
                 # each pcr product size should not be in the disallowed range
                 for pcrLen in self.results[pair].additional[name][ResultsTest.PCRLEN]:
                     self.assertNotIn(pcrLen, self.params.disallowedLens, f"{FAIL_MSG_A}{pair}{FAIL_MSG_B}{name}")
@@ -852,7 +858,7 @@ class ResultsTest(unittest.TestCase):
             rbind = self.bindingSites[rev]
             
             # for each ingroup genome
-            for name in ResultsTest.ingroup.keys():
+            for name in ResultsTest.INGROUP_FILES:
                 # count the number of binding sites in the genome for each primer
                 fCount = 0
                 rCount = 0
@@ -874,7 +880,7 @@ class ResultsTest(unittest.TestCase):
             rbind = self.bindingSites[rev]
             
             # only evaluate for the ingroup
-            for name in ResultsTest.ingroup.keys():
+            for name in ResultsTest.INGROUP_FILES:
                 for contig in fbind[name].keys():
                     # if the forward primer is on the (+) strand
                     if fbind[name][contig][Primer.PLUS] != []:
@@ -908,7 +914,7 @@ class ResultsTest(unittest.TestCase):
             rbind = self.bindingSites[rev]
             
             # for each ingroup genome
-            for name in ResultsTest.ingroup.keys():
+            for name in ResultsTest.INGROUP_FILES:
                 # extract the stored pcr length and the contig
                 pcrLen = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN][0]
                 contig = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG][0]
@@ -933,7 +939,7 @@ class ResultsTest(unittest.TestCase):
                 self.assertEqual(pcrLen, truLen, f"bad pcr product sizes in {name} for {fwd}, {rev}")
             
             # for each outgroup genome
-            for name in ResultsTest.outgroup.keys():
+            for name in ResultsTest.OUTGROUP_FILES:
                 # get the list of pcr products and their contigs
                 pcrLens = self.results[(fwd,rev)].additional[name][ResultsTest.PCRLEN]
                 contigs = self.results[(fwd,rev)].additional[name][ResultsTest.CONTIG]
@@ -990,7 +996,67 @@ class ResultsTest(unittest.TestCase):
                         # and the pcr lengths should not be disallowed
                         for plen in tru[contig]:
                             self.assertNotIn(plen, self.params.disallowedLens, f"disallowed sizes in {name} with {fwd},{rev}")
+    
+    def testT_allPairsWritten(self) -> None:
+        """verifies that all primer pairs were written to file
+        """
+        # unpickle the pairs
+        with open(self.params.pickles[Parameters._PAIR_3], 'rb') as fh:
+            pairs:dict[tuple[Primer,Primer]] = pickle.load(fh)
+        
+        # convert the pairs to a set of pairs as Seq
+        expected = {(f.seq,r.seq) for f,r in pairs.keys()}
+        
+        # get the pairs saved in the results as a set
+        observed = set(self.results.keys())
+        
+        # make sure that the pairs match
+        self.assertEqual(len(expected), len(observed), f'expected {len(expected)} primer pairs but observed {len(observed)}')
+        self.assertSetEqual(expected, observed, 'expected pairs do not match those written to file')
+    
+    def testU_arePairsSortedCorrectly(self) -> None:
+        """verifies that the pairs were written in the correct order
+        """
+        # get the expected sort order as a tuples of Seq
+        expected = [(f.seq,r.seq) for f,r in _sortPairs(self.params, self.pairs)]
+        
+        # get the observed order that was written
+        observed  = sorted(self.results.keys(), key=lambda x: self.results[x].rowNum)
+        
+        # check that the order is conserved
+        self.assertListEqual(expected, observed, 'expected sort order does not match the order written to file')
+    
+    def testV_primerTmsWereCorrect(self) -> None:
+        """verifies that the homodimer Tms and hairpin Tms were stored correctly
+        """
+        # get a set of the non-redundant primer sequences
+        primers = {x for p in self.pairs.keys() for x in p}
+        
+        # for each primer
+        for primer in primers:
+            # check hairpin Tms
+            self.assertAlmostEqual(primer.hairpinTm, primer3.calc_hairpin_tm(str(primer)), places=3)
+            self.assertAlmostEqual(primer.rcHairpin, primer3.calc_hairpin_tm(str(primer.reverseComplement())), places=3)
+            
+            # check homodimer Tms
+            self.assertAlmostEqual(primer.homodimerTm, primer3.calc_homodimer_tm(str(primer)), places=3)
+            self.assertAlmostEqual(primer.rcHomodimer, primer3.calc_homodimer_tm(str(primer.reverseComplement())), places=3)
+    
+    def testW_productTmsWereCorrect(self) -> None:
+        """verifies that heterodimer Tm was correct for all PCR products
+        """
+        # for each pair
+        for fwd,rev in self.pairs.keys():
+            # calculate the heterodimer Tm for this pair
+            dimerTm = primer3.calc_heterodimer_tm(str(fwd), str(rev))
+            
+            # for each product
+            for name in self.pairs[(fwd,rev)].keys():
+                product = self.pairs[(fwd,rev)][name]
+                
+                # check that the dimer Tm was saved correctly
+                self.assertAlmostEqual(dimerTm, product.dimerTm, places=3)
 
-
+# entrypoint
 if __name__ == "__main__":
     unittest.main()

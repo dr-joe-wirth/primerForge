@@ -33,6 +33,10 @@ class Primer:
         self.strand:str = strand
         self.Tm:float = None
         self.gcPer:float = None
+        self.hairpinTm:float = None
+        self.rcHairpin:float = None
+        self.homodimerTm:float = None
+        self.rcHomodimer:float = None
         self.__length:int = length
         
         # flip start and end if on the minus strand
@@ -111,6 +115,12 @@ class Primer:
             new = Primer(self.seq.reverse_complement(), self.contig, self.start, len(self), Primer.MINUS)
         else:
             new = Primer(self.seq.reverse_complement(), self.contig, self.end, len(self), Primer.PLUS)
+        
+        # flip the hairpin/dimer Tms
+        new.hairpinTm = self.rcHairpin
+        new.rcHairpin = self.hairpinTm
+        new.homodimerTm = self.rcHomodimer
+        new.rcHomodimer = self.homodimerTm
             
         # make the new object
         return new

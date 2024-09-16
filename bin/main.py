@@ -1,17 +1,19 @@
-import os
+import os, shutil
 from Bio import SeqIO
 from bin.Clock import Clock
 from typing import Generator
 from bin.Primer import Primer
+from bin.Product import Product
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _getPrimerPairs
 from bin.validatePrimers import _validatePrimerPairs
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 
 # global constants
-__version__ = "1.3.6"
+__version__ = "1.3.7"
 __author__ = "Joseph S. Wirth"
 
 # functions
@@ -89,7 +91,7 @@ def __getCandidates(params:Parameters, sharedExists:bool, clock:Clock) -> dict[s
     return candidateKmers
 
 
-def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,list[Primer]]], clock:Clock) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
+def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,list[Primer]]], clock:Clock) -> dict[tuple[Primer,Primer],dict[str,Product]]:
     """gets the unfiltered pairs
 
     Args:
@@ -98,7 +100,7 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
         clock (Clock): a Clock object
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=Primer pairs; val=dict: key=genome name; val=tuple: contig, pcr product size, bin pair (contig, bin1, bin2)
+        dict[tuple[Primer,Primer],dict[str,Product]]: key=Primer pairs; val=dict: key=genome name; val=Product
     """
     # messages
     MSG_1  = "identifying pairs of primers found in all ingroup sequences"
@@ -125,12 +127,12 @@ def __getUnfilteredPairs(params:Parameters, candidateKmers:dict[str,dict[str,lis
     return pairs
 
 
-def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
     """removes outgroup primers from the pairs dictionary. does not return
 
     Args:
         params (Parameters): a Parameters object
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): the dictionary produced by __getUnfilteredPairs
     """
     # messages
     GAP = " "*4
@@ -164,12 +166,12 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
         params.dumpObj(pairs, params.pickles[Parameters._PAIR_2], "filtered pairs", prefix=GAP)
 
 
-def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
     """validates primer pairs with in silico PCR and removes invalid pairs
 
     Args:
         params (Parameters): a Parameters object
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getUnfilteredPairs
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): the dictionary produced by __getUnfilteredPairs
     """
     # messages
     GAP = ' '*4
@@ -195,17 +197,18 @@ def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
     params.dumpObj(pairs, params.pickles[Parameters._PAIR_3], "validated pairs", prefix=GAP)
 
 
-def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]], clock:Clock) -> None:
+def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,Product]], clock:Clock) -> None:
     """writes pairs of primers to file
 
     Args:
         params (Parameters): the Parameters object for the run
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]])): key=primer pair; val=dict: key=genome name; val=tuple: contig; pcr len;  bin pair
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]])): key=primer pair; val=dict: key=genome name; val=Product
         clock (Clock): a Clock object
     """
     # messages
-    MSG_A = "writing "
-    MSG_B = " primer pairs to "
+    MSG_1  = "sorting primer pairs"
+    MSG_2A = "writing "
+    MSG_2B = " primer pairs to "
     
     # contants
     EOL = "\n"
@@ -234,12 +237,20 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     
     # print status
     params.log.rename(__writePrimerPairs.__name__)
-    params.log.info(f"{MSG_A}{len(pairs)}{MSG_B}'{os.path.relpath(params.resultsFn)}'")
-    clock.printStart(f"{MSG_A}{len(pairs)}{MSG_B}'{os.path.relpath(params.resultsFn)}'")
+    params.log.info(MSG_1)
+    clock.printStart(MSG_1)
     
     # get the names of genomes, and create headers with the same order
     names = list(next(iter(pairs.values())).keys())
     headers = getHeaders(names)
+    
+    # sort the primer pairs
+    sortedPairs = _sortPairs(params, pairs)
+    
+    # print status
+    clock.printDone()
+    params.log.info(f"{MSG_2A}{len(pairs)}{MSG_2B}'{os.path.relpath(params.resultsFn)}'")
+    clock.printStart(f"{MSG_2A}{len(pairs)}{MSG_2B}'{os.path.relpath(params.resultsFn)}'")
     
     # open the file
     with open(params.resultsFn, 'w') as fh:
@@ -248,7 +259,7 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
         fh.flush()
         
         # for each primer pair
-        for fwd,rev in pairs.keys():
+        for fwd,rev in sortedPairs:
             # save the primer pair data
             row = [fwd.seq,
                    round(fwd.Tm, NUM_DEC),
@@ -259,10 +270,8 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
             
             # then save the contig name and PCR product length for each genome
             for name in names:
-                contig = pairs[(fwd,rev)][name][0]
-                pcrLen = pairs[(fwd,rev)][name][1]
-                row.append(contig)
-                row.append(pcrLen)
+                row.append(pairs[(fwd,rev)][name].contig)
+                row.append(pairs[(fwd,rev)][name].size)
             
             # write the data to the file
             fh.write(f"{SEP.join(map(str, row))}{EOL}")
@@ -270,7 +279,7 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     
     # print status
     clock.printDone()
-    params.log.info(f"done {clock.getTimeString()}")    
+    params.log.info(f"done {clock.getTimeString()}")
 
 
 def __removeIntermediateFiles(params:Parameters) -> None:
@@ -279,16 +288,11 @@ def __removeIntermediateFiles(params:Parameters) -> None:
     Args:
         params (Parameters): a Parameters object
     """
-    # remove all the pickle files
-    for fn in params.pickles.values():
-        os.remove(fn)
+    # remove the pickle directory along with any pickles
+    shutil.rmtree(os.path.dirname(next(iter(params.pickles.values()))))
     
-    # remove the pickle directory
-    os.rmdir(os.path.dirname(fn))
-    
-    # remove the isPcr files
+    # remove the isPcr query file
     os.remove(params.allContigsFna)
-    os.remove(params.queryFn)
 
 
 def _runner(params:Parameters) -> None:

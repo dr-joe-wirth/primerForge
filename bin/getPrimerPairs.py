@@ -1,8 +1,9 @@
 from Bio.Seq import Seq
-from typing import Generator
 from bin.Primer import Primer
+from bin.Product import Product
 from itertools import combinations
 import multiprocessing, os, primer3
+from typing import Generator, Union
 from bin.Parameters import Parameters
 
 
@@ -144,7 +145,7 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     return out
 
 
-def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float) -> bool:
+def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float) -> tuple[bool, float]:
     """evaluates if two primers may form primer dimers
 
     Args:
@@ -154,13 +155,17 @@ def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float) -> bool:
         revTm (float): the reverse primer melting temperature
 
     Returns:
-        bool: indicates if primer dimer formation is possible
+        tuple[bool, float]: indicates if primer dimer formation is possible; the dimer Tm
     """
     # constant
     FIVE_DEGREES = 5
-
+    
+    dimerTm = primer3.calc_heterodimer_tm(fwd, rev)
+    
     # dimer formation is a concern if the Tm is sufficiently high
-    return primer3.calc_heterodimer_tm(fwd, rev) >= (min(fwdTm, revTm) - FIVE_DEGREES)
+    highEnough = dimerTm >= (min(fwdTm, revTm) - FIVE_DEGREES)
+
+    return highEnough, dimerTm
 
 
 def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:float) -> tuple[bool,int]:
@@ -188,7 +193,7 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     return True, pcrLen
 
 
-def __evaluateOnePair(fwd:str, rev:str, fTm:float, rTm:float, binPair:str) -> str:
+def __evaluateOnePair(fwd:str, rev:str, fTm:float, rTm:float, binPair:str) -> Union[tuple[str, float],None]:
     """evaluates a primer pair; designed to work in parallel; only returns if the pair passes evaluation
 
     Args:
@@ -199,13 +204,16 @@ def __evaluateOnePair(fwd:str, rev:str, fTm:float, rTm:float, binPair:str) -> st
         binPair (str): the bin pair for this pair
 
     Returns:
-        str: the bin pair for this pair
+        tuple[str, float] | None: the bin pair for this pair, the heterodimer Tm; None if the pair does not pass evaluation
     """
+    # get the dimer Tm and if it forms dimers
+    forms, dimerTm = _formsDimers(fwd, rev, fTm, rTm)
+    
     # return acceptable pairs and their pcr product sizes
-    if not _formsDimers(fwd, rev, fTm, rTm): return binPair
+    if not forms: return binPair, dimerTm
 
 
-def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,int,tuple[str,int,int]]]:
+def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,dict[int,list[Primer]]], params:Parameters) -> list[tuple[Primer,Primer,Product]]:
     """gets candidate primer pairs from pairs of bins
 
     Args:
@@ -214,7 +222,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
         params (Parameters): a Parameters object
 
     Returns:
-        list[tuple[Primer,Primer,int,tuple[str,int,int]]]: a list of primer pairs, the corresponding pcr product size, and the bin pair (contig, bin1, bin2)
+        list[tuple[Primer,Primer,Product]]: a list of (forward primer, reverse primer, pcr product)
     """
     # constants
     FWD = 'forward'
@@ -279,12 +287,12 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
     
     # evaluate pairs of primers for heterodimer potential in parallel
     pool = multiprocessing.Pool(params.numThreads)
-    pairs = pool.starmap(__evaluateOnePair, generateArgs())
+    results = pool.starmap(__evaluateOnePair, generateArgs())
     pool.close()
     pool.join()
     
     # for each valid pair
-    for pair in [x for x in pairs if x is not None]:
+    for pair,dimerTm in [r for r in results if r is not None]:
         # recast the bin pair from a string to its component parts
         contig, fbin, rbin = eval(pair)
         
@@ -296,7 +304,7 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
         rev:Primer = bins[contig][rbin][jdx]
         
         # save this pair in the output
-        out.append((fwd,rev.reverseComplement(),pcrLen,(contig,fbin,rbin)))
+        out.append((fwd,rev.reverseComplement(), Product(contig, pcrLen, fbin, rbin, dimerTm)))
     
     return out
 
@@ -322,18 +330,21 @@ def __restructureCandidateKmerData(candidates:dict[str,list[Primer]]) -> dict[Se
     return out
 
 
-def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,int,tuple[str,int,int]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
+def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,list[Primer]]], candidatePairs:list[tuple[Primer,Primer,Product]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,Product]]:
     """gets all the primer pairs that are shared in all the genomes
 
     Args:
         firstName (str): the name of the genome that has already been evaluated
         candidateKmers (dict[str,dict[str,list[Primer]]]): key=genome name; val=dict: key=contig name; val=list of candidate kmers
-        candidatePairs (list[tuple[Primer,Primer,int,tuple[str,int,int]]]): the list produced by __getCandidatePrimerPairs
+        candidatePairs (list[tuple[Primer,Primer,Product]): the list produced by __getCandidatePrimerPairs
         params (Parameters): a Parameters object
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=pair of Primers; val=dict: key=genome name; val=tuple: contig name, PCR product length, bin pair (contig, bin1, bin2)
+        dict[tuple[Primer,Primer],dict[str,Product]]: key=pair of Primers; val=dict: key=genome name; val=Product object
     """
+    # constant
+    TEMP_BIN = -1
+    
     # initialize variables
     k1:Primer
     k2:Primer
@@ -351,30 +362,46 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
         kmers[name] = __restructureCandidateKmerData(candidateKmers[name])
         
     # for each pair of primers in the candidate pairs
-    for p1,p2,length,binPair in candidatePairs:
+    for p1,p2,product in candidatePairs:
         # store the data for the genome (firstName) that has already been evaluated
         out[(p1,p2)] = dict()
-        out[(p1,p2)][firstName] = (p1.contig,length,binPair)
+        out[(p1,p2)][firstName] = product
         
         # for each unprocessed genome
         for name in remaining:
-            # get the first kmer (may be rev comp)
+            # get the first kmer (may be rev comp) and its Tms
             try:
-                k1 = kmers[name][p1.seq]
+                k1:Primer = kmers[name][p1.seq]
                 k1_rev = False
+                k1.hairpinTm = p1.hairpinTm
+                k1.rcHairpin = p1.rcHairpin
+                k1.homodimerTm = p1.homodimerTm
+                k1.rcHomodimer = p1.rcHomodimer
                 
             except KeyError:
                 k1 = kmers[name][p1.seq.reverse_complement()]
                 k1_rev = True
+                k1.hairpinTm = p1.rcHairpin
+                k1.rcHairpin = p1.hairpinTm
+                k1.homodimerTm = p1.rcHomodimer
+                k1.rcHomodimer = p1.homodimerTm
             
-            # get the second kmer (may be rev comp)
+            # get the second kmer (may be rev comp) and its Tms
             try:
                 k2 = kmers[name][p2.seq]
                 k2_rev = False
+                k2.hairpinTm = p2.hairpinTm
+                k2.rcHairpin = p2.rcHairpin
+                k2.homodimerTm = p2.homodimerTm
+                k2.rcHomodimer = p2.rcHomodimer
     
             except KeyError:
                 k2 = kmers[name][p2.seq.reverse_complement()]
                 k2_rev = True
+                k2.hairpinTm = p2.rcHairpin
+                k2.rcHairpin = p2.hairpinTm
+                k2.homodimerTm = p2.rcHomodimer
+                k2.rcHomodimer = p2.homodimerTm
             
             # both primers need to be on the same contig
             if k1.contig == k2.contig:
@@ -400,7 +427,8 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
                         # only save the pair if the length falls within the acceptable range
                         length = rev.end - fwd.start + 1
                         if length in allowedLengths:
-                            out[(p1,p2)][name] = (fwd.contig, length, binPair)
+                            # the bin numbers are incorrect and need to be fixed later
+                            out[(p1,p2)][name] = Product(fwd.contig, length, TEMP_BIN, TEMP_BIN, product.dimerTm)
 
     # remove any pairs that are not universally suitable in all genomes
     for pair in set(out.keys()):
@@ -410,13 +438,13 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
-def __updateBinsForUnprocessedGenomes(name:str, kmers:dict[str,list[Primer]], pairs:dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]) -> None:
+def __updateBinsForUnprocessedGenomes(name:str, kmers:dict[str,list[Primer]], pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
     """updates the bin pairs for the unprocessed genomes to ensure that all redundant primers are removed
 
     Args:
         name (str): the name of an unprocessed genome
         kmers (dict[str,list[Primer]]): candidate kmers for this genome (key=contig; val=list of candidate kmers)
-        pairs (dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]): the dictionary produced by __getAllSharedPrimerPairs
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): the dictionary produced by __getAllSharedPrimerPairs
     """
     # bin the candidate kmers for this genome
     binned = __binCandidateKmers(kmers)
@@ -440,11 +468,12 @@ def __updateBinsForUnprocessedGenomes(name:str, kmers:dict[str,list[Primer]], pa
             contig, fbin = primerToBin[fwd.reverseComplement()]
             contig, rbin = primerToBin[rev]
         
-        # replace the bin pair with the data for this genome
-        pairs[(fwd,rev)][name] = pairs[(fwd,rev)][name][:-1] + ((contig, fbin, rbin),)
+        # update the bin numbers for this pair
+        pairs[(fwd,rev)][name].fbin = fbin
+        pairs[(fwd,rev)][name].rbin = rbin
 
 
-def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]:
+def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Parameters) -> dict[tuple[Primer,Primer],dict[str,Product]]:
     """gets primer pairs found in all the ingroup genomes
 
     Args:
@@ -456,7 +485,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
         RuntimeError: unable to identify primer pairs in every ingroup genome
 
     Returns:
-        dict[tuple[Primer,Primer],dict[str,tuple[str,int,tuple[str,int,int]]]]: key=Primer pairs; val=dict: key=genome name; val=tuple: contig, pcr product size, bin pair (contig, bin1, bin2)
+        dict[tuple[Primer,Primer],dict[str,Product]]: key=Primer pairs; val=dict: key=genome name; val=Product
     """
     # messages
     ERR_MSG_1 = "could not identify suitable primer pairs from the candidate kmers"
