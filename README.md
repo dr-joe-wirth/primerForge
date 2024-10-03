@@ -20,6 +20,17 @@ pip install primerforge
 conda install ispcr
 ```
 
+### `pixi` installation
+> [!NOTE]
+> Pixi is experimental
+
+To install with Pixi, download [`pixi.toml`](pixi.toml) and then run the following commands:
+
+```bash
+pixi shell
+```
+
+
 ### `conda` installation
 A `conda` installation is currently unavailable due to `khmer` being unsupported. We are actively working to resolve this.
 
@@ -34,7 +45,8 @@ conda env create -f primerForge/environment.yml
 conda activate primerforge
 ```
 
-### Docker Installation
+
+### Docker installation
 
 A Docker image for the latest release is available at [DockerHub](https://hub.docker.com/r/jwirth/primerforge)
 
@@ -46,7 +58,7 @@ If `primerForge` is installed correctly, then the following command should execu
 primerForge --check_install
 ```
 
-If you installed manually, you may need to use the following command instead
+If you installed manually, you may need to use the following command instead:
 
 ```shell
 python primerForge.py --check_install
