@@ -34,6 +34,16 @@ conda env create -f primerForge/environment.yml
 conda activate primerforge
 ```
 
+> [!NOTE]
+> Pixi is experimental
+
+To install with Pixi, we have already provided `pixi.toml` and so there is no need to run `pixi init`.
+
+```bash
+pixi shell
+primerForge --check_install
+```
+
 ### Docker Installation
 
 A Docker image for the latest release is available at [DockerHub](https://hub.docker.com/r/jwirth/primerforge)
