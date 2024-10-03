@@ -24,11 +24,10 @@ conda install ispcr
 > [!NOTE]
 > Pixi is experimental
 
-To install with Pixi, we have provided [`pixi.toml`](pixi.toml). Download the file and then run the following commands:
+To install with Pixi, download [`pixi.toml`](pixi.toml) and then run the following commands:
 
 ```bash
 pixi shell
-primerForge --check_install
 ```
 
 
@@ -59,7 +58,7 @@ If `primerForge` is installed correctly, then the following command should execu
 primerForge --check_install
 ```
 
-If you installed manually, you may need to use the following command instead
+If you installed manually, you may need to use the following command instead:
 
 ```shell
 python primerForge.py --check_install
