@@ -823,7 +823,7 @@ class Parameters():
                 
                 elif opt in IP_MIN_PERF_FLAGS:
                     try:
-                        self.isPcr_minPerf = int(arg)
+                        self.isPcr_minPerfect = int(arg)
                     except ValueError:
                         raise ValueError(f"{ERR_MSG_18}{opt}'")
                 
