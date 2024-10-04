@@ -2,6 +2,7 @@ from __future__ import annotations
 from Bio import SeqIO
 from bin.Log import Log
 from bin.Clock import Clock
+from primer3.bindings import DEFAULT_P3_ARGS
 import getopt, glob, os, pickle, shutil, sys
 
 class Parameters():
@@ -40,6 +41,12 @@ class Parameters():
     _DEF_MAX_PCR = 2400
     _DEF_MAX_TM_DIFF = 5.0
     _DEF_NUM_THREADS = 1
+    _DEF_ISPCR_MIN_GOOD = 6
+    _DEF_ISPCR_MIN_PERFECT = 8
+    _DEF_ISPCR_TILE_SIZE = 10
+    _DEF_DEGREES = 5.0
+    _DEF_REPEATS = 4
+    _DEF_BINSIZE = 64
     _DEF_KEEP = False
     _DEF_DEBUG = False
     _DEF_HELP = False
@@ -68,6 +75,24 @@ class Parameters():
         self.pickles:dict[int,str]
         self.keepIntermediateFiles:bool
         self.allContigsFna:str
+        
+        # advanced attributes for primer3
+        self.p3_mvConc:float
+        self.p3_dvConc:float
+        self.p3_dntpConc:float
+        self.p3_dnaConc:float
+        self.p3_tempC:float
+        self.p3_maxLoop:int
+        
+        # advanced attributes for isPcr
+        self.isPcr_minGood:int
+        self.isPcr_minPerfect:int
+        self.isPcr_tileSize:int
+        
+        # additional advanced attributes
+        self.tempTolerance:float
+        self.maxRepeatLen:int
+        self.maxBinSize:int
         
         # save author and version as private attributes
         self.__author:str = author
@@ -128,9 +153,27 @@ class Parameters():
         sameTmDiff = self.maxTmDiff == other.maxTmDiff
         sameBadLens = self.disallowedLens == other.disallowedLens
         
+        # determine if primer3 attributes match
+        sameP3 = self.p3_dnaConc == other.p3_dnaConc and \
+                 self.p3_dntpConc == other.p3_dntpConc and \
+                 self.p3_dvConc == other.p3_dvConc and \
+                 self.p3_mvConc == other.p3_mvConc and \
+                 self.p3_tempC == other.p3_tempC and \
+                 self.p3_maxLoop == other.p3_maxLoop
+        
+        # determine if isPcr attributes match
+        sameIsPcr = self.isPcr_minGood == other.isPcr_minGood and \
+                    self.isPcr_minPerfect == other.isPcr_minPerfect and \
+                    self.isPcr_tileSize == other.isPcr_tileSize
+        
+        # determine if additional advanced attributes match
+        sameAddtnl = self.tempTolerance == other.tempTolerance and\
+                     self.maxRepeatLen == other.maxRepeatLen and \
+                     self.maxBinSize == other.maxBinSize
+
         # evaluate important attributes; all must be equivalent
-        return all((sameIngroup, sameOutgroup, samePrimerLens, samePrimerGc,
-                    samePrimerTm, samePcrLen, sameTmDiff, sameBadLens))
+        return all((sameIngroup, sameOutgroup, samePrimerLens, samePrimerGc, samePrimerTm,
+                    samePcrLen, sameTmDiff, sameBadLens, sameP3, sameIsPcr, sameAddtnl))
     
     def __ne__(self, other:Parameters) -> bool:
         """inequality overload
@@ -321,7 +364,7 @@ class Parameters():
         """parses command line arguments
 
         Raises:
-            BaseError:  cannot use wildcards without enclosing them in quotes
+            BaseException: cannot use wildcards without enclosing them in quotes
             ValueError: invalid/missing ingroup files
             ValueError: invalid/missing ingroup files
             ValueError: invalid/missing outgroup files
@@ -339,7 +382,21 @@ class Parameters():
             ValueError: invalid PCR size: not two values
             ValueError: invalid PCR size: not int
             ValueError: Tm difference is not numeric
-            ValueError: num threads not an integer
+            ValueError: num threads is not an integer
+            ValueError: primer3: mv_conc is not numeric
+            ValueError: primer3: dv_conc is not numeric
+            ValueError: primer3: dntp_conc is not numeric
+            ValueError: primer3: dna_conc is not numeric
+            ValueError: primer3: temp_c is not numeric
+            ValueError: primer3: max_loop is not int
+            ValueError: isPcr: minGood is not int
+            ValueError: isPcr: minPerfect is not int
+            ValueError: isPcr: tileSize is not int
+            ValueError: isPcr: tileSize cannot exceed _MIN_LEN
+            ValueError: temp tolerance is not int
+            ValueError: max repeats is not int
+            ValueError: bin size is not int
+            ValueError: tileSize cannot exceed minimum of input primer size
             ValueError: ingroup file argument is missing
         """
         # constants
@@ -362,6 +419,19 @@ class Parameters():
         HELP_FLAGS = ('-h', '--help')
         CHECK_FLAGS = ('--check_install',)
         DEBUG_FLAGS = ("--debug",)
+        ADVANCED_FLAGS = ("--advanced",)
+        P3_MV_CONC_FLAGS = ("--primer3_mv_conc",)
+        P3_DV_CONC_FLAGS = ("--primer3_dv_conc",)
+        P3_DNTP_CONC_FLAGS = ("--primer3_dntp_conc",)
+        P3_DNA_CONC_FLAGS = ("--primer3_dna_conc",)
+        P3_TEMP_C_FLAGS = ("--primer3_temp_c",)
+        P3_MAX_LOOP_FLAGS = ("--primer3_max_loop",)
+        IP_MIN_GOOD_FLAGS = ("--isPcr_minGood",)
+        IP_MIN_PERF_FLAGS = ("--isPcr_minPerfect",)
+        IP_TILESIZE_FLAGS = ("--isPcr_tileSize",)
+        ADDTNL_DEGREES_FLAGS = ("--temp_tolerance",)
+        ADDTNL_REPEATS_FLAGS = ("--max_repeats",)
+        ADDTNL_BINSIZE_FLAGS = ("--bin_size",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                      OUT_FLAGS[0][-1] + ":" + \
                      OUTGROUP_FLAGS[0][-1] + ":" + \
@@ -391,7 +461,20 @@ class Parameters():
                      VERSION_FLAGS[1][2:],
                      HELP_FLAGS[1][2:],
                      CHECK_FLAGS[0][2:],
-                     DEBUG_FLAGS[0][2:])
+                     DEBUG_FLAGS[0][2:],
+                     ADVANCED_FLAGS[0][2:],
+                     P3_MV_CONC_FLAGS[0][2:] + "=",
+                     P3_DV_CONC_FLAGS[0][2:] + "=",
+                     P3_DNTP_CONC_FLAGS[0][2:] + "=",
+                     P3_DNA_CONC_FLAGS[0][2:] + "=",
+                     P3_TEMP_C_FLAGS[0][2:] + "=",
+                     P3_MAX_LOOP_FLAGS[0][2:] + "=",
+                     IP_MIN_GOOD_FLAGS[0][2:] + "=",
+                     IP_MIN_PERF_FLAGS[0][2:] + "=",
+                     IP_TILESIZE_FLAGS[0][2:] + "=",
+                     ADDTNL_DEGREES_FLAGS[0][2:] + "=",
+                     ADDTNL_REPEATS_FLAGS[0][2:] + "=",
+                     ADDTNL_BINSIZE_FLAGS[0][2:] + "=")
 
         # messages
         ERR_MSG_0  = 'detected wildcards that are not enclosed in quotes; aborting'
@@ -411,9 +494,15 @@ class Parameters():
         ERR_MSG_14 = 'PCR product lengths are not integers'
         ERR_MSG_15 = 'max Tm difference is not numeric'
         ERR_MSG_16 = 'num threads is not an integer'
-        ERR_MSG_17 = 'must specify one or more ingroup files'
+        ERR_MSG_17 = "expected 'float' for '"
+        ERR_MSG_18 = "exepcted 'int' for '"
+        ERR_MSG_19 = 'minimum tile size is'
+        ERR_MSG_20 = 'tile size cannot exceed smallest primer length'
+        ERR_MSG_21 = 'must specify one or more ingroup files'
 
-        def printHelp():
+        # helper function
+        def printHelp(advanced:bool):
+            # constants
             GAP = " "*4
             EOL = "\n"
             SEP_1 = ", "
@@ -421,7 +510,9 @@ class Parameters():
             SEP_3 = ","
             DEF_OPEN = ' (default: '
             CLOSE = ')'
-            WIDTH = 21
+            WIDTH = max(map(lambda x: len('--' + x.replace("=", '')), LONG_OPTS)) + len(GAP) # argument list determines column width
+            
+            # primary help message
             HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
                        f"{GAP}{self.__author}, 2024{EOL*2}" + \
                        f"If you use this software, please cite our article:{EOL}" + \
@@ -430,24 +521,47 @@ class Parameters():
                        f"{GAP}primerForge [-{SHORT_OPTS.replace(':','')}]{EOL*2}" + \
                        f"required arguments:{EOL}" + \
                        f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL*2}' + \
-                       f"optional arguments: {EOL}" + \
+                       f"optional arguments:{EOL}" + \
                        f"{GAP}{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename for primer pair data{DEF_OPEN}{Parameters._DEF_RESULTS_FN}{CLOSE}{EOL}" + \
-                       f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
+                       f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
                        f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup [{Parameters.__ALLOWED_FORMATS[0]}{SEP_2}{Parameters.__ALLOWED_FORMATS[1]}]{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
-                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
+                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'; (minimum {Parameters._MIN_LEN}){DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
                        f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_GC}{SEP_3}{Parameters._DEF_MAX_GC}{CLOSE}{EOL}" + \
-                       f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (Tm) specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_TM}{SEP_3}{Parameters._DEF_MAX_TM}{CLOSE}{EOL}" + \
+                       f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (°C) specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_TM}{SEP_3}{Parameters._DEF_MAX_TM}{CLOSE}{EOL}" + \
                        f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_PCR}{SEP_3}{Parameters._DEF_MAX_PCR}{CLOSE}{EOL}" + \
-                       f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference between a pair of primers{DEF_OPEN}{Parameters._DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
+                       f"{GAP}{TM_DIFF_FLAGS[0] + SEP_1 + TM_DIFF_FLAGS[1]:<{WIDTH}}[float] the maximum allowable Tm difference °C between a pair of primers{DEF_OPEN}{Parameters._DEF_MAX_TM_DIFF}{CLOSE}{EOL}" + \
                        f"{GAP}{THREADS_FLAGS[0] + SEP_1 + THREADS_FLAGS[1]:<{WIDTH}}[int] the number of threads for parallel processing{DEF_OPEN}{Parameters._DEF_NUM_THREADS}{CLOSE}{EOL}" + \
                        f"{GAP}{KEEP_FLAGS[0] + SEP_1 + KEEP_FLAGS[1]:<{WIDTH}}keep intermediate files{DEF_OPEN}{Parameters._DEF_KEEP}{CLOSE}{EOL}" + \
                        f"{GAP}{VERSION_FLAGS[0] + SEP_1 + VERSION_FLAGS[1]:<{WIDTH}}print the version{EOL}" + \
-                       f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL}" + \
+                       f"{GAP}{HELP_FLAGS[0] + SEP_1 + HELP_FLAGS[1]:<{WIDTH}}print this message{EOL*2}" + \
                        f"{GAP}{CHECK_FLAGS[0]:<{WIDTH}}check installation{EOL}" + \
-                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode"
+                       f"{GAP}{DEBUG_FLAGS[0]:<{WIDTH}}run in debug mode{EOL}" + \
+                       f"{GAP}{ADVANCED_FLAGS[0]:<{WIDTH}}print advanced options{EOL}"
             
+            # advanced help message
+            ADV_MSG  = f"primer3 parameters:{EOL}" + \
+                       f"{GAP}{P3_MV_CONC_FLAGS[0]:<{WIDTH}}[float] monovalent cation concentration (mM){DEF_OPEN}{DEFAULT_P3_ARGS.mv_conc}{CLOSE}{EOL}" + \
+                       f"{GAP}{P3_DV_CONC_FLAGS[0]:<{WIDTH}}[float] divalent cation concentration (mM){DEF_OPEN}{DEFAULT_P3_ARGS.dv_conc}{CLOSE}{EOL}" + \
+                       f"{GAP}{P3_DNTP_CONC_FLAGS[0]:<{WIDTH}}[float] dNTP concentration (mM){DEF_OPEN}{DEFAULT_P3_ARGS.dntp_conc}{CLOSE}{EOL}" + \
+                       f"{GAP}{P3_DNA_CONC_FLAGS[0]:<{WIDTH}}[float] template DNA concentration (nM){DEF_OPEN}{DEFAULT_P3_ARGS.dna_conc}{CLOSE}{EOL}" + \
+                       f"{GAP}{P3_TEMP_C_FLAGS[0]:<{WIDTH}}[float] simulation temp (°C) for ΔG{DEF_OPEN}{DEFAULT_P3_ARGS.temp_c}{CLOSE}{EOL}" + \
+                       f"{GAP}{P3_MAX_LOOP_FLAGS[0]:<{WIDTH}}[int] maximum size (bp) of loops in primer secondary structures{DEF_OPEN}{DEFAULT_P3_ARGS.max_loop}{CLOSE}{EOL*2}" + \
+                       f"isPcr parameters:{EOL}" + \
+                       f"{GAP}{IP_MIN_GOOD_FLAGS[0]:<{WIDTH}}[int] minimum size (bp) where there must be 2 matches for each mismatch{DEF_OPEN}{Parameters._DEF_ISPCR_MIN_GOOD}{CLOSE}{EOL}" + \
+                       f"{GAP}{IP_MIN_PERF_FLAGS[0]:<{WIDTH}}[int] minimum size (bp) of perfect match at 3' end of primer{DEF_OPEN}{Parameters._DEF_ISPCR_MIN_PERFECT}{CLOSE}{EOL}" + \
+                       f"{GAP}{IP_TILESIZE_FLAGS[0]:<{WIDTH}}[int] the size of match that triggers an alignment{DEF_OPEN}{Parameters._DEF_ISPCR_TILE_SIZE}{CLOSE}{EOL*2}" + \
+                       f"additional parameters:{EOL}" + \
+                       f"{GAP}{ADDTNL_DEGREES_FLAGS[0]:<{WIDTH}}[float] minimum number of degrees (°C) below primer Tm allowed for secondary structure Tm{DEF_OPEN}{Parameters._DEF_DEGREES}{CLOSE}{EOL}" + \
+                       f"{GAP}{ADDTNL_REPEATS_FLAGS[0]:<{WIDTH}}[int] maximum length (bp) of homopolymers (repeats) in primer sequences{DEF_OPEN}{Parameters._DEF_REPEATS}{CLOSE}{EOL}" + \
+                       f"{GAP}{ADDTNL_BINSIZE_FLAGS[0]:<{WIDTH}}[int] maximum length (bp) of contiguous regions of overlapping primers (bins){DEF_OPEN}{Parameters._DEF_BINSIZE}{CLOSE}{EOL}"
+            
+            # print the help message
             print(HELP_MSG)
+            
+            # print the advanced help message only if requested
+            if advanced:
+                print(ADV_MSG)
             
         # set default values
         self.ingroupFns = None
@@ -468,11 +582,30 @@ class Parameters():
         self.keepIntermediateFiles = Parameters._DEF_KEEP
         self.debug = Parameters._DEF_DEBUG
         self.helpRequested = Parameters._DEF_HELP
+        self.isPcr_minGood = Parameters._DEF_ISPCR_MIN_GOOD
+        self.isPcr_minPerfect = Parameters._DEF_ISPCR_MIN_PERFECT
+        self.isPcr_tileSize = Parameters._DEF_ISPCR_TILE_SIZE
+        self.tempTolerance = Parameters._DEF_DEGREES
+        self.maxRepeatLen = Parameters._DEF_REPEATS
+        self.maxBinSize = Parameters._DEF_BINSIZE
+        
+        # import default primer3 values
+        self.p3_mvConc = DEFAULT_P3_ARGS.mv_conc
+        self.p3_dvConc = DEFAULT_P3_ARGS.dv_conc
+        self.p3_dntpConc = DEFAULT_P3_ARGS.dntp_conc
+        self.p3_dnaConc = DEFAULT_P3_ARGS.dna_conc
+        self.p3_tempC = DEFAULT_P3_ARGS.temp_c
+        self.p3_maxLoop = DEFAULT_P3_ARGS.max_loop
+        
+        # check for the advanced option flag
+        if ADVANCED_FLAGS[0] in sys.argv:
+            self.helpRequested = True
+            printHelp(True)
         
         # give help if requested
-        if HELP_FLAGS[0] in sys.argv or HELP_FLAGS[1] in sys.argv or len(sys.argv) == 1:
+        elif HELP_FLAGS[0] in sys.argv or HELP_FLAGS[1] in sys.argv or len(sys.argv) == 1:
             self.helpRequested = True
-            printHelp()
+            printHelp(False)
         
         # print the version if requested
         elif VERSION_FLAGS[0] in sys.argv or VERSION_FLAGS[1] in sys.argv:
@@ -644,6 +777,89 @@ class Parameters():
                 elif opt in DEBUG_FLAGS:
                     self.debug = True
                     self.keepIntermediateFiles = True
+                
+                # get the primer3 parameters
+                elif opt in P3_MV_CONC_FLAGS:
+                    try:
+                        self.p3_mvConc = float(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                
+                elif opt in P3_DV_CONC_FLAGS:
+                    try:
+                        self.p3_dvConc = float(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                
+                elif opt in P3_DNTP_CONC_FLAGS:
+                    try:
+                        self.p3_dntpConc = float(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                
+                elif opt in P3_DNA_CONC_FLAGS:
+                    try:
+                        self.p3_dnaConc = float(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                
+                elif opt in P3_TEMP_C_FLAGS:
+                    try:
+                        self.p3_tempC = float(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                
+                elif opt in P3_MAX_LOOP_FLAGS:
+                    try:
+                        self.p3_maxLoop = int(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                
+                # get isPcr parameters
+                elif opt in IP_MIN_GOOD_FLAGS:
+                    try:
+                        self.isPcr_minGood = int(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                
+                elif opt in IP_MIN_PERF_FLAGS:
+                    try:
+                        self.isPcr_minPerf = int(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                
+                elif opt in IP_TILESIZE_FLAGS:
+                    try:
+                        self.isPcr_tileSize = int(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                    
+                    # tilesize cannot be lower than the minimum primer length
+                    if self.isPcr_tileSize < Parameters._MIN_LEN:
+                        raise ValueError(f"{ERR_MSG_19} {Parameters._MIN_LEN} bp")
+                
+                # get additional advanced parameters
+                elif opt in ADDTNL_DEGREES_FLAGS:
+                    try:
+                        self.tempTolerance = float(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_17}{opt}")
+                
+                elif opt in ADDTNL_REPEATS_FLAGS:
+                    try:
+                        self.maxRepeatLen = int(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_18}{opt}")
+                
+                elif opt in ADDTNL_BINSIZE_FLAGS:
+                    try:
+                        self.maxBinSize = int(arg)
+                    except ValueError:
+                        raise ValueError(f"{ERR_MSG_18}{opt}")
+            
+            # make sure that the tileSize is not larger than the smallest primer length
+            if self.isPcr_tileSize > self.minLen:
+                raise ValueError(ERR_MSG_20)
             
             # update disallowed to match pcr parameters unless it was already specified
             if self.disallowedLens is None:
@@ -651,7 +867,7 @@ class Parameters():
             
             # make sure an input file was specified
             if self.ingroupFns is None:
-                raise ValueError(ERR_MSG_17)
+                raise ValueError(ERR_MSG_21)
             
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
