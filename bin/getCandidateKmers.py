@@ -312,7 +312,7 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
         # check for any repeats in the primer
         try:
             # this will work if a repeat is present
-            next(iter(repeats.iter(primer)))
+            next(iter(repeats.iter(str(primer))))
             return False
         
         # absence of repeats will not be iterable
