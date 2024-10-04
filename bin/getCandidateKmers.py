@@ -273,7 +273,8 @@ def __removeRedundantKmerGroups(positions:dict[str,dict[int,list[tuple[str,str]]
                 seen.add(group)
 
 
-def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str,str]], minGc:float, maxGc:float, minTm:float, maxTm:float) -> Primer:
+def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str,str]], minGc:float, maxGc:float, minTm:float, maxTm:float, \
+                                 mvConc:float, dvConc:float, dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float, repeats:Automaton) -> Primer:
     """evaluates all the primers at a single position in the genome; designed for parallel calls
 
     Args:
@@ -284,13 +285,18 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
         maxGc (float): the maximum percent GC allowed
         minTm (float): the minimum melting temperature allowed
         maxTm (float): the maximum melting temperature allowed
+        mvConc (float): primer3 mv_conc
+        dvConc (float): primer3 dv_conc
+        dntpConc (float): primer3 dntp_conc
+        dnaConc (float): primer3 dna_conc
+        tempC (float): primer3 temp_c
+        maxLoop (int): primer3 max_loop
+        tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
+        repeats (Automaton): an Aho-Corasick Automaton consisting of only the disallowed homopolymers
     
     Returns:
         Primer: a suitable primer at the given position
     """
-    # constant
-    FIVE_DEGREES = 5
-    
     # define helper functions to make booleans below more readable
     def isGcWithinRange(primer:Primer) -> bool:
         """is the percent GC within the acceptable range?"""
@@ -303,26 +309,38 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
     def noLongRepeats(primer:Primer) -> bool:
         """verifies that a primer does not have long repeats
         """
-        # constants
-        MAX_LEN = 4
-        REPEATS = ("A"*MAX_LEN, "T"*MAX_LEN, "C"*MAX_LEN, "G"*MAX_LEN)
-
-        # check for each repeat in the primer
-        for repeat in REPEATS:
-            if repeat in primer.seq:
-                return False
-        return True
+        # check for any repeats in the primer
+        try:
+            # this will work if a repeat is present
+            next(iter(repeats.iter(primer)))
+            return False
+        
+        # absence of repeats will not be iterable
+        except StopIteration:
+            return True
 
     def noHairpins(primer:Primer) -> bool:
         """verifies that the primer does not form hairpins
         """
         # save the hairpin Tms
-        primer.hairpinTm = primer3.calc_hairpin_tm(str(primer))
-        primer.rcHairpin = primer3.calc_hairpin_tm(str(primer.reverseComplement()))
+        primer.hairpinTm = primer3.calc_hairpin_tm(str(primer),
+                                                   mv_conc=mvConc,
+                                                   dv_conc=dvConc,
+                                                   dntp_conc=dntpConc,
+                                                   dna_conc=dnaConc,
+                                                   temp_c=tempC,
+                                                   max_loop=maxLoop)
+        primer.rcHairpin = primer3.calc_hairpin_tm(str(primer.reverseComplement()),
+                                                   mv_conc=mvConc,
+                                                   dv_conc=dvConc,
+                                                   dntp_conc=dntpConc,
+                                                   dna_conc=dnaConc,
+                                                   temp_c=tempC,
+                                                   max_loop=maxLoop)
         
         # hairpin tm should be less than (minTm - 5°); need to check both strands
-        fwdOk = primer.hairpinTm < (minTm - FIVE_DEGREES)
-        revOk = primer.rcHairpin < (minTm - FIVE_DEGREES)
+        fwdOk = primer.hairpinTm < (minTm - tempTolerance)
+        revOk = primer.rcHairpin < (minTm - tempTolerance)
         
         return fwdOk and revOk
 
@@ -330,12 +348,24 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
         """verifies that the primer does not form homodimers
         """
         # save the homodimer Tms
-        primer.homodimerTm = primer3.calc_homodimer_tm(str(primer))
-        primer.rcHomodimer = primer3.calc_homodimer_tm(str(primer.reverseComplement()))
+        primer.homodimerTm = primer3.calc_homodimer_tm(str(primer),
+                                                       mv_conc=mvConc,
+                                                       dv_conc=dvConc,
+                                                       dntp_conc=dntpConc,
+                                                       dna_conc=dnaConc,
+                                                       temp_c=tempC,
+                                                       max_loop=maxLoop)
+        primer.rcHomodimer = primer3.calc_homodimer_tm(str(primer.reverseComplement()),
+                                                       mv_conc=mvConc,
+                                                       dv_conc=dvConc,
+                                                       dntp_conc=dntpConc,
+                                                       dna_conc=dnaConc,
+                                                       temp_c=tempC,
+                                                       max_loop=maxLoop)
         
         # homodimer tm should be less than (minTm - 5°); need to check both strands
-        fwdOk = primer.homodimerTm < (minTm - FIVE_DEGREES)
-        revOk = primer.rcHomodimer < (minTm - FIVE_DEGREES)
+        fwdOk = primer.homodimerTm < (minTm - tempTolerance)
+        revOk = primer.rcHomodimer < (minTm - tempTolerance)
         
         return fwdOk and revOk
     
@@ -358,16 +388,12 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
                         return primer
 
 
-def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], minGc:float, maxGc:float, minTm:float, maxTm:float, numThreads:int) -> list[Primer]:
+def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], params:Parameters) -> list[Primer]:
     """evaluates kmers at each position for their suitability as primers
 
     Args:
         kmers (dict[str,dict[int,list[tuple[str,str]]]]): the dictionary produced by __reorganizeDataByPosition
-        minGc (float): the minimum percent G+C
-        maxGc (float): the maximum percent G+C
-        minTm (float): the minimum melting temperature
-        maxTm (float): the maximum melting temperature
-        numThreads (int): number of threads for parallel processing
+        params (Parameters): a Parameters object
 
     Returns:
         list[Primer]: a list of suitable primers as Primer objects
@@ -376,15 +402,35 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], minGc:flo
     def generateArgs() -> Generator[tuple[str,int,list[tuple[str,str]],float,float,float,float],None,None]:
         """ generates arguments for __evaluateKmersAtOnePosition
         """
+        # create an Aho-Corasick Automaton for detecting homopolymers in primer sequences
+        repeats = Automaton()
+        for ch in 'ATCG':
+            repeats.add_word(ch * params.maxRepeatLen, ch)
+        repeats.make_automaton()
+        
         # each contig needs to be evalutated
         for contig in kmers.keys():
             # each start position within the contig needs to be evaluated
             for start in kmers[contig].keys():
                 # save arguments to pass in parallel
-                yield (contig, start, kmers[contig][start], minGc, maxGc, minTm, maxTm)
+                yield (contig,
+                       start,
+                       kmers[contig][start],
+                       params.minGc,
+                       params.maxGc,
+                       params.minTm,
+                       params.maxTm,
+                       params.p3_mvConc,
+                       params.p3_dvConc,
+                       params.p3_dntpConc,
+                       params.p3_dnaConc,
+                       params.p3_tempC,
+                       params.p3_maxLoop,
+                       params.tempTolerance,
+                       repeats)
 
     # parallelize primer evaluations
-    pool = multiprocessing.Pool(processes=numThreads)
+    pool = multiprocessing.Pool(processes=params.numThreads)
     results = pool.starmap(__evaluateKmersAtOnePosition, generateArgs())
     pool.close()
     pool.join()
