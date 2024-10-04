@@ -508,7 +508,7 @@ def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,
     __removeRedundantKmerGroups(positions, seen)
     
     # get a list of the kmers that pass the evaulation
-    candidates = __evaluateAllKmers(positions, params.minGc, params.maxGc, params.minTm, params.maxTm, params.numThreads)
+    candidates = __evaluateAllKmers(positions, params)
     
     # create a dictionary whose keys are contigs and values are lists of candidate primers
     return __buildOutput(kmers, candidates)
