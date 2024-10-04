@@ -9,7 +9,6 @@ class Parameters():
     """class to store arguments and debug utilities
     """
     # constants
-    _DATA_EXT = "_data.tsv"
     _MIN_LEN = 10
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __ALL_CONTIGS_FNA = ".all_contigs.fna"
