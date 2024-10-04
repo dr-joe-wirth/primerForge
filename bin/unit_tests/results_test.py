@@ -613,37 +613,33 @@ class ResultsTest(unittest.TestCase):
                 return False
         return True
     
-    def _noHomoDimers(seq:Seq, minTm:float) -> bool:
+    def _noHomoDimers(seq:Seq, minTm:float, tempTolerance:float) -> bool:
         """evaluates sequences for the presence of homodimers
 
         Args:
             seq (Seq): a DNA sequence
             minTm (float): the minimum primer Tm
+            tempTolerance (float): temp tolerance for secondary structures
 
         Returns:
             bool: indicates if the sequence does not form homodimers
         """
-        # constant
-        FIVE_DEGREES = 5
-        
         # homodimers don't exist as long as the tm for formation is 5° below the min Tm
-        return primer3.calc_homodimer_tm(str(seq)) < (minTm - FIVE_DEGREES)
+        return primer3.calc_homodimer_tm(str(seq)) < (minTm - tempTolerance)
     
-    def _noHairpins(seq:Seq, minTm:float) -> bool:
+    def _noHairpins(seq:Seq, minTm:float, tempTolerance:float) -> bool:
         """evaluates sequences for the presence of hairpins
 
         Args:
             seq (Seq): a DNA sequence
             minTm (float): the minimum primer Tm
+            tempTolerance (float): temp tolerance for secondary structures
 
         Returns:
             bool: indicates if the sequence does not form hairpins
         """
-        # constant
-        FIVE_DEGREES = 5
-        
         # hairpins don't exist as long as the tm for formation is 5° below the min Tm
-        return primer3.calc_hairpin_tm(str(seq)) < (minTm - FIVE_DEGREES)
+        return primer3.calc_hairpin_tm(str(seq)) < (minTm - tempTolerance)
     
     # test cases
     def testA_isSequenceUpper(self) -> None:
@@ -742,8 +738,8 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair, make sure there are no homodimers
         for fwd,rev in self.results.keys():
-            self.assertTrue(ResultsTest._noHomoDimers(fwd, self.params.minTm), f"{FAIL_MSG}{fwd}")
-            self.assertTrue(ResultsTest._noHomoDimers(rev, self.params.minTm), f"{FAIL_MSG}{rev}")
+            self.assertTrue(ResultsTest._noHomoDimers(fwd, self.params.minTm, self.params.tempTolerance), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(ResultsTest._noHomoDimers(rev, self.params.minTm, self.params.tempTolerance), f"{FAIL_MSG}{rev}")
     
     def testJ_noHairpins(self) -> None:
         # constant
@@ -751,8 +747,8 @@ class ResultsTest(unittest.TestCase):
         
         # for each pair, make sure there are no homodimers
         for fwd,rev in self.results.keys():
-            self.assertTrue(ResultsTest._noHairpins(fwd, self.params.minTm), f"{FAIL_MSG}{fwd}")
-            self.assertTrue(ResultsTest._noHairpins(rev, self.params.minTm), f"{FAIL_MSG}{rev}")
+            self.assertTrue(ResultsTest._noHairpins(fwd, self.params.minTm, self.params.tempTolerance), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(ResultsTest._noHairpins(rev, self.params.minTm, self.params.tempTolerance), f"{FAIL_MSG}{rev}")
 
     def testK_noPrimerDimers(self) -> None:
         """do all pairs not produce primer dimers
@@ -763,7 +759,17 @@ class ResultsTest(unittest.TestCase):
             rev = Primer(rev, '', 100, len(rev), Primer.MINUS)
 
             # check dimer Tm
-            forms,tm = _formsDimers(str(fwd),str(rev.reverseComplement()),fwd.Tm, rev.Tm)
+            forms,tm = _formsDimers(str(fwd),
+                                    str(rev.reverseComplement()),
+                                    fwd.Tm,
+                                    rev.Tm,
+                                    self.params.p3_mvConc,
+                                    self.params.p3_dvConc,
+                                    self.params.p3_dntpConc,
+                                    self.params.p3_dnaConc,
+                                    self.params.p3_tempC,
+                                    self.params.p3_maxLoop,
+                                    self.params.tempTolerance)
             
             # check for primer dimers; both primers need to be on the same strand
             self.assertFalse(forms, f'primer dimers present in {fwd}, {rev}')
