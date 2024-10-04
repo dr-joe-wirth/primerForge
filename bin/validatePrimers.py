@@ -66,19 +66,24 @@ def __makeQueryString(pairs:list[tuple[Primer,Primer]]) -> str:
     return out
 
 
-def __runOnePcr(allContigsFna:str, query:str) -> dict[tuple[str,str],set[tuple[str,int]]]:
+def __runOnePcr(allContigsFna:str, query:str, minGood:int, minPerfect:int, tileSize:int) -> dict[tuple[str,str],set[tuple[str,int]]]:
     """runs isPcr on a properly formatted query string
 
     Args:
         allContigsFna (str): the filename containing all the contigs
         query (str): the query to search
+        minGood (int): the isPcr '-minGood' parameter
+        minPerfect (int): the isPcr '-minPerfect' parameter
+        tileSize (int): the isPcr '-tileSize' parameter
 
     Returns:
         dict[tuple[str,str],set[tuple[str,int]]]: key=primer pair (as strings); val=(contig, pcr product size)
     """
     # constants
     CMD = 'isPcr'
-    ARGS = ['stdin', 'stdout', '-out=bed', '-minGood=6', '-minPerfect=8']
+    ARGS = ['stdin', 'stdout', '-out=bed']#, '-minGood=6', '-minPerfect=8']
+    GOOD = '-minGood='
+    PERF = '-minPerfect='
     TILE = '-tileSize='
     EMPTY = ['']
     
@@ -88,7 +93,9 @@ def __runOnePcr(allContigsFna:str, query:str) -> dict[tuple[str,str],set[tuple[s
     # build command
     cmd = [CMD, allContigsFna]
     cmd.extend(ARGS)
-    cmd.append(TILE + str(Parameters._MIN_LEN))
+    cmd.append(GOOD + str(minGood))
+    cmd.append(PERF + str(minPerfect))
+    cmd.append(TILE + str(tileSize))
     
     # run the command; inject the query string using a pipe
     results = subprocess.run(cmd, input=query.encode(), capture_output=True, check=True)
@@ -145,7 +152,7 @@ def __runAllPcrs(params:Parameters, pairs:list[tuple[Primer,Primer]]) -> dict[tu
             start = end
             end += chunk
             
-            yield (params.allContigsFna, query)
+            yield (params.allContigsFna, query, params.isPcr_minGood, params.isPcr_minPerfect, params.isPcr_tileSize)
     
     # run pcrs in parallel
     pool = multiprocessing.Pool(params.numThreads)
