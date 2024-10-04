@@ -36,19 +36,17 @@ def __reduceBinSize(bins:dict[str,dict[int,list[Primer]]]) -> None:
                             break
 
 
-def __binCandidateKmers(candidates:dict[str,list[Primer]], isFirstGenome=False) -> dict[str,dict[int,list[Primer]]]:
+def __binCandidateKmers(candidates:dict[str,list[Primer]], maxBinSize:int, isFirstGenome=False) -> dict[str,dict[int,list[Primer]]]:
     """bins primers that overlap to form a contiguous sequence based on positional data
 
     Args:
         candidates (dict[str,list[Primer]]): key=contig; val=list of Primers (sorted by start position)
+        maxBinSize (int): the maximum length (bp) of bins
         isFirstGenome (bool, optional): indicates if this is the first genome. Defaults to False.
 
     Returns:
         dict[str,dict[int,list[Primer]]]: key=contig; val=dict: key=bin number; val=list of overlapping Primer objects
     """
-    # constant
-    MAX_BIN_LEN = 64
-    
     # initialize output
     out = dict()
     
@@ -80,7 +78,7 @@ def __binCandidateKmers(candidates:dict[str,list[Primer]], isFirstGenome=False) 
                 binStart = curStart
             
             # if the candidate overlaps the previous one and the bin isn't too long, then add it to the bin
-            elif curStart < prevEnd and binLen <= MAX_BIN_LEN:
+            elif curStart < prevEnd and binLen <= maxBinSize:
                 prevEnd = curEnd
                 out[contig][currentBin].append(cand)
             
@@ -145,7 +143,8 @@ def __getBinPairs(binned:dict[str,dict[int,list[Primer]]], minPrimerLen:int, min
     return out
 
 
-def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float) -> tuple[bool, float]:
+def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float, mvConc:float, dvConc:float, \
+                 dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float) -> tuple[bool, float]:
     """evaluates if two primers may form primer dimers
 
     Args:
@@ -153,17 +152,28 @@ def _formsDimers(fwd:str, rev:str, fwdTm:float, revTm:float) -> tuple[bool, floa
         rev (str): the reverse primer sequence
         fwdTm (float): the forward primer melting temperature
         revTm (float): the reverse primer melting temperature
+        mvConc (float): primer3 mv_conc
+        dvConc (float): primer3 dv_conc
+        dntpConc (float): primer3 dntp_conc
+        dnaConc (float): primer3 dna_conc
+        tempC (float): primer3 temp_c
+        maxLoop (int): primer3 max_loop
+        tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
 
     Returns:
         tuple[bool, float]: indicates if primer dimer formation is possible; the dimer Tm
     """
-    # constant
-    FIVE_DEGREES = 5
-    
-    dimerTm = primer3.calc_heterodimer_tm(fwd, rev)
+    dimerTm = primer3.calc_heterodimer_tm(fwd,
+                                          rev,
+                                          mv_conc=mvConc,
+                                          dv_conc=dvConc,
+                                          dntp_conc=dntpConc,
+                                          dna_conc=dnaConc,
+                                          temp_c=tempC,
+                                          max_loop=maxLoop)
     
     # dimer formation is a concern if the Tm is sufficiently high
-    highEnough = dimerTm >= (min(fwdTm, revTm) - FIVE_DEGREES)
+    highEnough = dimerTm >= (min(fwdTm, revTm) - tempTolerance)
 
     return highEnough, dimerTm
 
@@ -193,21 +203,29 @@ def __isPairSuitable(fwd:Primer, rev:Primer, minPcr:int, maxPcr:int, maxTmDiff:f
     return True, pcrLen
 
 
-def __evaluateOnePair(fwd:str, rev:str, fTm:float, rTm:float, binPair:str) -> Union[tuple[str, float],None]:
+def __evaluateOnePair(fwd:str, rev:str, binPair:str, fTm:float, rTm:float, mvConc:float, dvConc:float, \
+                      dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float) -> Union[tuple[str, float],None]:
     """evaluates a primer pair; designed to work in parallel; only returns if the pair passes evaluation
 
     Args:
         fwd (str): the forward Primer
         rev (str): the reverse Primer
+        binPair (str): the bin pair for this pair
         fTm (float): the forward melting temperature
         rTm (float): the reverse melting temperature
-        binPair (str): the bin pair for this pair
+        mvConc (float): primer3 mv_conc
+        dvConc (float): primer3 dv_conc
+        dntpConc (float): primer3 dntp_conc
+        dnaConc (float): primer3 dna_conc
+        tempC (float): primer3 temp_c
+        maxLoop (int): primer3 max_loop
+        tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
 
     Returns:
         tuple[str, float] | None: the bin pair for this pair, the heterodimer Tm; None if the pair does not pass evaluation
     """
     # get the dimer Tm and if it forms dimers
-    forms, dimerTm = _formsDimers(fwd, rev, fTm, rTm)
+    forms, dimerTm = _formsDimers(fwd, rev, fTm, rTm, mvConc, dvConc, dntpConc, dnaConc, tempC, maxLoop, tempTolerance)
     
     # return acceptable pairs and their pcr product sizes
     if not forms: return binPair, dimerTm
@@ -270,8 +288,19 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
                                 # store the indices of these primers within their respective bins
                                 lookup[binPair] = (idx, jdx, pcrLen)
                                 
-                                # add data to the argument list
-                                yield (str(fwd), str(rev.reverseComplement()), fwd.Tm, rev.Tm, binPair)
+                                # yield data to the child process
+                                yield (str(fwd),
+                                       str(rev.reverseComplement()),
+                                       binPair,
+                                       fwd.Tm,
+                                       rev.Tm,
+                                       params.p3_mvConc,
+                                       params.p3_dvConc,
+                                       params.p3_dntpConc,
+                                       params.p3_dnaConc,
+                                       params.p3_tempC,
+                                       params.p3_maxLoop,
+                                       params.tempTolerance)
                                 
                                 # indicate that a suitable primer pair has been found and break out of the loop
                                 found = True
@@ -495,7 +524,7 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     firstName = os.path.basename(params.ingroupFns[0])
     
     # bin kmers to reduce time complexity
-    binnedCandidateKmers = __binCandidateKmers(candidateKmers[firstName], isFirstGenome=True)
+    binnedCandidateKmers = __binCandidateKmers(candidateKmers[firstName], params.maxBinSize, isFirstGenome=True)
     
     # get the bins that could work
     binPairs = __getBinPairs(binnedCandidateKmers, params.minLen, params.minPcr, params.maxPcr)
