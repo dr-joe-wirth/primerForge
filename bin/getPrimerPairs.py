@@ -467,16 +467,17 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
     return out
 
 
-def __updateBinsForUnprocessedGenomes(name:str, kmers:dict[str,list[Primer]], pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
+def __updateBinsForUnprocessedGenomes(name:str, maxBinSize:int, kmers:dict[str,list[Primer]], pairs:dict[tuple[Primer,Primer],dict[str,Product]]) -> None:
     """updates the bin pairs for the unprocessed genomes to ensure that all redundant primers are removed
 
     Args:
         name (str): the name of an unprocessed genome
+        maxBinSize (int): the maximum length (bp) of bins
         kmers (dict[str,list[Primer]]): candidate kmers for this genome (key=contig; val=list of candidate kmers)
         pairs (dict[tuple[Primer,Primer],dict[str,Product]]): the dictionary produced by __getAllSharedPrimerPairs
     """
     # bin the candidate kmers for this genome
-    binned = __binCandidateKmers(kmers)
+    binned = __binCandidateKmers(kmers, maxBinSize)
     
     # restructure the data for O(1) lookup of bins by primer sequence
     primerToBin = dict()
@@ -550,6 +551,6 @@ def _getPrimerPairs(candidateKmers:dict[str,dict[str,list[Primer]]], params:Para
     # bin the primers from the unprocessed genomes
     unprocessed = set(candidateKmers.keys()).difference({firstName})
     for name in unprocessed:
-        __updateBinsForUnprocessedGenomes(name, candidateKmers[name], pairs)
+        __updateBinsForUnprocessedGenomes(name, params.maxBinSize, candidateKmers[name], pairs)
     
     return pairs
