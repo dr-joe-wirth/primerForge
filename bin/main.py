@@ -312,53 +312,6 @@ def _runner(params:Parameters) -> None:
     # messages
     MSG  = 'total runtime: '
     
-    # helper function to generate the error message
-    def createErrorMessage(current:Parameters, old:Parameters) -> str:
-        """creates an informative error message based on conflicting parameters
-        """
-        # constants
-        GAP = 4*" "
-        ERR_PREFIX = "current parameters do not match parameters on checkpointed run:\n"
-        
-        # evaluate the important variables
-        badIngroup = set(map(os.path.relpath, current.ingroupFns)) != set(map(os.path.relpath, old.ingroupFns))
-        badOutgroup = set(map(os.path.relpath, current.outgroupFns)) != set(map(os.path.relpath, old.outgroupFns))
-        badPrimerLens = current.minLen != old.minLen or current.maxLen != old.maxLen
-        badPrimerGc = current.minGc != old.minGc or current.maxGc != old.maxGc
-        badPrimerTm = current.minTm != old.minTm or current.maxTm != old.maxTm
-        badPrimerTmDiff = current.maxTmDiff != old.maxTmDiff
-        badPcrLens = current.minPcr != old.minPcr or current.maxPcr != old.maxPcr
-        badBadLens = current.disallowedLens != old.disallowedLens
-        
-        # create the message add the offending data to it
-        out = ERR_PREFIX + GAP
-        if badIngroup:
-            out += f"current ingroup:     {GAP}{current.ingroupFns}\n"
-            out += f"checkpointed ingroup:{GAP}{old.ingroupFns}\n\n"
-        if badOutgroup:
-            out += f"current outgroup:     {GAP}{current.outgroupFns}\n"
-            out += f"checkpointed outgroup:{GAP}{old.outgroupFns}\n\n"
-        if badPrimerLens:
-            out += f"current allowed primer lengths:     {GAP}{current.minLen} - {current.maxLen}\n"
-            out += f"checkpointed allowed primer lengths:{GAP}{old.minLen} - {old.maxLen}\n\n"
-        if badPrimerGc:
-            out += f"current allowed primer G+C (mol %):     {GAP}{current.minGc} - {current.maxGc}\n"
-            out += f"checkpointed allowed primer G+C (mol %):{GAP}{old.minGc} - {old.maxGc}\n\n"
-        if badPrimerTm:
-            out += f"current allowed primer melting temps (°C):     {GAP}{current.minTm} - {current.maxTm}\n"
-            out += f"checkpointed allowed primer melting temps (°C):{GAP}{old.minTm} - {old.maxTm}\n\n"
-        if badPrimerTmDiff:
-            out += f"current allowed primer melting temp difference (°C):     {GAP}{current.maxTmDiff}\n"
-            out += f"checkpointed allowed primer melting temp difference (°C):{GAP}{old.maxTmDiff}\n\n"
-        if badPcrLens:
-            out += f"current allowed ingroup PCR product sizes:     {GAP}{current.minPcr} - {current.maxPcr}\n"
-            out += f"checkpointed allowed ingroup PCR product sizes:{GAP}{old.minPcr} - {old.maxPcr}\n\n"
-        if badBadLens:
-            out += f"current disallowed outgroup PCR product sizes:     {GAP}{min(current.disallowedLens)} - {max(current.disallowedLens)}\n"
-            out += f"checkpointed disallowed outgroup PCR product sizes:{GAP}{min(old.disallowedLens)} - {max(old.disallowedLens)}\n\n"
-        
-        return out
-    
     # start the timers
     totalClock = Clock()
     clock = Clock()
@@ -370,15 +323,9 @@ def _runner(params:Parameters) -> None:
     checkpoints = __getCheckpoint(params)
     sharedExists, candExists, unfiltExists, filtExists, validExists = checkpoints
     
-    # if any checkpointing is occurring then load old parameters and make sure it is congruent
-    if any(checkpoints):
-        oldParams = params.loadObj(params.pickles[Parameters._PARAMS])
-        
-        if params != oldParams:
-            raise BaseException(createErrorMessage(params, oldParams))
-    
-    # save the current parameters
-    params.dumpObj(params, params.pickles[Parameters._PARAMS], 'Parameters')
+    # save the current parameters only if they were not loaded from file
+    if not any(checkpoints):
+        params.dumpObj(params, params.pickles[Parameters._PARAMS], 'Parameters')
     
     # jump straight to the end if possible
     if validExists:
