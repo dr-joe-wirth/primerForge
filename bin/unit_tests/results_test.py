@@ -1066,10 +1066,6 @@ class ResultsTest(unittest.TestCase):
                 # check that the dimer Tm was saved correctly
                 self.assertAlmostEqual(dimerTm, product.dimerTm, places=3)
 
-    def testX_willFail(self) -> None:
-        """this test will fail"""
-        self.assertTrue(False, 'this test will fail')
-
 # entrypoint
 if __name__ == "__main__":
     unittest.main()
