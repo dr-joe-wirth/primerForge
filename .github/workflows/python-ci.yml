@@ -47,4 +47,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pickles
-          path: test_dir/_pickles/*.p
+          path: test_dir/primerforge_*/*.p
+      - name: upload log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logfile
+          path: test_dir/primerForge.log
