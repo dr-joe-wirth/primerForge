@@ -280,6 +280,9 @@ class ResultsTest(unittest.TestCase):
         for key in params.pickles.keys():
             params.pickles[key] = os.path.join(newDir, os.path.basename(params.pickles[key]))
         
+        # update the location of the all_contigs.fna file
+        params.allContigsFna = os.path.join(newDir, os.path.basename(params.allContigsFna))
+        
         return params
 
     def _downloadOneGenome(ftp:str, fn:str) -> None:

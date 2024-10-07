@@ -36,10 +36,22 @@ class Log():
         
         # point the log at the log file; level is DEBUG or INFO
         if debug and initialize:
+            Log.__resetLogging()
             logging.basicConfig(filename=self.logFn, level=logging.DEBUG)
         elif initialize:
+            Log.__resetLogging()
             logging.basicConfig(filename=self.logFn, level=logging.INFO)
     
+    # private methods
+    def __resetLogging() -> None:
+        """resets the configuration for logging so it can be set again later (used during testing)
+        """
+        # close and remove all handlers so that logging can be reconfigured
+        for handler in logging.root.handlers:
+            handler.close()
+            logging.root.removeHandler(handler)
+    
+    # public methods
     def rename(self, name:str):
         """renames the logger
 
