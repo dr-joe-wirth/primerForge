@@ -288,11 +288,8 @@ def __removeIntermediateFiles(params:Parameters) -> None:
     Args:
         params (Parameters): a Parameters object
     """
-    # remove the pickle directory along with any pickles
-    shutil.rmtree(os.path.dirname(next(iter(params.pickles.values()))))
-    
-    # remove the isPcr query file
-    os.remove(params.allContigsFna)
+    # remove the intermediate file directory
+    shutil.rmtree(os.path.dirname(params.allContigsFna))
 
 
 def _runner(params:Parameters) -> None:
