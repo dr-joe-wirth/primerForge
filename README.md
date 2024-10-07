@@ -1,4 +1,4 @@
-<img src="assets/primerforge.png" alt="Logo" width="250" height="250">
+<img src="assets/primerforge.png" alt="primerForge" width="250" height="250">
 
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.06850/status.svg)](https://doi.org/10.21105/joss.06850)
 
@@ -79,31 +79,58 @@ python3 -m unittest discover -s ./primerForge/bin/unit_tests/ -p "*_test.py"
 
 
 ## Usage
+### Basic usage
 
 ```text
 usage:
-    primerForge [-ioaubfpgtrdnkvh]
+    primerForge [-ioubfpgtrdnkvh]
 
 required arguments:
-    -i, --ingroup        [file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff")
+    -i, --ingroup          [file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff")
 
-optional arguments: 
-    -o, --out            [file] output filename for primer pair data (default: results.tsv)
-    -a, --analysis       [file] output basename for primer analysis data (default: distribution)
-    -u, --outgroup       [file(s)] outgroup filename or a file pattern inside double-quotes (eg."*.gbff")
-    -b, --bad_sizes      [int,int] a range of PCR product lengths that the outgroup cannot produce (default: same as '--pcr_prod')
-    -f, --format         [str] file format of the ingroup and outgroup genbank|fasta (default: genbank)
-    -p, --primer_len     [int(s)] a single primer length or a range specified as 'min,max' (default: 16,20)
-    -g, --gc_range       [float,float] a min and max percent GC specified as a comma separated list (default: 40.0,60.0)
-    -t, --tm_range       [float,float] a min and max melting temp (Tm) specified as a comma separated list (default: 55.0,68.0)
-    -r, --pcr_prod       [int(s)] a single PCR product length or a range specified as 'min,max' (default: 120,2400)
-    -d, --tm_diff        [float] the maximum allowable Tm difference between a pair of primers (default: 5.0)
-    -n, --num_threads    [int] the number of threads for parallel processing (default: 1)
-    -k, --keep           keep intermediate files (default: False)
-    -v, --version        print the version
-    -h, --help           print this message
-    --check_install      check installation
-    --debug              run in debug mode (default: False)
+optional arguments:
+    -o, --out              [file] output filename for primer pair data (default: results.tsv)
+    -u, --outgroup         [file] outgroup filename or a file pattern inside double-quotes (eg."*.gbff")
+    -b, --bad_sizes        [int,int] a range of PCR product lengths that the outgroup cannot produce (default: same as '--pcr_prod')
+    -f, --format           [str] file format of the ingroup and outgroup [genbank|fasta] (default: genbank)
+    -p, --primer_len       [int(s)] a single primer length or a range specified as 'min,max'; (minimum 10) (default: 16,20)
+    -g, --gc_range         [float,float] a min and max percent GC specified as a comma separated list (default: 40.0,60.0)
+    -t, --tm_range         [float,float] a min and max melting temp (°C) specified as a comma separated list (default: 55.0,68.0)
+    -r, --pcr_prod         [int(s)] a single PCR product length or a range specified as 'min,max' (default: 120,2400)
+    -d, --tm_diff          [float] the maximum allowable Tm difference °C between a pair of primers (default: 5.0)
+    -n, --num_threads      [int] the number of threads for parallel processing (default: 1)
+    -k, --keep             keep intermediate files (default: False)
+    -v, --version          print the version
+    -h, --help             print this message
+
+    --check_install        check installation
+    --debug                run in debug mode
+    --advanced             print advanced options
+```
+
+### Advanced options
+### `primer3` parameters
+```text
+--primer3_mv_conc      [float] monovalent cation concentration (mM) (default: 50.0)
+--primer3_dv_conc      [float] divalent cation concentration (mM) (default: 1.5)
+--primer3_dntp_conc    [float] dNTP concentration (mM) (default: 0.6)
+--primer3_dna_conc     [float] template DNA concentration (nM) (default: 50.0)
+--primer3_temp_c       [float] simulation temp (°C) for ΔG (default: 37.0)
+--primer3_max_loop     [int] maximum size (bp) of loops in primer secondary structures (default: 30)
+```
+
+#### `isPcr` parameters
+```text
+--isPcr_minGood        [int] minimum size (bp) where there must be 2 matches for each mismatch (default: 6)
+--isPcr_minPerfect     [int] minimum size (bp) of perfect match at 3' end of primer (default: 8)
+--isPcr_tileSize       [int] the size of match that triggers an alignment (default: 10)
+```
+
+#### Additional `primerForge` parameters
+```text
+--temp_tolerance       [float] minimum number of degrees (°C) below primer Tm allowed for secondary structure Tm (default: 5.0)
+--max_repeats          [int] maximum allowed length (bp) of homopolymers (repeats) in primer sequences (default: 4)
+--bin_size             [int] maximum allowed length (bp) of contiguous regions of overlapping primers (bins) (default: 64)
 ```
 
 ## Results
