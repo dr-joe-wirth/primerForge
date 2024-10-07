@@ -3,7 +3,7 @@ from Bio import SeqIO
 from bin.Log import Log
 from bin.Clock import Clock
 from primer3.bindings import DEFAULT_P3_ARGS
-import getopt, glob, os, pickle, shutil, sys
+import getopt, glob, os, pickle, shutil, sys, uuid
 
 class Parameters():
     """class to store arguments and debug utilities
@@ -11,8 +11,8 @@ class Parameters():
     # constants
     _MIN_LEN = 10
     __ALLOWED_FORMATS = ('genbank', 'fasta')
-    __ALL_CONTIGS_FNA = ".all_contigs.fna"
-    __PICKLE_DIR = "_pickles"
+    __ALL_CONTIGS_FNA = "all_contigs.fna"
+    __WORKDIR_PREFIX = "primerforge_"
     _PARAMS = 0
     _SHARED = 1
     _CAND   = 2
@@ -21,7 +21,7 @@ class Parameters():
     _PAIR_3 = 5
     __PICKLE_FNS = {_PARAMS: "parameters.p",
                     _SHARED: "sharedKmers.p",
-                    _CAND: "candidates.p",
+                    _CAND:   "candidates.p",
                     _PAIR_1: "pairs.p",
                     _PAIR_2: "pairs_noOutgroup.p",
                     _PAIR_3: "pairs_noOutgroup_validated.p"}
@@ -105,16 +105,14 @@ class Parameters():
             # initialize a logger
             self.log = Log(debug=self.debug, initialize=initializeLog)
             
-            # create the pickle directory
-            pickleDir = os.path.join(os.getcwd(), Parameters.__PICKLE_DIR)
-            if not os.path.exists(pickleDir):
-                os.mkdir(pickleDir)
+            # create the intermediate directory, or find an existing one for checkpointing
+            workdir = self.__getIntermediateDirname()
             
             # get the pickle filenames
-            self.pickles = {x:os.path.join(pickleDir, y) for x,y in self.__PICKLE_FNS.items()}
+            self.pickles = {x:os.path.join(workdir, y) for x,y in self.__PICKLE_FNS.items()}
             
-            # get the all contigs fasta filename
-            self.allContigsFna = os.path.join(os.path.dirname(self.resultsFn), Parameters.__ALL_CONTIGS_FNA)
+            # get the all_contigs fasta filename
+            self.allContigsFna = os.path.join(workdir, Parameters.__ALL_CONTIGS_FNA)
 
     def __eq__(self, other:Parameters) -> bool:
         """equality overload
@@ -874,6 +872,74 @@ class Parameters():
             # check for existing files
             Parameters.__checkOutputFile(self.resultsFn)
     
+    def __getIntermediateDirname(self) -> str:
+        """determines the intermediate directory name and handles checkpointing
+
+        Returns:
+            str: the name of the intermediate directory
+        """
+        # constants
+        CP_MSG_A = "\ncheckpoint detected. using cached data found in '"
+        CP_MSG_B = "'\nresume previous run (yes; no; abort)? [y/n/a] "
+        KILL_MSG = "\naborting\n"
+        IGNORE_MSG = "\nignoring checkpoint; starting new run\n"
+        INVALID_MSG = "invalid response"
+        
+        # initialize a variable to determine if an existing directory was found
+        found = False
+        
+        # find all existing Parameters pickles
+        allParamFns = glob.glob(os.path.join(os.curdir, f'{Parameters.__WORKDIR_PREFIX}*', Parameters.__PICKLE_FNS[Parameters._PARAMS]))
+        
+        # if there are existing parameters, then process them
+        if allParamFns != []:
+            # sort them by time; most recently created files first
+            allParamFns.sort(key=lambda x: os.path.getctime(x), reverse=True)
+            
+            # for each existing Parameter file
+            for fn in allParamFns:
+                # load the existing Parameters into memory
+                with open(fn, 'rb') as fh:
+                    other:Parameters = pickle.load(fh)
+                
+                # check if it is compatible with the current run; use existing folder if possible
+                if other == self:
+                    workdir = os.path.dirname(fn)
+                    found = True
+                    break
+        
+        # ask the user if they want to checkpoint
+        if found:
+            while True:
+                # print message that a checkpoint was found
+                proceed = input(f"{CP_MSG_A}{workdir}{CP_MSG_B}")
+                
+                # let the user decide
+                if proceed == 'n' or proceed == 'no':
+                    print(IGNORE_MSG)
+                    found = False
+                    break
+                
+                elif proceed == 'y' or proceed == 'yes':
+                    print()
+                    break
+                
+                elif proceed == 'a' or proceed == 'abort':
+                    print(KILL_MSG)
+                    self.helpRequested = True
+                    break
+                
+                else:
+                    print(INVALID_MSG)
+        
+        # create new directory if not found or requested to skip existing
+        if not found:
+            uid = str(uuid.uuid4()).replace('-','') # don't keep hypens
+            workdir = Parameters.__WORKDIR_PREFIX + uid
+            os.mkdir(workdir)
+        
+        return workdir
+    
     # public methods
     def logRunDetails(self) -> None:
         """saves the details for the current instance of the program
@@ -951,7 +1017,7 @@ class Parameters():
         MSG_B = "'"
         
         # determine which filename to print
-        printedFn = fn[len(os.getcwd())+1:]
+        printedFn = os.path.basename(fn)
         
         # start clock
         clock = Clock()
