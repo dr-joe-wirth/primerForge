@@ -552,8 +552,8 @@ class Parameters():
                        f"{GAP}{IP_TILESIZE_FLAGS[0]:<{WIDTH}}[int] the size of match that triggers an alignment{DEF_OPEN}{Parameters._DEF_ISPCR_TILE_SIZE}{CLOSE}{EOL*2}" + \
                        f"additional parameters:{EOL}" + \
                        f"{GAP}{ADDTNL_DEGREES_FLAGS[0]:<{WIDTH}}[float] minimum number of degrees (°C) below primer Tm allowed for secondary structure Tm{DEF_OPEN}{Parameters._DEF_DEGREES}{CLOSE}{EOL}" + \
-                       f"{GAP}{ADDTNL_REPEATS_FLAGS[0]:<{WIDTH}}[int] maximum length (bp) of homopolymers (repeats) in primer sequences{DEF_OPEN}{Parameters._DEF_REPEATS}{CLOSE}{EOL}" + \
-                       f"{GAP}{ADDTNL_BINSIZE_FLAGS[0]:<{WIDTH}}[int] maximum length (bp) of contiguous regions of overlapping primers (bins){DEF_OPEN}{Parameters._DEF_BINSIZE}{CLOSE}{EOL}"
+                       f"{GAP}{ADDTNL_REPEATS_FLAGS[0]:<{WIDTH}}[int] maximum allowed length (bp) of homopolymers (repeats) in primer sequences{DEF_OPEN}{Parameters._DEF_REPEATS}{CLOSE}{EOL}" + \
+                       f"{GAP}{ADDTNL_BINSIZE_FLAGS[0]:<{WIDTH}}[int] maximum allowed length (bp) of contiguous regions of overlapping primers (bins){DEF_OPEN}{Parameters._DEF_BINSIZE}{CLOSE}{EOL}"
             
             # print the help message
             print(HELP_MSG)
