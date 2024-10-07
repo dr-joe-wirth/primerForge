@@ -51,7 +51,7 @@ class Parameters():
     _DEF_HELP = False
     
     # overloads
-    def __init__(self, author:str, version:str, initializeLog:bool=True) -> Parameters:
+    def __init__(self, author:str, version:str, initializeLog:bool=True, makeWd:bool=True) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
@@ -106,7 +106,7 @@ class Parameters():
             self.log = Log(debug=self.debug, initialize=initializeLog)
             
             # create the intermediate directory, or find an existing one for checkpointing
-            workdir = self.__getIntermediateDirname()
+            workdir = self.__getIntermediateDirname(makeWd)
             
             # get the pickle filenames
             self.pickles = {x:os.path.join(workdir, y) for x,y in self.__PICKLE_FNS.items()}
@@ -872,8 +872,11 @@ class Parameters():
             # check for existing files
             Parameters.__checkOutputFile(self.resultsFn)
     
-    def __getIntermediateDirname(self) -> str:
+    def __getIntermediateDirname(self, makeWd:bool) -> str:
         """determines the intermediate directory name and handles checkpointing
+
+        Args:
+            makeWd (bool): should the intermediate directory me made? (exists for testing)
 
         Returns:
             str: the name of the intermediate directory
@@ -936,7 +939,9 @@ class Parameters():
         if not found:
             uid = str(uuid.uuid4()).replace('-','') # don't keep hypens
             workdir = Parameters.__WORKDIR_PREFIX + uid
-            os.mkdir(workdir)
+            
+            if makeWd:
+                os.mkdir(workdir)
         
         return workdir
     

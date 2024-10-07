@@ -264,42 +264,42 @@ class ParametersTest(unittest.TestCase):
         """are args parsed with short flags and default values
         """
         sys.argv = self.basic1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self._checkDefaultValues(params)
     
     def testB_parseBasic2(self) -> None:
         """are args parsed with long flags and default values
         """
         sys.argv = self.basic2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self._checkDefaultValues(params)
 
     def testC_parseShort1(self) -> None:
         """are args parsed with short flags and custom values for genbank files
         """
         sys.argv = self.short1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self._checkCustomValues(params, ParametersTest.FORMAT_GB)
     
     def testD_parseShort2(self) -> None:
         """are args parsed with short flags and custom values for fasta files
         """
         sys.argv = self.short2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self._checkCustomValues(params, ParametersTest.FORMAT_FA)
     
     def testE_parseLong1(self) -> None:
         """are args parsed with long flags and custom args for genbank files
         """
         sys.argv = self.long1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self._checkCustomValues(params, ParametersTest.FORMAT_GB)
     
     def testF_parseLong2(self) -> None:
         """are args parsed with long flags and custom args for genbank files
         """
         sys.argv = self.long2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self._checkCustomValues(params, ParametersTest.FORMAT_FA)
     
     def testE_parseHelp(self) -> None:
@@ -307,12 +307,12 @@ class ParametersTest(unittest.TestCase):
         """
         # check short flag
         sys.argv = self.help1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.helpRequested)
         
         # check long flag
         sys.argv = self.help2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.helpRequested)
     
     def testF_version(self) -> None:
@@ -320,12 +320,12 @@ class ParametersTest(unittest.TestCase):
         """
         # check short flag
         sys.argv = self.vers1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.helpRequested)
         
         # check long flag
         sys.argv = self.vers2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.helpRequested)
     
     def testG_debug1(self) -> None:
@@ -333,28 +333,28 @@ class ParametersTest(unittest.TestCase):
         """
         # check short flags with default args
         sys.argv = self.debug1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
         
         # check long flags with default args
         sys.argv = self.debug2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
         
         # check short flags with custom args
         sys.argv = self.debug3
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.debug)
         params.debug = False
         self._checkCustomValues(params, Parameters._DEF_FRMT)
         
         # check long flags with custom args
         sys.argv = self.debug4
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         self.assertTrue(params.debug)
         params.debug = False
         self._checkCustomValues(params, Parameters._DEF_FRMT)
@@ -364,7 +364,7 @@ class ParametersTest(unittest.TestCase):
         """
         # create the params object
         sys.argv = self.debug1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, initializeLog=False)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False, initializeLog=False)
         
         # replace the current Log object with one that references this directory
         params.log = Log(os.getcwd(), debug=True)
@@ -389,7 +389,7 @@ class ParametersTest(unittest.TestCase):
         """
         # create a parameters object
         sys.argv = self.basic1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, initializeLog=False)
+        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False, initializeLog=False)
         
         # initialize the log object
         params.log = Log(os.getcwd())
@@ -412,49 +412,49 @@ class ParametersTest(unittest.TestCase):
         """
         # create parameters objects for comparing
         sys.argv = self.basic1
-        basic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        basic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.basic2
-        basic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        basic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.short1
-        short1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        short1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.short2
-        short2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        short2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.long1
-        long1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        long1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.long2
-        long2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        long2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.help1
-        help1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        help1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.help2
-        help2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        help2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.vers1
-        vers1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        vers1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.vers2
-        vers2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        vers2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.debug1
-        debugBasic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        debugBasic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.debug2
-        debugBasic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        debugBasic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.debug3
-        debugShort1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        debugShort1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.debug4
-        debugLong1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        debugLong1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         sys.argv = self.long1[:-2] + ['--num_threads', '1']
-        oneThreadLong1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION)
+        oneThreadLong1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
         
         # the same objects should be equal
         self.assertEqual(basic1, basic1)
