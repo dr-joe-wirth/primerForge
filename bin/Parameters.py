@@ -11,8 +11,8 @@ class Parameters():
     # constants
     _MIN_LEN = 10
     __ALLOWED_FORMATS = ('genbank', 'fasta')
-    __ALL_CONTIGS_FNA = ".all_contigs.fna"
-    __PICKLE_DIR = "_pickles"
+    __ALL_CONTIGS_FNA = "all_contigs.fna"
+    __INTERMEDIATE_DIR = "_primerforge_workdir"
     _PARAMS = 0
     _SHARED = 1
     _CAND   = 2
@@ -21,7 +21,7 @@ class Parameters():
     _PAIR_3 = 5
     __PICKLE_FNS = {_PARAMS: "parameters.p",
                     _SHARED: "sharedKmers.p",
-                    _CAND: "candidates.p",
+                    _CAND:   "candidates.p",
                     _PAIR_1: "pairs.p",
                     _PAIR_2: "pairs_noOutgroup.p",
                     _PAIR_3: "pairs_noOutgroup_validated.p"}
@@ -106,7 +106,7 @@ class Parameters():
             self.log = Log(debug=self.debug, initialize=initializeLog)
             
             # create the pickle directory
-            pickleDir = os.path.join(os.getcwd(), Parameters.__PICKLE_DIR)
+            pickleDir = os.path.join(os.getcwd(), Parameters.__INTERMEDIATE_DIR)
             if not os.path.exists(pickleDir):
                 os.mkdir(pickleDir)
             
@@ -114,7 +114,7 @@ class Parameters():
             self.pickles = {x:os.path.join(pickleDir, y) for x,y in self.__PICKLE_FNS.items()}
             
             # get the all contigs fasta filename
-            self.allContigsFna = os.path.join(os.path.dirname(self.resultsFn), Parameters.__ALL_CONTIGS_FNA)
+            self.allContigsFna = os.path.join(Parameters.__INTERMEDIATE_DIR, Parameters.__ALL_CONTIGS_FNA)
 
     def __eq__(self, other:Parameters) -> bool:
         """equality overload
@@ -358,6 +358,9 @@ class Parameters():
         
         # print success message
         print(SUCCESS)
+    
+    def __getIntermediateFilenames(self) -> None:
+        pass
     
     def __parseArgs(self) -> None:
         """parses command line arguments
