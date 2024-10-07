@@ -184,7 +184,7 @@ flowchart TB
 
     %% connections up to candidate kmers
     sharedKmers --> B
-    dump1[/"dump to file"/]
+    dump1[/"checkpoint"/]
     sharedKmers --> dump1
     candidates(["unique, shared kmers; one per start position"])
     dime --> candidates
@@ -204,6 +204,8 @@ flowchart TB
                 prime{"is 3' end
                 G or C?"}
                 temp{"is Tm
+                difference ok?"}
+                gc2{"is GC
                 difference ok?"}
                 hetero{"no hetero-
                 dimers?"}
@@ -226,7 +228,7 @@ flowchart TB
     bin1 --> bin2
     bin2 --> bin3
     bin3 --> C0
-    prime --> temp --> hetero --> candPair
+    prime --> temp --> gc2 --> hetero --> candPair
     candPair --> D
     pcr --> allSharePair
 
@@ -235,9 +237,10 @@ flowchart TB
         keep["keep only one primer pair"]
     end
     
-    selectedSharePair(["selected shared primer pairs"])
-    dump2[/"dump to file"/]
-    dump3[/"dump to file"/]
+    selectedSharePair(["selected shared
+                        primer pairs"])
+    dump2[/"checkpoint"/]
+    dump3[/"checkpoint"/]
 
     candidates --> dump2
     candidates --> C
@@ -261,11 +264,11 @@ flowchart TB
     noout(["primer pairs absent from outgroup"])
     ogsize --> noout
     noout --> dump4
-    dump4[/"dump to file"/]
+    dump4[/"checkpoint"/]
 
     ispcr["filter pairs using isPcr"]
     final(["final primer pairs"])
-    dump5[/"dump to file"/]
+    dump5[/"checkpoint"/]
     write[/"sort pairs and
             write to file"/]
 
