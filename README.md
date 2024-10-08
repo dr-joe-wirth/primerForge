@@ -109,7 +109,7 @@ optional arguments:
 ```
 
 ### Advanced options
-### `primer3` parameters
+#### `primer3` parameters
 ```text
 --primer3_mv_conc      [float] monovalent cation concentration (mM) (default: 50.0)
 --primer3_dv_conc      [float] divalent cation concentration (mM) (default: 1.5)
