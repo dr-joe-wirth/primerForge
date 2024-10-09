@@ -91,8 +91,8 @@ class ResultsTest(unittest.TestCase):
         cls.params:Parameters = ResultsTest._getParameters(numThreads)
         cls.params.log.rename(ResultsTest.setUpClass.__name__)
         
-        # run primerForge if results file does not exist
-        if not os.path.exists(ResultsTest.params.resultsFn):  
+        # run primerForge if results file or bed file does not exist
+        if not os.path.exists(ResultsTest.params.resultsFn) or not os.path.exists(ResultsTest.params.bedFn):
             # run primerForge
             clock.printStart('running primerForge', end=' ...\n\n', spin=False)
             _runner(ResultsTest.params)
