@@ -1141,18 +1141,15 @@ class ResultsTest(unittest.TestCase):
                 # make sure the strand matches; an empty list indicates the wrong strand
                 self.assertNotEqual(self.bindingSites[primer][name][contig][strand], [], f"strand mismatch for {primer} on {name}: {contig}")
                 
-                # make the start/end match the stored binding site data
-                if strand == Primer.MINUS:
-                    tmp = start
-                    start = end
-                    end = tmp
-                    del tmp
-                
-                # start positions need to match
-                self.assertEqual(start, self.bindingSites[primer][name][contig][strand][0], f"start positions for {name}: {contig} do not match for {primer}")
-                
-                # end positions should be start + primer length
+                # end positions should be start + primer length if on the plus strand
                 self.assertEqual(end, start + len(primer), f"end position is not correct for {primer} on {name}: {contig}")
+                
+                # the end will be the start position in the binding site if on the minus strand
+                if strand == Primer.MINUS:
+                    start = end
+                
+                # start positions need to match the binding sites
+                self.assertEqual(start, self.bindingSites[primer][name][contig][strand][0], f"start positions for {name}: {contig} do not match for {primer}")
 
 # entrypoint
 if __name__ == "__main__":
