@@ -12,7 +12,7 @@ class Parameters():
     _MIN_LEN = 10
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __ALL_CONTIGS_FNA = "all_contigs.fna"
-    __WORKDIR_PREFIX = "primerforge_"
+    _WORKDIR_PREFIX = "primerforge_"
     _PARAMS = 0
     _SHARED = 1
     _CAND   = 2
@@ -904,7 +904,7 @@ class Parameters():
         found = False
         
         # find all existing Parameters pickles
-        allParamFns = glob.glob(os.path.join(os.curdir, f'{Parameters.__WORKDIR_PREFIX}*', Parameters.__PICKLE_FNS[Parameters._PARAMS]))
+        allParamFns = glob.glob(os.path.join(os.curdir, f'{Parameters._WORKDIR_PREFIX}*', Parameters.__PICKLE_FNS[Parameters._PARAMS]))
         
         # if there are existing parameters, then process them
         if allParamFns != []:
@@ -950,7 +950,7 @@ class Parameters():
         # create new directory if not found or requested to skip existing
         if not found:
             uid = str(uuid.uuid4()).replace('-','') # don't keep hypens
-            workdir = Parameters.__WORKDIR_PREFIX + uid
+            workdir = Parameters._WORKDIR_PREFIX + uid
             
             if makeWd:
                 os.mkdir(workdir)
