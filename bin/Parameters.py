@@ -28,6 +28,7 @@ class Parameters():
     
     # default values
     _DEF_RESULTS_FN = 'results.tsv'
+    _DEF_BED_FN = 'primers.bed'
     _DEF_OUTGROUP = list()
     _DEF_FRMT = __ALLOWED_FORMATS[0]
     _DEF_MIN_LEN = 16
@@ -56,6 +57,7 @@ class Parameters():
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
         self.resultsFn:str
+        self.bedFn:str
         self.format:str
         self.minLen:int
         self.maxLen:int
@@ -563,6 +565,7 @@ class Parameters():
         # set default values
         self.ingroupFns = None
         self.resultsFn = os.path.join(os.getcwd(), Parameters._DEF_RESULTS_FN)
+        self.bedFn = os.path.join(os.getcwd(), Parameters._DEF_BED_FN)
         self.outgroupFns = Parameters._DEF_OUTGROUP
         self.disallowedLens = None # start as None; update at the end
         self.format = Parameters._DEF_FRMT

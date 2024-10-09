@@ -15,6 +15,8 @@ from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 # global constants
 __version__ = "1.4.3"
 __author__ = "Joseph S. Wirth"
+__FWD = 'f'
+__REV = 'r'
 
 # functions
 def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
@@ -197,6 +199,64 @@ def __validatePairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,
     params.dumpObj(pairs, params.pickles[Parameters._PAIR_3], "validated pairs", prefix=GAP)
 
 
+def __generateBedRows(num:int, primer:Primer, products:dict[str,Product], ingroup:set[str], which:str) -> Generator[str,None,None]:
+    """generates rows for writing primers in BED file format
+
+    Args:
+        num (int): pair number (based on sort order)
+        primer (Primer): the primer to write to file
+        products (dict[str,Product]): key=genome name: val=Product
+        ingroup (set[str]): the ingroup genome names
+        which (str): if the forward or reverse primer is being written
+
+    Raises:
+        Exception: _description_
+
+    Yields:
+        Generator[str,None,None]: the row to be written
+    """
+    # constant
+    SEP = "\t"
+    
+    # for each ingroup genome
+    for name in ingroup:
+        # extract forward primer data
+        if which == __FWD:
+            start  = min(products[name].fStart, products[name].fEnd)
+            end    = max(products[name].fStart, products[name].fEnd)
+            strand = products[name].fStrand
+        
+        # extract reverse primer data
+        elif which == __REV:
+            start  = min(products[name].rStart, products[name].rEnd)
+            end    = max(products[name].rStart, products[name].rEnd)
+            strand = products[name].rStrand
+        
+        # only ever need one row at a time; use generator instead of returning
+        yield SEP.join((products[name].contig, str(start), str(end), str(primer), str(num), strand)) + "\n"
+
+
+def __writeBedFile(fn:str, pairs:dict[tuple[Primer,Primer],dict[str,Product]], sortOrder:list[tuple[Primer,Primer]], ingroup:set[str]) -> None:
+    """writes primer data in BED file format
+
+    Args:
+        fn (str): the file to write
+        pairs (dict[tuple[Primer,Primer],dict[str,Product]]): key=Primer pair; val=dict: key=genome name; val=Product
+        sortOrder (list[tuple[Primer,Primer]]): the list produced by _sortPairs
+        ingroup (set[str]): the ingroup genome names
+    """
+    with open(fn, 'w') as fh:
+        # go through primers in sort order and keep track of the index (pair number)
+        for num,(fwd,rev) in enumerate(sortOrder):
+            # write the forward primer data to file
+            for row in __generateBedRows(num, fwd, pairs[(fwd,rev)], ingroup, __FWD):
+                fh.write(row)
+            
+            # write the reverse primer data to file
+            for row in __generateBedRows(num, rev, pairs[(fwd,rev)], ingroup, __REV):
+                fh.write(row)
+
+
 def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str,Product]], clock:Clock) -> None:
     """writes pairs of primers to file
 
@@ -276,6 +336,15 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
             # write the data to the file
             fh.write(f"{SEP.join(map(str, row))}{EOL}")
             fh.flush()
+    
+    # print status
+    clock.printDone()
+    params.log.info(f"done {clock.getTimeString()}")
+    params.log.info(f"{MSG_2A}{len(pairs)}{MSG_2B}'{os.path.relpath(params.bedFn)}'")
+    clock.printStart(f"{MSG_2A}{len(pairs)}{MSG_2B}'{os.path.relpath(params.bedFn)}'")
+    
+    # write BED file
+    __writeBedFile(params.bedFn, pairs, sortedPairs, set(map(os.path.basename, params.ingroupFns)))
     
     # print status
     clock.printDone()
