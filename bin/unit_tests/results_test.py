@@ -1144,9 +1144,9 @@ class ResultsTest(unittest.TestCase):
                 # end positions should be start + primer length if on the plus strand
                 self.assertEqual(end, start + len(primer), f"end position is not correct for {primer} on {name}: {contig}")
                 
-                # the end will be the start position in the binding site if on the minus strand
+                # the end will be the start position in the binding sites; it will be 1bp ahead of the actual site (exclusive ends)
                 if strand == Primer.MINUS:
-                    start = end
+                    start = end - 1
                 
                 # start positions need to match the binding sites
                 self.assertEqual(start, self.bindingSites[primer][name][contig][strand][0], f"start positions for {name}: {contig} do not match for {primer}")
