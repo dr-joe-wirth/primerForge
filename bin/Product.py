@@ -4,7 +4,7 @@ from typing import Union
 class Product:
     """class for storing PCR product data for a pair of primers
     """
-    def __init__(self, contig:str, size:Union[int,str], fbin:int, rbin:int, dimerTm:float) -> Product:
+    def __init__(self, contig:str, size:Union[int,str], fbin:int, rbin:int, dimerTm:float, fStart:int, fEnd:int, fStrand:str, rStart:int, rEnd:int, rStrand:str) -> Product:
         """constructor
 
         Args:
@@ -13,6 +13,12 @@ class Product:
             fbin (int): the bin the forward primer belongs to
             rbin (int): the bin the reverse primer belongs to
             dimerTm (float): the heterodimer Tm for the primer pair
+            fStart (int): the start of the forward primer
+            fEnd (int): the end on the forward primer
+            fStrand (str): the strand of the forward primer
+            rStart (int): the start of the reverse primer
+            rEnd (int): the end on the reverse primer
+            rStrand (str): the strand of the reverse primer            
 
         Returns:
             Product: a Product object
@@ -23,6 +29,12 @@ class Product:
         self.dimerTm:float = dimerTm
         self.fbin:int = fbin
         self.rbin:int = rbin
+        self.fStart:int = fStart
+        self.fEnd:int = fEnd
+        self.fStrand:str = fStrand
+        self.rStart:int = rStart
+        self.rEnd:int = rEnd
+        self.rStrand:str = rStrand
     
     # overloads
     def __str__(self) -> str:
