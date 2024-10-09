@@ -15,7 +15,7 @@ from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _formsDimers
-import gzip, os, pickle, primer3, signal, subprocess, time, unittest
+import glob, gzip, os, pickle, primer3, signal, subprocess, time, unittest
 
 class Result():
     """class to save results for easy lookup
@@ -266,8 +266,16 @@ class ResultsTest(unittest.TestCase):
         # move the log file to the test directory
         params.log = Log(debugDir=ResultsTest.TEST_DIR, debug=True)
         
-        # move the pickle directory into the test directory
-        oldDir = os.path.dirname(next(iter(params.pickles.values())))
+        # check if a run has already been done
+        existing = glob.glob(os.path.join(ResultsTest.TEST_DIR, Parameters._WORKDIR_PREFIX + '*'))
+        if existing != []:
+            oldDir = os.path.basename(existing[0])
+        
+        # otherwise get the old directory from the newly created parameters object
+        else:
+            oldDir = os.path.dirname(next(iter(params.pickles.values())))
+        
+        # move the working directory into the test directory
         newDir = os.path.join(ResultsTest.TEST_DIR, os.path.basename(oldDir))
         
         # move the directory, but allow it to fail for loading parameters outside the tests
