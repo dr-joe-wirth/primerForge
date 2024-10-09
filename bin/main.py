@@ -269,6 +269,7 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     MSG_1  = "sorting primer pairs"
     MSG_2A = "writing "
     MSG_2B = " primer pairs to "
+    MSG_3B = " primers to "
     
     # contants
     EOL = "\n"
@@ -340,8 +341,11 @@ def __writePrimerPairs(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[s
     # print status
     clock.printDone()
     params.log.info(f"done {clock.getTimeString()}")
-    params.log.info(f"{MSG_2A}{len(pairs)}{MSG_2B}'{os.path.relpath(params.bedFn)}'")
-    clock.printStart(f"{MSG_2A}{len(pairs)}{MSG_2B}'{os.path.relpath(params.bedFn)}'")
+    
+    # print status
+    numPrimers = len({primer for pair in pairs.keys() for primer in pair})
+    params.log.info(f"{MSG_2A}{numPrimers}{MSG_3B}'{os.path.relpath(params.bedFn)}'")
+    clock.printStart(f"{MSG_2A}{numPrimers}{MSG_3B}'{os.path.relpath(params.bedFn)}'")
     
     # write BED file
     __writeBedFile(params.bedFn, pairs, sortedPairs, set(map(os.path.basename, params.ingroupFns)))
