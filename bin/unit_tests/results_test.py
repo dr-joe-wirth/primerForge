@@ -36,7 +36,8 @@ class ResultsTest(unittest.TestCase):
     """
     # constants
     TEST_DIR = os.path.join(str(pathlib.Path(__file__).parent.parent.parent), "test_dir")
-    RESULT_FN = os.path.join(TEST_DIR, "results.tsv")
+    RESULT_FN = os.path.join(TEST_DIR, Parameters._DEF_RESULTS_FN)
+    BED_FN = os.path.join(TEST_DIR, Parameters._DEF_BED_FN)
     FAKE_FN = 'fakefile'
     PCRLEN = "length"
     CONTIG = "contig"
@@ -104,6 +105,11 @@ class ResultsTest(unittest.TestCase):
         # load the results file into memory
         clock.printStart('reading results into memory')
         cls.results:dict[tuple[Seq,Seq],Result] = ResultsTest._parseResultsFile(ResultsTest.params.resultsFn)
+        clock.printDone()
+        
+        # load the bed file into memory
+        clock.printStart('reading BED file into memory')
+        cls.bed:dict[tuple[Seq,int],dict[str,tuple[int,int,str]]] = ResultsTest._parseBedFile(ResultsTest.params.bedFn)
         clock.printDone()
 
         # load the genomic sequences into memory
@@ -253,15 +259,11 @@ class ResultsTest(unittest.TestCase):
                     '-o', ResultsTest.RESULT_FN,
                     '--debug']
         
-        # don't overwrite existing results or analysis files
-        if os.path.exists(ResultsTest.RESULT_FN):
-            sys.argv[sys.argv.index(ResultsTest.RESULT_FN)] = ResultsTest.FAKE_FN
-            params = Parameters('', '')
-            params.resultsFn = ResultsTest.RESULT_FN
+        # get the parameters
+        params = Parameters('', '', initializeLog=False)
         
-        # proceed like normal if the files do not yet exist
-        else:
-            params = Parameters('', '', initializeLog=False)
+        # move the BED file
+        params.bedFn = ResultsTest.BED_FN
         
         # move the log file to the test directory
         params.log = Log(debugDir=ResultsTest.TEST_DIR, debug=True)
@@ -430,6 +432,39 @@ class ResultsTest(unittest.TestCase):
                     # store the result for this primer pair
                     out[(fwd,rev)] = Result(rowNum,ftm,fgc,rtm,rgc,additional)
         
+        return out
+
+    def _parseBedFile(fn:str) -> dict[tuple[Seq,int],dict[str,tuple[int,int,str]]]:
+        """parses a file in BED format
+
+        Args:
+            fn (str): a file in BED format
+
+        Returns:
+            dict[tuple[Seq,int],dict[str,tuple[int,int,str]]]: key=(primer, pair num); val=dict:key=contig; val=(start position, end position, strand)
+        """
+        # constant
+        SEP = "\t"
+        
+        # initialize output
+        out = dict()
+        
+        # for each line in the file
+        with open(fn, 'r') as fh:
+            for line in fh:
+                # parse the line
+                contig,start,end,seq,num,strand = line.rstrip().split(SEP)
+                
+                # cast non-strings appropriately
+                start = int(start)
+                end = int(end)
+                seq = Seq(seq)
+                num = int(num)
+                
+                # save output
+                out[(seq,num)] = out.get((seq,num), dict())
+                out[(seq,num)][contig] = (start, end, strand)
+
         return out
 
     def _loadOneGenomeSequence(fn:str) -> dict[str,dict[str,Seq]]:
@@ -1065,6 +1100,48 @@ class ResultsTest(unittest.TestCase):
                 
                 # check that the dimer Tm was saved correctly
                 self.assertAlmostEqual(dimerTm, product.dimerTm, places=3)
+    
+    def testX_bedFileHasAllPrimers(self) -> None:
+        """checks that the BED file has the expected sequences
+        """
+        # get the expected set of the non-redundant primer sequences
+        expected = {x.seq for p in self.pairs.keys() for x in p}
+        
+        # get the primer sequences observed in the bed file
+        observed = {x[0] for x in self.bed.keys()}
+        
+        self.assertSetEqual(observed, expected, "BED file primers do not match expected values")
+    
+    def testY_bedFileCorrect(self) -> None:
+        """checks that the data saved in each row of the BED file is accurate"""
+        # get the expected sort order of pairs as a tuples of strings
+        sortOrder = [(str(f.seq),str(r.seq)) for f,r in _sortPairs(self.params, self.pairs)]
+        
+        # for each primer
+        for primer,num in self.bed.keys():
+            # check the pair number matches the sort order index
+            self.assertIn(str(primer), sortOrder[num], f"unexpected sort order for {primer}: {num}")
+            
+            # for each contig
+            for contig in self.bed[(primer,num)].keys():
+                # extract data
+                start, end, strand = self.bed[(primer,num)][contig]
+                
+                # migrate to the correct genome name
+                for name in self.bindingSites[primer]:
+                    if contig in self.bindingSites[primer][name].keys():
+                        break
+                
+                # make sure the strand matches; an empty list indicates the wrong strand
+                self.assertNotEqual(self.bindingSites[primer][name][contig][strand], [], f"strand mismatch for {primer} on {name}: {contig}")
+                
+                # start positions need to match
+                if strand == Primer.PLUS:
+                    self.assertEqual(start, self.bindingSites[primer][name][contig][strand][0], f"start positions for {name}: {contig} do not match for {primer}")
+                
+                # `end` will be the start position if the primer is on the (-) strand
+                else:
+                    self.assertEqual(end, self.bindingSites[primer][name][contig][strand][0], f"start positions for {name}: {contig} do not match for {primer}")
 
 # entrypoint
 if __name__ == "__main__":
