@@ -83,13 +83,14 @@ python3 -m unittest discover -s ./primerForge/bin/unit_tests/ -p "*_test.py"
 
 ```text
 usage:
-    primerForge [-ioubfpgtrdnkvh]
+    primerForge [-ioBubfpgtrdnkvh]
 
 required arguments:
     -i, --ingroup          [file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff")
 
 optional arguments:
     -o, --out              [file] output filename for primer pair data (default: results.tsv)
+    -B, --bed_file         [file] output filename for primer data in BED file format (default: primers.bed)
     -u, --outgroup         [file] outgroup filename or a file pattern inside double-quotes (eg."*.gbff")
     -b, --bad_sizes        [int,int] a range of PCR product lengths that the outgroup cannot produce (default: same as '--pcr_prod')
     -f, --format           [str] file format of the ingroup and outgroup [genbank|fasta] (default: genbank)
@@ -134,6 +135,7 @@ optional arguments:
 ```
 
 ## Results
+### `results.tsv`
 The results produced by `primerForge` list one primer pair per line, and these pairs are sorted based on the following criteria (in order of importance):
 
   * largest difference from the ingroup PCR product range for outgroup PCR products
@@ -147,6 +149,19 @@ The results produced by `primerForge` list one primer pair per line, and these p
   * largest median ingroup PCR product size
 
 See [the example](#examining-the-results) for details about the file format.
+
+### `primers.bed`
+The BED file produced by `primerForge` has the following format:
+
+|column number|title|definition|
+|:-----------:|:---:|:----------------|
+|1|contig|the name of the contig|
+|2|start|the start coordinate of the primer|
+|3|end|the end coordinate of the primer|
+|4|sequence|the sequence of the primer|
+|5|pair number|an integer that links forward and reverse primers; overloading the "score" field traditionally found in BED file format|
+|6|strand|the DNA strand ('+' or '-')|
+
 
 ## Workflow
 
@@ -270,7 +285,7 @@ flowchart TB
     final(["final primer pairs"])
     dump5[/"checkpoint"/]
     write[/"sort pairs and
-            write to file"/]
+            write to files"/]
 
     noout --> ispcr
     ispcr --> final
