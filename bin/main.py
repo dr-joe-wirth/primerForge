@@ -232,6 +232,9 @@ def __generateBedRows(num:int, primer:Primer, products:dict[str,Product], ingrou
             end    = max(products[name].rStart, products[name].rEnd)
             strand = products[name].rStrand
         
+        # end coordinates in BED format are exclusive, saved values are not
+        end += 1
+        
         # only ever need one row at a time; use generator instead of returning
         yield SEP.join((products[name].contig, str(start), str(end), str(primer), str(num), strand)) + "\n"
 
