@@ -257,13 +257,11 @@ class ResultsTest(unittest.TestCase):
                     '-b', '45,150',
                     '-n', numThreads,
                     '-o', ResultsTest.RESULT_FN,
+                    '-B', ResultsTest.BED_FN,
                     '--debug']
         
         # get the parameters
         params = Parameters('', '', initializeLog=False)
-        
-        # move the BED file
-        params.bedFn = ResultsTest.BED_FN
         
         # move the log file to the test directory
         params.log = Log(debugDir=ResultsTest.TEST_DIR, debug=True)

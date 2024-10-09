@@ -404,6 +404,7 @@ class Parameters():
         # flags
         INGROUP_FLAGS = ('-i', '--ingroup')
         OUT_FLAGS = ('-o', '--out')
+        BED_FLAGS = ('-B', '--bed_file')
         OUTGROUP_FLAGS = ('-u', '--outgroup')
         DISALLOW_FLAGS = ("-b", "--bad_sizes")
         FMT_FLAGS = ('-f', '--format')
@@ -433,6 +434,7 @@ class Parameters():
         ADDTNL_BINSIZE_FLAGS = ("--bin_size",)
         SHORT_OPTS = INGROUP_FLAGS[0][-1] + ":" + \
                      OUT_FLAGS[0][-1] + ":" + \
+                     BED_FLAGS[0][-1] + ":" + \
                      OUTGROUP_FLAGS[0][-1] + ":" + \
                      DISALLOW_FLAGS[0][-1] + ":" + \
                      FMT_FLAGS[0][-1] + ":" + \
@@ -447,6 +449,7 @@ class Parameters():
                      HELP_FLAGS[0][-1]
         LONG_OPTS = (INGROUP_FLAGS[1][2:] + "=",
                      OUT_FLAGS[1][2:] + "=",
+                     BED_FLAGS[1][2:] + "=",
                      OUTGROUP_FLAGS[1][2:] + "=",
                      DISALLOW_FLAGS[1][2:] + "=",
                      FMT_FLAGS[1][2:] + "=",
@@ -522,6 +525,7 @@ class Parameters():
                        f'{GAP}{INGROUP_FLAGS[0] + SEP_1 + INGROUP_FLAGS[1]:<{WIDTH}}[file] ingroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL*2}' + \
                        f"optional arguments:{EOL}" + \
                        f"{GAP}{OUT_FLAGS[0] + SEP_1 + OUT_FLAGS[1]:<{WIDTH}}[file] output filename for primer pair data{DEF_OPEN}{Parameters._DEF_RESULTS_FN}{CLOSE}{EOL}" + \
+                       f"{GAP}{BED_FLAGS[0] + SEP_1 + BED_FLAGS[1]:<{WIDTH}}[file] output filename for primer data in BED file format{DEF_OPEN}{Parameters._DEF_BED_FN}{CLOSE}{EOL}" + \
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
                        f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup [{Parameters.__ALLOWED_FORMATS[0]}{SEP_2}{Parameters.__ALLOWED_FORMATS[1]}]{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
@@ -641,6 +645,10 @@ class Parameters():
                 # get output filename
                 elif opt in OUT_FLAGS:                    
                     self.resultsFn = os.path.abspath(arg)
+                
+                # get the BED filename
+                elif opt in BED_FLAGS:
+                    self.bedFn = os.path.abspath(arg)
                 
                 # get the outgroup filenames
                 elif opt in OUTGROUP_FLAGS:
@@ -874,6 +882,7 @@ class Parameters():
             
             # check for existing files
             Parameters.__checkOutputFile(self.resultsFn)
+            Parameters.__checkOutputFile(self.bedFn)
     
     def __getIntermediateDirname(self, makeWd:bool) -> str:
         """determines the intermediate directory name and handles checkpointing
