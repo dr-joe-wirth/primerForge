@@ -157,7 +157,7 @@ The BED file produced by `primerForge` has the following format:
 |:-----------:|:---:|:----------------|
 |1|contig|the name of the contig|
 |2|start|the start coordinate of the primer|
-|3|end|the end coordinate of the primer|
+|3|end|the end coordinate of the primer (_exclusive_)|
 |4|sequence|the sequence of the primer|
 |5|pair number|an integer that links forward and reverse primers; overloading the "score" field traditionally found in BED file format|
 |6|strand|the DNA strand ('+' or '-')|
