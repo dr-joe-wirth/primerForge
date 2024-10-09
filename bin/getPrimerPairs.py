@@ -332,8 +332,11 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
         fwd:Primer = bins[contig][fbin][idx]
         rev:Primer = bins[contig][rbin][jdx]
         
+        # reverse complement the primer to save appropriate data in the product
+        rev = rev.reverseComplement()
+        
         # save this pair in the output
-        out.append((fwd,rev.reverseComplement(), Product(contig, pcrLen, fbin, rbin, dimerTm)))
+        out.append((fwd, rev, Product(contig, pcrLen, fbin, rbin, dimerTm, fwd.start, fwd.end, fwd.strand, rev.start, rev.end, rev.strand)))
     
     return out
 
@@ -456,8 +459,13 @@ def __getAllSharedPrimerPairs(firstName:str, candidateKmers:dict[str,dict[str,li
                         # only save the pair if the length falls within the acceptable range
                         length = rev.end - fwd.start + 1
                         if length in allowedLengths:
-                            # the bin numbers are incorrect and need to be fixed later
-                            out[(p1,p2)][name] = Product(fwd.contig, length, TEMP_BIN, TEMP_BIN, product.dimerTm)
+                            # put k2 on the opposite strand of k1 before saving product information
+                            k2 = k2.reverseComplement()
+                            
+                            # save product information
+                            ## use k1 and k2 so the sequences matche p1 and p2
+                            ## the bin numbers are incorrect and will need to be fixed later
+                            out[(p1,p2)][name] = Product(k1.contig, length, TEMP_BIN, TEMP_BIN, product.dimerTm, k1.start, k1.end, k1.strand, k2.start, k2.end, k2.strand)
 
     # remove any pairs that are not universally suitable in all genomes
     for pair in set(out.keys()):

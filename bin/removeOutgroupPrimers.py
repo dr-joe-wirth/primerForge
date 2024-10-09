@@ -134,6 +134,8 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
     """
     # constant
     FAKE_BIN = -1
+    FAKE_COORD = -1
+    FAKE_STRAND = ''
     
     # get the name of an ingroup genome
     ingroupName = next(iter([n for v in pairs.values() for n in v.keys() if n not in outgroupProducts.keys()]))
@@ -172,8 +174,8 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
                     contig = ",".join(contigs)
                     size = ",".join(map(str, pcrLens))
                 
-            # create and save the Product for this pair
-            pairs[pair][name] = Product(contig, size, FAKE_BIN, FAKE_BIN, pairs[pair][ingroupName].dimerTm)
+            # create and save the Product for this pair (add fake bins and fake coordinates)
+            pairs[pair][name] = Product(contig, size, FAKE_BIN, FAKE_BIN, pairs[pair][ingroupName].dimerTm, FAKE_COORD, FAKE_COORD, FAKE_STRAND, FAKE_COORD, FAKE_COORD, FAKE_STRAND)
 
 
 def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord,None,None]], pairs:dict[tuple[Primer,Primer],dict[str,Product]], params:Parameters) -> None:
