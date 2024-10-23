@@ -411,5 +411,12 @@ This error occurs if `primerForge` cannot find kmers that are shared in all the 
 ### `failed to find primer pairs that are absent in the outgroup`
 This error occurs if all the primer pairs `primerForge` identified cannot be used to distinguish the ingroup from the outgroup. This most often occurs because one or more members of the outgroup is too closely-related to the ingroup. To diagnose this, try repreating the command but include the `--debug` flag. This will report which outgroup genome is causing the number of shared kmers to drop to zero in the `primerForge.log` file. Alternatively, you can expand your search by widening the ranges passed to the flags `--pcr_prod` and/or `--bad_sizes`.
 
+### `ImportError: /lib64/libstdc++.so.6: version 'GLIBCXX_3.4.20' not found (required by khmer/_khmer.cpython-311-x86_64-linux-gnu.so)`
+This error will occur if the C++ library on your machine does not include the symbol `GLIBCXX_3.4.20` which is used by the `khmer` package. This can be resolved by installing the GNU Standard C++ Library using the following `conda` command:
+
+```bash
+conda install libstdcxx-ng
+```
+
 ## Contributing
 Thank you for your interest in contributing! Please see the [contributing guidelines](.github/CONTRIBUTING.md) for more information.
