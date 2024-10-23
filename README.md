@@ -384,6 +384,51 @@ If a primer pair is predicted to produce multiple products in an outgroup genome
 > [!NOTE]
 > Multiple PCR products will only ever be predicted for outgroup genomes as `primerForge` does not allow such primer pairs in the ingroup genome.
 
+### finding primer pairs that are target specific
+Let's assume that we want to filter our results to find primer pairs that amplify regions of the _rpoC_ gene in our three ingroup isolates. First, we need to make a file in BED format that lists the coordinates of _rpoC_ in our genomes. For _rpoC_ in the ingroup genomes, it would look like this:
+
+```text
+NZ_LAUX01000109.1	97	3866	rpoC
+NZ_LAUV01000076.1	23	3792	rpoC
+NZ_LAUY01000008.1	83	3852	rpoC
+```
+
+We will name this file `rpoC.bed`.
+
+In order to find the primers that intersect with these genes, we can use `bedtools` to find where our primers intersect with the _rpoC_ gene. If necessary, `bedtools` can be installed with the following command:
+
+```bash
+conda install bedtools
+```
+
+Once installed, we can use the following command to generate a new bed file that contains only the primers that hit somewhere along the _rpoC_ gene sequences:
+
+```bash
+bedtools intersect -a ./primers.bed -b ./rpoC.bed > rpoC_primers.bed
+```
+
+The first few lines of the file `rpoC_primers.bed` will look like this:
+
+```text
+NZ_LAUY01000008.1       1460    1484    GTTTGAAATATTACCACGAGCTCC        3       +
+NZ_LAUV01000076.1       1400    1424    GTTTGAAATATTACCACGAGCTCC        3       +
+NZ_LAUX01000109.1       1474    1498    GTTTGAAATATTACCACGAGCTCC        3       +
+NZ_LAUY01000008.1       2962    2986    CACCAGACATTCGTCCAATTATTC        3       -
+NZ_LAUV01000076.1       2902    2926    CACCAGACATTCGTCCAATTATTC        3       -
+NZ_LAUX01000109.1       2976    3000    CACCAGACATTCGTCCAATTATTC        3       -
+NZ_LAUY01000008.1       3780    3804    GATCATGAACGAATTGTATCAGGG        74      +
+NZ_LAUV01000076.1       3720    3744    GATCATGAACGAATTGTATCAGGG        74      +
+NZ_LAUX01000109.1       3794    3818    GATCATGAACGAATTGTATCAGGG        74      +
+NZ_LAUY01000008.1       574     598     GGTGTAAATCAATAGCTCCTTCAG        92      +
+NZ_LAUV01000076.1       514     538     GGTGTAAATCAATAGCTCCTTCAG        92      +
+NZ_LAUX01000109.1       588     612     GGTGTAAATCAATAGCTCCTTCAG        92      +
+NZ_LAUY01000008.1       2548    2572    GACTTCAAGATCATGAGTATGCTG        92      -
+NZ_LAUV01000076.1       2488    2512    GACTTCAAGATCATGAGTATGCTG        92      -
+NZ_LAUX01000109.1       2562    2586    GACTTCAAGATCATGAGTATGCTG        92      -
+```
+
+As we can see, the forward and reverse primers for pair numbers 3 and 92 intersect with the _rpoC_ gene in all three isolates. However, only the primer on the (+) strand intersects with _rpoC_ for pair number 74.
+
 ## Common error messages (and possible solutions)
 ### `detected wildcards that are not enclosed in quotes`
 This error occurs if you specify a wildcard representing input files without enclosing them in quotes. For example, this will cause the error:
