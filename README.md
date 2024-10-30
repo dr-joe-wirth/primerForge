@@ -384,7 +384,7 @@ If a primer pair is predicted to produce multiple products in an outgroup genome
 > [!NOTE]
 > Multiple PCR products will only ever be predicted for outgroup genomes as `primerForge` does not allow such primer pairs in the ingroup genome.
 
-### finding primer pairs that are target specific
+### Finding primer pairs that are target specific
 Let's assume that we want to filter our results to find primer pairs that amplify regions of the _rpoC_ gene in our three ingroup isolates. First, we need to make a file in BED format that lists the coordinates of _rpoC_ in our genomes. For _rpoC_ in the ingroup genomes, it would look like this:
 
 ```text
