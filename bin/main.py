@@ -209,9 +209,6 @@ def __generateBedRows(num:int, primer:Primer, products:dict[str,Product], ingrou
         ingroup (set[str]): the ingroup genome names
         which (str): if the forward or reverse primer is being written
 
-    Raises:
-        Exception: _description_
-
     Yields:
         Generator[str,None,None]: the row to be written
     """
