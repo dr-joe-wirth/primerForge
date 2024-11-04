@@ -337,26 +337,26 @@ primerForge --ingroup "./i*gbff" --outgroup "./o*gbff" --pcr_prod 500,2000 --bad
 After running the command, you should see something like this printed to the screen:
 
 ```text
-dumping Parameters to '_pickles/parameters.p' ... done 00:00:00.49
+dumping Parameters to 'primerforge_46f54ae4b9e44b928230774ca5620d6d/parameters.p' ... done 00:00:00.49
 identifying kmers suitable for use as primers in all 3 ingroup genome sequences
     getting shared ingroup kmers that appear once in each genome ... done 00:01:36.15
-    dumping shared kmers to '_pickles/sharedKmers.p' ... done 00:00:11.22
+    dumping shared kmers to 'primerforge_46f54ae4b9e44b928230774ca5620d6d/sharedKmers.p' ... done 00:00:11.22
     evaluating 2430140 kmers ... done 00:01:51.73
     identified 30413 candidate kmers
-    dumping candidate kmers to '_pickles/candidates.p' ... done 00:00:01.55
+    dumping candidate kmers to 'primerforge_46f54ae4b9e44b928230774ca5620d6d/candidates.p' ... done 00:00:01.55
 done 00:03:42.94
 identifying pairs of primers found in all ingroup sequences ... done 00:00:11.62
     identified 16050 primer pairs shared in all ingroup sequences
-    dumping unfiltered pairs to '_pickles/pairs.p' ... done 00:00:00.56
+    dumping unfiltered pairs to 'primerforge_46f54ae4b9e44b928230774ca5620d6d/pairs.p' ... done 00:00:00.56
 removing primer pairs present in the outgroup sequences
     getting outgroup PCR products ... done 00:00:01.03
     filtering primer pairs ... done 00:00:00.54
     processing outgroup results ... done 00:00:00.54
     removed 5905 pairs present in the outgroup (10145 pairs remaining)
-    dumping filtered pairs to '_pickles/pairs_noOutgroup.p' ... done 00:00:00.54
+    dumping filtered pairs to 'primerforge_46f54ae4b9e44b928230774ca5620d6d/pairs_noOutgroup.p' ... done 00:00:00.54
 validating primer pairs with isPcr ... done 00:00:03.44
     removed 3659 pairs not validated by isPcr (6486 pairs remaining)
-    dumping validated pairs to '_pickles/pairs_noOutgroup_validated.p' ... done 00:00:00.54
+    dumping validated pairs to 'primerforge_46f54ae4b9e44b928230774ca5620d6d/pairs_noOutgroup_validated.p' ... done 00:00:00.54
 writing 6486 primer pairs to 'results.tsv' ... done 00:00:11.62
 
 total runtime: 00:04:14.50
@@ -365,7 +365,10 @@ total runtime: 00:04:14.50
 As we can see, `primerForge` found 30,413 kmers that were suitable for use as a primer in all three ingroup genomes. It then went on to identify 16,050 primer pairs that would produce PCR products between 500bp and 2000bp in the ingroup genomes. Next, it found that of those 16,050 pairs, 5,905 of them formed PCR products between 300bp and 3000bp in one or more of the outgroup genomes. Finally, it used `isPcr` to validate the remaining 10,145 primer pairs resulting in 6,486 primer pairs being written to file.
 
 ### Examining the results
-`primerForge` generated `results.tsv`, the file that contains the sequences and details for each primer pair, and `primerForge.log`. Here are a few lines from `results.tsv`:
+`primerForge` generated `results.tsv`, `primers.bed`, and `primerForge.log`.
+
+#### `results.tsv`
+Here are a few lines from `results.tsv`:
 
 |fwd_seq|fwd_Tm|fwd_GC|rev_seq|rev_Tm|rev_GC|i1.gbff_contig|i1.gbff_length|i2.gbff_contig|i2.gbff_length|i3.gbff_contig|i3.gbff_length|o1.gbff_contig|o1.gbff_length|o2.gbff_contig|o2.gbff_length|
 |:------|:-----|:-----|:------|:-----|:-----|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|:------------:|
@@ -384,16 +387,37 @@ If a primer pair is predicted to produce multiple products in an outgroup genome
 > [!NOTE]
 > Multiple PCR products will only ever be predicted for outgroup genomes as `primerForge` does not allow such primer pairs in the ingroup genome.
 
-### Finding primer pairs that are target specific
-Let's assume that we want to filter our results to find primer pairs that amplify regions of the _rpoC_ gene in our three ingroup isolates. First, we need to make a file in BED format that lists the coordinates of _rpoC_ in our genomes. For _rpoC_ in the ingroup genomes, it would look like this:
+#### `primers.bed`
+Here are a few lines of `primers.bed`:
 
 ```text
-NZ_LAUX01000109.1	97	3866	rpoC
-NZ_LAUV01000076.1	23	3792	rpoC
-NZ_LAUY01000008.1	83	3852	rpoC
+NZ_LAUY01000092.1       1420    1444    AGAAGCAAAGGATATGGGAACAAC        0       -
+NZ_LAUV01000035.1       11077   11101   AGAAGCAAAGGATATGGGAACAAC        0       +
+NZ_LAUX01000078.1       567     591     AGAAGCAAAGGATATGGGAACAAC        0       +
+NZ_LAUY01000092.1       640     664     AAATCAACACCCTCAATAAGCTCC        0       +
+NZ_LAUV01000035.1       11857   11881   AAATCAACACCCTCAATAAGCTCC        0       -
+NZ_LAUX01000078.1       1347    1371    AAATCAACACCCTCAATAAGCTCC        0       -
+NZ_LAUY01000057.1       18978   19002   AGTTGGGATTAACCAGACTTCATC        1       +
+NZ_LAUV01000024.1       48352   48376   AGTTGGGATTAACCAGACTTCATC        1       +
+NZ_LAUX01000061.1       2318    2342    AGTTGGGATTAACCAGACTTCATC        1       +
+NZ_LAUY01000057.1       19771   19795   GCTATTTCAAACGCTAAAGCTAGG        1       -
+NZ_LAUV01000024.1       49145   49169   GCTATTTCAAACGCTAAAGCTAGG        1       -
+NZ_LAUX01000061.1       3111    3135    GCTATTTCAAACGCTAAAGCTAGG        1       -
 ```
 
-We will name this file `rpoC.bed`.
+This file is in [BED file format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bed-format) with one modification: the `score` column (the fifth column) has been overloaded with a "pair number" so that the primer sequences can be linked to one another more easily. For example, pair `0` is `AGAAGCAAAGGATATGGGAACAAC` and `AAATCAACACCCTCAATAAGCTCC` and corresponds with the first entry in `results.tsv`, and pair `1` is `AGTTGGGATTAACCAGACTTCATC` and `GCTATTTCAAACGCTAAAGCTAGG` and corresponds to the second entry in `results.tsv`.
+
+
+### Finding primer pairs that are target specific
+Let's assume that we want to filter our results to find primer pairs that amplify regions of the _rpoC_ gene in our three ingroup isolates. First, we need to make a file in [BED format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bed-format) that lists the coordinates of _rpoC_ in our genomes. For _rpoC_ in the ingroup genomes, it would look like this:
+
+```text
+NZ_LAUX01000109.1	97	3866	rpoC_i1
+NZ_LAUV01000076.1	23	3792	rpoC_i2
+NZ_LAUY01000008.1	83	3852	rpoC_i3
+```
+
+The first column is the contig, the second column is the start position of the gene, the third column is the end position of the gene (exclusive), and the last column is the name of the entry. We will save this file as `rpoC.bed`.
 
 In order to find the primers that intersect with these genes, we can use `bedtools` to find where our primers intersect with the _rpoC_ gene. If necessary, `bedtools` can be installed with the following command:
 
