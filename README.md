@@ -408,7 +408,7 @@ NZ_LAUX01000061.1       3111    3135    GCTATTTCAAACGCTAAAGCTAGG        1       
 This file is in [BED file format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bed-format) with one modification: the `score` column (the fifth column) has been overloaded with a "pair number" so that the primer sequences can be linked to one another more easily. For example, pair `0` is `AGAAGCAAAGGATATGGGAACAAC` and `AAATCAACACCCTCAATAAGCTCC` and corresponds with the first entry in `results.tsv`, and pair `1` is `AGTTGGGATTAACCAGACTTCATC` and `GCTATTTCAAACGCTAAAGCTAGG` and corresponds to the second entry in `results.tsv`.
 
 
-### Finding primer pairs that are target specific
+### Finding primer pairs that are target-specific
 Let's assume that we want to filter our results to find primer pairs that amplify regions of the _rpoC_ gene in our three ingroup isolates. First, we need to make a file in [BED format](https://bedtools.readthedocs.io/en/latest/content/general-usage.html#bed-format) that lists the coordinates of _rpoC_ in our genomes. For _rpoC_ in the ingroup genomes, it would look like this:
 
 ```text
