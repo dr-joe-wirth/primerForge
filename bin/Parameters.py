@@ -305,7 +305,7 @@ class Parameters():
             raise BaseException(f"'Bio'{NOT_INS}")
         
          # check bio version
-        vers = tuple(map(int, Bio.__version__.split('.')))
+        vers = tuple(map(int, Bio.__version__.split('.')[:2]))
         if vers[0] < BIO_VER[0] or (vers[0] == BIO_VER[0] and vers[1] < BIO_VER[1]):
             raise BaseException(f"'Bio'{BAD_VER}{'.'.join(map(str, BIO_VER))})")
         
@@ -316,7 +316,7 @@ class Parameters():
             raise BaseException(f"'khmer'{NOT_INS}")
         
         # check khmer version
-        vers = tuple(map(int, khmer.__version__.split('.')))
+        vers = tuple(map(int, khmer.__version__.split('.')[:2]))
         if vers[0] < KMR_VER[0] or (vers[0] == KMR_VER[0] and vers[1] < KMR_VER[1]):
             raise BaseException(f"'khmer'{KMR_VER}{'.'.join(map(str, KMR_VER))}")
         
@@ -349,7 +349,7 @@ class Parameters():
             raise BaseException(f"'scipy'{NOT_INS}")
         
         # check scipy version
-        vers = tuple(map(int, scipy.__version__.split('.')))
+        vers = tuple(map(int, scipy.__version__.split('.')[:2]))
         if vers[0] < SCI_VER[0] or (vers[0] >= SCI_VER[0] and vers[1] < SCI_VER[1]):
             raise BaseException(f"'scipy'{BAD_VER}{'.'.join(map(str,SCI_VER))} or above)")
         
