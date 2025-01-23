@@ -13,7 +13,7 @@ from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 
 # global constants
-__version__ = "1.5.2"
+__version__ = "1.5.3"
 __author__ = "Joseph S. Wirth"
 __FWD = 'f'
 __REV = 'r'
