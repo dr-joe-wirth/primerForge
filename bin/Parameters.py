@@ -877,6 +877,9 @@ class Parameters():
             if self.ingroupFns is None:
                 raise ValueError(ERR_MSG_21)
             
+            # sort the ingroup files from smallest to largest
+            self.ingroupFns.sort(key=lambda x: os.stat(x).st_size)
+            
             # make sure that all genomes are formatted correctly
             self.__checkGenomeFormat()
             
