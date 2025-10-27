@@ -165,3 +165,4 @@ debug*py
 screenlog*
 proto*.py
 .nfs*
+.vscode
