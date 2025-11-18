@@ -6,9 +6,9 @@ sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 from Bio import SeqIO
 from Bio.Seq import Seq
 from bin.Log import Log
+from typing import Iterator
 from bin.Clock import Clock
 from bin.main import _runner
-from khmer import Countgraph
 from bin.Primer import Primer
 from bin.Product import Product
 from Bio.SeqRecord import SeqRecord
@@ -533,6 +533,10 @@ class ResultsTest(unittest.TestCase):
         Returns:
             dict[str,dict[Seq,list[int]]]: key=strand; val=dict: key=kmers; val=list of start positions
         """
+        def getAllKmers(s:str) -> Iterator[tuple[int,str]]:
+                for i in range(len(s) - k + 1):
+                    yield (i, s[i:i+k])
+
         # initialize output
         out = {Primer.PLUS:  dict(),
                Primer.MINUS: dict()}
@@ -544,13 +548,9 @@ class ResultsTest(unittest.TestCase):
         
         # for each kmer length
         for k in range(minLen, maxLen+1):
-            # create countgraphs for each strand
-            fkh = Countgraph(k, 1e7, 1)
-            rkh = Countgraph(k, 1e7, 1)
-            
             # get all the kmers and their start positions for each strand
-            fmers = [(kmer, start) for start,kmer in enumerate(fkh.get_kmers(fwd)) if kmer in primers]
-            rmers = [(kmer, length - start - 1) for start,kmer in enumerate(rkh.get_kmers(rev)) if kmer in primers]
+            fmers = [(kmer, start) for start,kmer in getAllKmers(fwd) if kmer in primers]
+            rmers = [(kmer, length - start - 1) for start,kmer in getAllKmers(rev) if kmer in primers]
             
             # convert the lists to dictionaries and save them
             out[Primer.PLUS].update(ResultsTest._kmerListToDict(fmers))

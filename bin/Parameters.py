@@ -52,7 +52,7 @@ class Parameters():
     _DEF_HELP = False
     
     # overloads
-    def __init__(self, author:str, version:str, initializeLog:bool=True, makeWd:bool=True) -> Parameters:
+    def __init__(self, author:list[str], version:str, initializeLog:bool=True, makeWd:bool=True) -> Parameters:
         # type hint attributes
         self.ingroupFns:list[str]
         self.outgroupFns:list[str]
@@ -96,7 +96,7 @@ class Parameters():
         self.maxBinSize:int
         
         # save author and version as private attributes
-        self.__author:str = author
+        self.__author:list[str] = author
         self.__version:str = version
         
         # parse the command line arguments (populates attributes)
@@ -281,21 +281,19 @@ class Parameters():
             BaseException: scipy version is bad
         """
         # constants
-        PY_MAJOR = 3
-        PY_MINOR = (9, 11)
+        PY_VER = (3, 9)
         BIO_VER = (1, 81)
-        KMR_VER = (2, 1)
         P3_VER = 2
         SCI_VER = (1, 10)
         
         # messages
         BAD_VER = ' version is incompatible (requires '
         NOT_INS = ' package is not installed'
-        SUCCESS = f'primerForge v{self.__version} is properly installed'
+        SUCCESS = f'\nprimerForge v{self.__version} is properly installed\n'
         
         # check python version
-        if sys.version_info.major != PY_MAJOR or not (PY_MINOR[0] <= sys.version_info.minor <= PY_MINOR[1]):
-            raise BaseException(f'incompatible python version (requires {PY_MAJOR}.{PY_MINOR[0]} to {PY_MAJOR}.{PY_MINOR[1]})')
+        if sys.version_info.major < PY_VER[0] or (sys.version_info.major == PY_VER[0] and sys.version_info.minor < PY_VER[1]):
+            raise BaseException(f'incompatible python version (requires {PY_VER[0]}.{PY_VER[1]} or above)')
     
         # check that all dependencies exist
         # check Bio installation
@@ -308,17 +306,6 @@ class Parameters():
         vers = tuple(map(int, Bio.__version__.split('.')[:2]))
         if vers[0] < BIO_VER[0] or (vers[0] == BIO_VER[0] and vers[1] < BIO_VER[1]):
             raise BaseException(f"'Bio'{BAD_VER}{'.'.join(map(str, BIO_VER))})")
-        
-        # check khmer installation
-        try:
-            import khmer
-        except:
-            raise BaseException(f"'khmer'{NOT_INS}")
-        
-        # check khmer version
-        vers = tuple(map(int, khmer.__version__.split('.')[:2]))
-        if vers[0] < KMR_VER[0] or (vers[0] == KMR_VER[0] and vers[1] < KMR_VER[1]):
-            raise BaseException(f"'khmer'{KMR_VER}{'.'.join(map(str, KMR_VER))}")
         
         # check numpy installation
         try:
@@ -516,7 +503,7 @@ class Parameters():
             
             # primary help message
             HELP_MSG = f"{EOL}Finds pairs of primers suitable for a group of input genomes{EOL}" + \
-                       f"{GAP}{self.__author}, 2024{EOL*2}" + \
+                       f"{GAP}{', '.join(self.__author)}; 2025{EOL*2}" + \
                        f"If you use this software, please cite our article:{EOL}" + \
                        f"{GAP}https://doi.org/10.21105/joss.06850{EOL*2}" + \
                        f"usage:{EOL}" + \
