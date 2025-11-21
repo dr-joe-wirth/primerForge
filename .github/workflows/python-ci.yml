@@ -29,7 +29,7 @@ jobs:
       - name: pip installation
         shell: bash -el {0}
         run: |
-          pip install .
+          python setup.py build_ext --inplace
           primerForge --help
           primerForge --check_install
       - name: basic usage
