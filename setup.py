@@ -34,7 +34,7 @@ setup(
     long_description_content_type='text/markdown',
     python_requires='>=3.9',
     install_requires=[
-        'cython'
+        'cython',
         'biopython==1.81',
         'numpy',
         'primer3-py>=2.0',
