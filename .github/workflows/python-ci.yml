@@ -26,18 +26,18 @@ jobs:
         run: |
           conda env list
           conda list
-      - name: basic usage
-        shell: bash -el {0}  
-        run: |
-          which python
-          python primerForge.py --help
-          python primerForge.py --check_install
       - name: pip installation
         shell: bash -el {0}
         run: |
           pip install .
           primerForge --help
           primerForge --check_install
+      - name: basic usage
+        shell: bash -el {0}  
+        run: |
+          which python
+          python primerForge.py --help
+          python primerForge.py --check_install
       - name: unit tests
         shell: bash -el {0}
         run: |
