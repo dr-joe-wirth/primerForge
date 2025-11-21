@@ -28,7 +28,7 @@ setup(
     name='primerforge',
     version='2.1.0',
     author='Joseph S. Wirth',
-    packages=find_packages(include=["bin", "bin.*"]),
+    packages=find_packages(),
     description='software to identify primers that can be used to distinguish genomes',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
