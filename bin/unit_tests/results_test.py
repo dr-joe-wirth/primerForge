@@ -753,17 +753,21 @@ class ResultsTest(unittest.TestCase):
             self.assertLessEqual(self.results[(fwd,rev)].fwdGc, self.params.maxGc, f"{FAIL_MSG}{fwd}")
             self.assertLessEqual(self.results[(fwd,rev)].revGc, self.params.maxGc, f"{FAIL_MSG}{rev}")
     
-    def testG_threePrimeIsGc(self) -> None:
-        """is the 3' end of the primer a G or C
+    def testG_threePrimeHasGcClamp(self) -> None:
+        """does the 3' end of the primer have a GC clamp
         """
-        # constants
-        GC = ("G", "C")
-        FAIL_MSG = "3' end not G|C in "
+        # helper function to detect clamps
+        def hasThreePrimeGcClamp(seq:str) -> bool:
+            numGc = seq[-5:].count('G') + seq[-5:].count('C')
+            return 1 <= numGc <= 3
+
+        # constant
+        FAIL_MSG = "3' end not a GC clamp for "
         
         # for each pair, make sure the 3' end is a G or a C
         for fwd,rev in self.results.keys():
-            self.assertIn(fwd[-1], GC, f"{FAIL_MSG}{fwd}")
-            self.assertIn(rev[-1], GC, f"{FAIL_MSG}{rev}")
+            self.assertTrue(hasThreePrimeGcClamp(fwd), f"{FAIL_MSG}{fwd}")
+            self.assertTrue(hasThreePrimeGcClamp(rev), f"{FAIL_MSG}{rev}")
 
     def testH_noHomoPolymers(self) -> None:
         """does the primer contain homopolymers

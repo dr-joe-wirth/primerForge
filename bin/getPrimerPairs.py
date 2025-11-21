@@ -245,18 +245,15 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
     # constants
     FWD = 'forward'
     REV = 'reverse'
-    GC = {"G", "C"}
     
     # helper function for evaluating primers
-    def isThreePrimeGc(primer:Primer, direction:str=FWD) -> bool:
+    def hasGcClamp(seq:Seq) -> bool:
         """checks if a primer has a G or C at its 3' end
         """
-        # different check depending if forward or reverse primer
-        if direction == FWD:
-            return primer.seq[-1] in GC
-        if direction == REV:
-            return primer.seq[0] in GC
-    
+        MIN_GC = 1
+        MAX_GC = 3
+        return MIN_GC <= seq.count('G') + seq.count('C') <= MAX_GC
+        
     # generator function for getting arguments
     def generateArgs() -> Generator[tuple[str, str, float, float, str],None,None]:
         """ generates arguments for __evaluateOnePair
@@ -272,12 +269,12 @@ def __getCandidatePrimerPairs(binPairs:list[tuple[str,int,int]], bins:dict[str,d
             
             # go through each possible forward primer
             for idx,fwd in enumerate(bin1):
-                # only consider fwd primers with 3' GC
-                if isThreePrimeGc(fwd):
+                # only consider fwd primers with 3' GC clamp
+                if hasGcClamp(fwd.seq[-5:]):
                     # go through each possible reverse primer
                     for jdx,rev in enumerate(bin2):
-                        # only consider rev primers with 3' GC
-                        if isThreePrimeGc(rev, REV):
+                        # only consider rev primers with 3' GC clamp
+                        if hasGcClamp(rev.seq[:5]):
                             # determine if the pair is suitable and its PCR product length
                             suitable,pcrLen = __isPairSuitable(fwd, rev, params.minPcr, params.maxPcr, params.maxTmDiff)
                             

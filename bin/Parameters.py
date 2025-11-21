@@ -10,6 +10,7 @@ class Parameters():
     """
     # constants
     _MIN_LEN = 10
+    _MAX_LEN = 32
     __ALLOWED_FORMATS = ('genbank', 'fasta')
     __ALL_CONTIGS_FNA = "all_contigs.fna"
     _WORKDIR_PREFIX = "primerforge_"
@@ -279,6 +280,7 @@ class Parameters():
             BaseException: primer3-py version is bad
             BaseException: scipy not installed
             BaseException: scipy version is bad
+            BaseException: kmer counting package was not built
         """
         # constants
         PY_VER = (3, 9)
@@ -343,6 +345,12 @@ class Parameters():
         # make sure isPcr is installed
         Parameters.__isPcrInstalled()
         
+        # make sure that the kmer counting package has been built
+        try:
+            from bin.kmer_counting.kmer_counter import _decodeKmerEncoding
+        except:
+            raise BaseException(f'kmer counting package was not properly built')
+
         # print success message
         print(SUCCESS)
     
@@ -361,6 +369,7 @@ class Parameters():
             ValueError: invalid primer length: wrong num arguments
             ValueError: invalid primer length: not int
             ValueError: invalid primer length: below minimum threshold
+            ValueError: invalid primer length: above maximum threshold
             ValueError: invalid GC: not two values
             ValueError: invalid GC: not numeric
             ValueError: invalid Tm: not two values
@@ -475,19 +484,20 @@ class Parameters():
         ERR_MSG_6  = 'can only specify one primer length or a range (min,max)'
         ERR_MSG_7  = 'primer lengths are not integers'
         ERR_MSG_8  = 'minimum primer length is'
-        ERR_MSG_9  = 'must specify a range of GC values (min,max)'
-        ERR_MSG_10 = 'gc values are not numeric'
-        ERR_MSG_11 = 'must specify a range of Tm values (min, max)'
-        ERR_MSG_12 = 'Tm values are not numeric'
-        ERR_MSG_13 = 'can only specify one PCR product length or a range (min,max)'
-        ERR_MSG_14 = 'PCR product lengths are not integers'
-        ERR_MSG_15 = 'max Tm difference is not numeric'
-        ERR_MSG_16 = 'num threads is not an integer'
-        ERR_MSG_17 = "expected 'float' for '"
-        ERR_MSG_18 = "exepcted 'int' for '"
-        ERR_MSG_19 = 'minimum tile size is'
-        ERR_MSG_20 = 'tile size cannot exceed smallest primer length'
-        ERR_MSG_21 = 'must specify one or more ingroup files'
+        ERR_MSG_9  = 'maximum primer length is'
+        ERR_MSG_10 = 'must specify a range of GC values (min,max)'
+        ERR_MSG_11 = 'gc values are not numeric'
+        ERR_MSG_12 = 'must specify a range of Tm values (min, max)'
+        ERR_MSG_13 = 'Tm values are not numeric'
+        ERR_MSG_14 = 'can only specify one PCR product length or a range (min,max)'
+        ERR_MSG_15 = 'PCR product lengths are not integers'
+        ERR_MSG_16 = 'max Tm difference is not numeric'
+        ERR_MSG_17 = 'num threads is not an integer greater than zero'
+        ERR_MSG_18 = "expected 'float' for '"
+        ERR_MSG_19 = "exepcted 'int' for '"
+        ERR_MSG_20 = 'minimum tile size is'
+        ERR_MSG_21 = 'tile size cannot exceed smallest primer length'
+        ERR_MSG_22 = 'must specify one or more ingroup files'
 
         # helper function
         def printHelp(advanced:bool):
@@ -516,7 +526,7 @@ class Parameters():
                        f'{GAP}{OUTGROUP_FLAGS[0] + SEP_1 + OUTGROUP_FLAGS[1]:<{WIDTH}}[file] outgroup filename or a file pattern inside double-quotes (eg."*.gbff"){EOL}' + \
                        f"{GAP}{DISALLOW_FLAGS[0] + SEP_1 + DISALLOW_FLAGS[1]:<{WIDTH}}[int,int] a range of PCR product lengths that the outgroup cannot produce{DEF_OPEN}same as '{PCR_LEN_FLAGS[1]}'{CLOSE}{EOL}" + \
                        f"{GAP}{FMT_FLAGS[0] + SEP_1 + FMT_FLAGS[1]:<{WIDTH}}[str] file format of the ingroup and outgroup [{Parameters.__ALLOWED_FORMATS[0]}{SEP_2}{Parameters.__ALLOWED_FORMATS[1]}]{DEF_OPEN}{Parameters._DEF_FRMT}{CLOSE}{EOL}" + \
-                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'; (minimum {Parameters._MIN_LEN}){DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
+                       f"{GAP}{PRIMER_LEN_FLAGS[0] + SEP_1 + PRIMER_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single primer length or a range specified as 'min,max'; (minimum {Parameters._MIN_LEN}; maximum {Parameters._MAX_LEN}){DEF_OPEN}{Parameters._DEF_MIN_LEN}{SEP_3}{Parameters._DEF_MAX_LEN}{CLOSE}{EOL}" + \
                        f"{GAP}{GC_FLAGS[0] + SEP_1 + GC_FLAGS[1]:<{WIDTH}}[float,float] a min and max percent GC specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_GC}{SEP_3}{Parameters._DEF_MAX_GC}{CLOSE}{EOL}" + \
                        f"{GAP}{TM_FLAGS[0] + SEP_1 + TM_FLAGS[1]:<{WIDTH}}[float,float] a min and max melting temp (°C) specified as a comma separated list{DEF_OPEN}{Parameters._DEF_MIN_TM}{SEP_3}{Parameters._DEF_MAX_TM}{CLOSE}{EOL}" + \
                        f"{GAP}{PCR_LEN_FLAGS[0] + SEP_1 + PCR_LEN_FLAGS[1]:<{WIDTH}}[int(s)] a single PCR product length or a range specified as 'min,max'{DEF_OPEN}{Parameters._DEF_MIN_PCR}{SEP_3}{Parameters._DEF_MAX_PCR}{CLOSE}{EOL}" + \
@@ -689,6 +699,10 @@ class Parameters():
                     if min(primerRange) < Parameters._MIN_LEN:
                         raise ValueError(f"{ERR_MSG_8} {Parameters._MIN_LEN} bp")
                     
+                    # make sure that the maximum is within the allowed range
+                    if max(primerRange) > Parameters._MAX_LEN:
+                        raise ValueError(f"{ERR_MSG_9} {Parameters._MAX_LEN} bp")
+                    
                     # save values
                     self.minLen = min(primerRange)
                     self.maxLen = max(primerRange)
@@ -698,13 +712,13 @@ class Parameters():
                     # expecting two values separated by a comma
                     gcRange = arg.split(SEP)
                     if len(gcRange) != 2:
-                        raise ValueError(ERR_MSG_9)
+                        raise ValueError(ERR_MSG_10)
                     
                     # make sure the values are numeric
                     try:
                         gcRange = [float(x) for x in gcRange]
                     except:
-                        raise ValueError(ERR_MSG_10)
+                        raise ValueError(ERR_MSG_11)
                 
                     # save values
                     self.minGc = min(gcRange)
@@ -715,14 +729,14 @@ class Parameters():
                     # expecting two values separated by a comma
                     tmRange = arg.split(SEP)
                     if len(tmRange) != 2:
-                        raise ValueError(ERR_MSG_11)
+                        raise ValueError(ERR_MSG_12)
                 
                     # make sure the values are numeric
                     try:
                         tmRange = [float(x) for x in tmRange]
                     except:
-                        raise ValueError(ERR_MSG_12)
-                
+                        raise ValueError(ERR_MSG_13)
+
                     # save values
                     self.minTm = min(tmRange)
                     self.maxTm = max(tmRange)
@@ -732,14 +746,14 @@ class Parameters():
                     # expecting one or two values
                     pcrRange = arg.split(SEP)
                     if len(pcrRange) not in {1,2}:
-                        raise ValueError(ERR_MSG_13)
+                        raise ValueError(ERR_MSG_14)
                     
                     # coerce to integers
                     try:
                         pcrRange = [int(x) for x in pcrRange]
                     except:
-                        raise ValueError(ERR_MSG_14)
-                
+                        raise ValueError(ERR_MSG_15)
+
                     # save values
                     self.minPcr = min(pcrRange)
                     self.maxPcr = max(pcrRange)
@@ -752,9 +766,9 @@ class Parameters():
                 elif opt in TM_DIFF_FLAGS:
                     # make sure input is numeric
                     try:
-                        self.maxTmDiff = float(arg)
+                        self.maxTmDiff = abs(float(arg))
                     except:
-                        raise ValueError(ERR_MSG_15)
+                        raise ValueError(ERR_MSG_16)
                 
                 # get the number of threads to use
                 elif opt in THREADS_FLAGS:
@@ -762,7 +776,11 @@ class Parameters():
                     try:
                         self.numThreads = int(arg)
                     except:
-                        raise ValueError(ERR_MSG_16)
+                        raise ValueError(ERR_MSG_17)
+                
+                    # must be greater than 0
+                    if self.numThreads < 1:
+                        raise ValueError(ERR_MSG_17)
                 
                 # update keep to True if requested
                 if opt in KEEP_FLAGS:
@@ -778,83 +796,83 @@ class Parameters():
                     try:
                         self.p3_mvConc = float(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
                 
                 elif opt in P3_DV_CONC_FLAGS:
                     try:
                         self.p3_dvConc = float(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
                 
                 elif opt in P3_DNTP_CONC_FLAGS:
                     try:
                         self.p3_dntpConc = float(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
                 
                 elif opt in P3_DNA_CONC_FLAGS:
                     try:
                         self.p3_dnaConc = float(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
                 
                 elif opt in P3_TEMP_C_FLAGS:
                     try:
                         self.p3_tempC = float(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_17}{opt}'")
+                        raise ValueError(f"{ERR_MSG_18}{opt}'")
                 
                 elif opt in P3_MAX_LOOP_FLAGS:
                     try:
                         self.p3_maxLoop = int(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                        raise ValueError(f"{ERR_MSG_19}{opt}'")
                 
                 # get isPcr parameters
                 elif opt in IP_MIN_GOOD_FLAGS:
                     try:
                         self.isPcr_minGood = int(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                        raise ValueError(f"{ERR_MSG_19}{opt}'")
                 
                 elif opt in IP_MIN_PERF_FLAGS:
                     try:
                         self.isPcr_minPerfect = int(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                        raise ValueError(f"{ERR_MSG_19}{opt}'")
                 
                 elif opt in IP_TILESIZE_FLAGS:
                     try:
                         self.isPcr_tileSize = int(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_18}{opt}'")
+                        raise ValueError(f"{ERR_MSG_19}{opt}'")
                     
                     # tilesize cannot be lower than the minimum primer length
                     if self.isPcr_tileSize < Parameters._MIN_LEN:
-                        raise ValueError(f"{ERR_MSG_19} {Parameters._MIN_LEN} bp")
+                        raise ValueError(f"{ERR_MSG_20} {Parameters._MIN_LEN} bp")
                 
                 # get additional advanced parameters
                 elif opt in ADDTNL_DEGREES_FLAGS:
                     try:
                         self.tempTolerance = float(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_17}{opt}")
+                        raise ValueError(f"{ERR_MSG_18}{opt}")
                 
                 elif opt in ADDTNL_REPEATS_FLAGS:
                     try:
                         self.maxRepeatLen = int(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_18}{opt}")
+                        raise ValueError(f"{ERR_MSG_19}{opt}")
                 
                 elif opt in ADDTNL_BINSIZE_FLAGS:
                     try:
                         self.maxBinSize = int(arg)
                     except ValueError:
-                        raise ValueError(f"{ERR_MSG_18}{opt}")
+                        raise ValueError(f"{ERR_MSG_19}{opt}")
             
             # make sure that the tileSize is not larger than the smallest primer length
             if self.isPcr_tileSize > self.minLen:
-                raise ValueError(ERR_MSG_20)
+                raise ValueError(ERR_MSG_21)
             
             # update disallowed to match pcr parameters unless it was already specified
             if self.disallowedLens is None:
@@ -862,7 +880,7 @@ class Parameters():
             
             # make sure an input file was specified
             if self.ingroupFns is None:
-                raise ValueError(ERR_MSG_21)
+                raise ValueError(ERR_MSG_22)
             
             # sort the ingroup files from smallest to largest
             self.ingroupFns.sort(key=lambda x: os.stat(x).st_size)

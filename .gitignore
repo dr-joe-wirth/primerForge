@@ -166,3 +166,4 @@ screenlog*
 proto*.py
 .nfs*
 .vscode
+_kmer_counter.c*

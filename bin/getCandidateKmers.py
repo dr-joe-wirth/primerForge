@@ -5,185 +5,45 @@ from bin.Clock import Clock
 from bin.Primer import Primer
 from ahocorasick import Automaton
 import multiprocessing, os, primer3
+from collections import defaultdict
 from bin.Parameters import Parameters
+from bin.kmer_counting.kmer_counter import (_decodeKmerEncoding,
+                                            _getAllowedKmerEncodings,
+                                            _getFilteredKmerEncodings)
 
+# constant
+__JUNCTION_CHAR = '~'
 
 # functions
-def __getAllKmers(seq:str, k:int) -> Iterator[str]:
-    """gets all possible kmers from a sequence
-
-    Args:
-        seq (str): the sequence to process
-        k (int): the size of the kmers
-
-    Yields:
-        Iterator[str]: individual kmers
-    """
-    for i in range(len(seq) -k + 1):
-        yield seq[i:i+k]
+def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, maxGc:float) -> set[int]:
+    seq = __JUNCTION_CHAR.join([str(r.seq) for r in SeqIO.parse(fn, frmt)])
+    return _getFilteredKmerEncodings(seq, k, minGc, maxGc)
 
 
-def __getAllowedPlusStrandKmers(fn:str, frmt:str, k:int) -> tuple[dict[str,dict[str,tuple[str,int,str]]], Automaton]:
-    """gets all the allowed kmers from only the plus strand
-
-    Args:
-        fn (str): the filename of a genome
-        frmt (str): the filename format
-        k (int): the kmer size
-
-    Returns:
-        tuple[dict[str,dict[str,tuple[str,int,str]]], Automaton]: {kmer: {name: (contig, start, strand)}}, Aho-Corasick automaton
-    """
-    # helper function to identify suitable kmers
-    def isSuitableKmer(seq:str) -> bool:
-        """determines if a kmer is suitable
-
-        Args:
-            seq (str): the kmer sequence to evaluate
-
-        Returns:
-            bool: indicates suitability
-        """
-        GC = frozenset(("G", "C", 'g', 'c'))
-
-        # check two conditions
-        isOneEndGc  = seq[-1] in GC or seq[0] in GC
-        palindromic = seq == Seq(seq).reverse_complement()
-
-        return isOneEndGc and not palindromic
-
-    # initialize outputs
-    kmers = dict()
-    auto = Automaton()
-
-    # save the name
-    name = os.path.basename(fn)
+def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[int]) -> None:
+    seqs = list()
+    for rec in SeqIO.parse(fn, frmt):
+        seqs.append(str(rec.seq))
+        seqs.append(str(rec.seq.reverse_complement()))
     
-    # initialize some sets to store kmers
-    bad = set()
-    good = set()
-
-    # categorize each kmer
-    for contig in SeqIO.parse(fn, frmt):
-        for kmer in __getAllKmers(str(contig.seq), k):
-            if isSuitableKmer(kmer):
-                # bad kmers appear more than once
-                if kmer in good:
-                    bad.add(kmer)
-                    good.remove(kmer)
-                    
-                # good kmers are not bad
-                elif kmer not in bad:
-                    good.add(kmer)
-            
-    # don't need bad kmers anymore
-    del bad
-
-    # build the automaton from the good kmers
-    for kmer in good:
-        auto.add_word(kmer, kmer)
-    auto.make_automaton()
-
-    # extract the coordinate data for this genome
-    for contig in SeqIO.parse(fn, frmt):
-        for end,kmer in auto.iter(str(contig.seq)):
-            kmers[kmer] = {name: (contig.id, end-k+1, Primer.PLUS)}
-
-    return kmers, auto
+    seq = __JUNCTION_CHAR.join(seqs)
+    newEncodings = _getAllowedKmerEncodings(seq, k, sharedEncodings)
+    sharedEncodings.intersection_update(newEncodings)
 
 
-def __updateAllowedKmers(fn:str, frmt:str, auto:Automaton, k:int, kmers:dict[str,dict[str,tuple[str,int,str]]]) -> Automaton:
-    """updates the kmer dictionary by removing kmers that appears more than once
-
-    Args:
-        fn (str): the filename of the genome to evaluate
-        frmt (str): the file format of the genome
-        auto (Automaton): an Aho-Corasick automaton containing kmers of interest
-        k (int): kmer size
-        kmers (dict[str,dict[str,tuple[str,str,int]]]): {kmer: {genome: (contig, start, strand)}}
-
-    Returns:
-        Automaton: an updated Aho-Corasick automaton with only the kmers that passed filtering
-    """
-    def evaluateOneStrand(s:str, strand:str) -> None:
-        """evaluates the kmers on a single strand
-
-        Args:
-            s (str): the sequence
-            strand (str): the strand
-        """
-        # for each kmer appearance
-        for end,kmer in auto.iter(s):
-            # flag kmers that have been seen more than once
-            if fn in kmers[kmer].keys():
-                bad.add(kmer)
-                del kmers[kmer]
-            
-            # save the coordinate for a kmers when seen the first time
-            elif kmer not in bad:
-                # determine the start position
-                if strand == Primer.PLUS:
-                    start = end - k + 1
-                elif strand == Primer.MINUS:
-                    start = len(s) - end - 1
-                
-                # store the coordinates
-                kmers[kmer][name] = (contig.id, start, strand)
-            
-    # initialize a collection of bad kmers and get the name
-    bad = set()
-    name = os.path.basename(fn)
-
-    # evaluate all kmers on both strands
-    for contig in SeqIO.parse(fn, frmt):
-        evaluateOneStrand(str(contig.seq), Primer.PLUS)
-        evaluateOneStrand(str(contig.seq.reverse_complement()), Primer.MINUS)
-
-    del bad
-
-    # replace the existing automaton with a new one
-    auto = Automaton()
-
-    # filter kmers
-    for kmer in list(kmers.keys()):        
-        # kmers that did not appear in this genome must be removed
-        if name not in kmers[kmer].keys():
-            del kmers[kmer]
-        
-        # all other kmers go into the automaton
-        else:
-            auto.add_word(kmer, kmer)
-    
-    # finalize automaton
-    auto.make_automaton()
-
-    return auto
-
-
-def __getSharedKmersOneK(arguments:tuple[list[str],str,int]) -> dict[str,dict[str,tuple[str,int,str]]]:
-    """gets the shared kmers from genomes given a single kmer size
-    designed for parallel processing with imap
-
-    Args:
-        arguments (tuple[list[str],str,int]): ingroup files, file format, kmer size
-
-    Returns:
-        dict[str,dict[str,tuple[str,str,int]]]: {kmer: {name: (contig, start, strand)}}
-    """
+def __getSharedKmersOneK(arguments:tuple[list[str],str,int,float,float]) -> set[str]:
     # parse the arguments into its individual components
-    ingroupFns,frmt,k = arguments
+    ingroupFns,frmt,k,minGc,maxGc = arguments
 
-    # get the kmers and an automaton for the smallest (first) genome
-    kmers,auto = __getAllowedPlusStrandKmers(ingroupFns[0], frmt, k)
+    # get the kmers for the first (smallest) genome
+    sharedEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc)
 
-    # for each remaining genome, update the allowed kmer
+    # for each remaining genome, update the shared kmer encodings
     for fn in ingroupFns[1:]:
-        auto = __updateAllowedKmers(fn, frmt, auto, k, kmers)
+        __updateAllowedKmerEncodings(fn, frmt, k, sharedEncodings)
     
-    # don't need the automaton anymore
-    del auto
-
-    return kmers
+    # decode the kmers
+    return {_decodeKmerEncoding(x, k) for x in sharedEncodings}
 
 
 def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]]:
@@ -196,22 +56,45 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
         dict[str,dict[str,tuple[str,int,str]]]: key=kmer; val=dict: key=genome name: val=tuple: contig, start, strand
     """
     # helper function to generate arguments for __getSharedKmersOneK
-    def genArgs() -> Iterator[tuple[list[str],str,int]]:
+    def genArgs() -> Iterator[tuple[list[str],str,int,float,float]]:
         for k in range(params.minLen, params.maxLen + 1):
-            yield (params.ingroupFns, params.format, k)
-        
+            yield (params.ingroupFns, params.format, k, params.minGc, params.maxGc)
+
+    def extractKmerStartPositions(seq:str, strand:str):
+        for end,kmer in auto.iter(seq):
+            if strand == Primer.PLUS:
+                start = end - len(kmer) + 1
+
+            elif strand == Primer.MINUS:
+                start = len(seq) - end - 1
+
+            yield start,kmer
+
     # initialize output
-    out = dict()
+    out = defaultdict(dict)
 
     # # open the pool
     # with multiprocessing.Pool(params.numThreads) as pool:
     #     # save results as they become available
     #     for result in pool.imap_unordered(__getSharedKmersOneK, genArgs()):
     #         out.update(result)
-
-    for k in range(params.minLen, params.maxLen + 1):
-        out.update(__getSharedKmersOneK((params.ingroupFns, params.format, k)))
+    auto = Automaton()
+    for args in genArgs():
+        for kmer in __getSharedKmersOneK(args):
+            auto.add_word(kmer, kmer)
+    auto.make_automaton()
     
+    for fn in params.ingroupFns:
+        name = os.path.basename(fn)
+
+        for rec in SeqIO.parse(fn, params.format):
+            for start,kmer in extractKmerStartPositions(str(rec.seq), Primer.PLUS):
+                out[kmer][name] = (rec.id, start, Primer.PLUS)
+        
+            if fn != params.ingroupFns[0]:
+                for start,kmer in extractKmerStartPositions(str(rec.seq.reverse_complement()), Primer.MINUS):
+                    out[kmer][name] = (rec.id, start, Primer.MINUS)
+
     return out
 
 
@@ -495,7 +378,7 @@ def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,
         params (Parameters): a Parameters object
 
     Returns:
-        dict[str.dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
+        dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
     """
     # reorganize data by each unique start positions for one genome
     positions = __reorganizeDataByPosition(name, kmers)
