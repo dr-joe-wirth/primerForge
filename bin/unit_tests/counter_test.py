@@ -15,6 +15,7 @@ from bin.kmer_counting._kmer_counter import (count_allowlist_kmers_rolling_encod
                                              encode_base,
                                              gc_percentage_kmer_encoding,
                                              has_gc_clamp_kmer_encoding,
+                                             has_long_homopolymer_in_kmer_encoding,
                                              is_palindrome_kmer_encoding)
 
 class CounterTest(unittest.TestCase):
@@ -233,6 +234,26 @@ class CounterTest(unittest.TestCase):
         # return the encodings for the kmers that appear exactly once
         return {CounterTest.encodeKmer(kmer) for kmer,count in kmers.items() if count == 1}
 
+    def hasLongHomopolymer(seq:str, minLen:int) -> bool:
+        """detects long homopolymers in a sequence
+
+        Args:
+            seq (str): the sequence to evaluate
+            minLen (int): the minimum length to constitute a long homopolymer
+
+        Returns:
+            bool: indicates if the sequence contain a long homopolymer
+        """
+        # ensure upper case
+        seq = seq.upper()
+
+        # search the sequence for each homopolymer
+        for homopoly in [x * minLen for x in 'ATCG']:
+            if homopoly in seq:
+                return True
+        
+        return False
+
     # tests
     def testA_encoding(self) -> None:
         """test if the encoding functionality is working
@@ -447,6 +468,31 @@ class CounterTest(unittest.TestCase):
             else:
                 with self.assertRaises(OverflowError):
                     _getAllowedKmerEncodings(CounterTest.SEQ, k, allowedEncodings)
+    
+    def testK_noLongHomopolymers(self) -> None:
+        """tests long homopolymer detection
+        """
+        # for lengths 2 through 31
+        for length in range(2,31):
+            for kmer in CounterTest.KMERS:
+                # encode each kmer
+                encoding = CounterTest.encodeKmer(kmer)
+
+                # should work for 32bp or
+                if len(kmer) <= 32:
+                    observed = has_long_homopolymer_in_kmer_encoding(encoding, len(kmer), length)
+                    expected = CounterTest.hasLongHomopolymer(kmer, length)
+
+                    self.assertEqual(observed, expected)
+                
+                # encodings greater than 32bp should fail bc the integers are too large
+                # NOTE: this class's encoder can generate integers that are too big but
+                #       the rolling counter encoder will generate undefined 32bit ints that
+                #       can be decoded without raising an error...but the decoding will not
+                #       match the original kmer
+                else:
+                    with self.assertRaises(OverflowError):
+                        has_long_homopolymer_in_kmer_encoding(encoding, len(kmer), length)
 
 
 if __name__ == "__main__":

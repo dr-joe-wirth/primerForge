@@ -297,3 +297,34 @@ cpdef inline bint has_gc_clamp_kmer_encoding(uint64_t kmer_encoding, int k) nogi
     
     # Check if either end has the allowed number of G and C
     return (MIN_GC <= left_gc <= MAX_GC) or (MIN_GC <= right_gc <= MAX_GC)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef has_long_homopolymer_in_kmer_encoding(uint64_t kmer_encoding, int k, int min_len):
+    """Determine whether a kmer has a long repeating homopolymer
+    
+    :param kmer_encoding: a 2-bit encoded kmer
+    :param k: the size of the encoded kmer (must be >= 5)
+    :param max_len: the minimum length of a homopolymer to be detected
+
+    :return: True if either end has appropriate GC content
+    """
+    cdef int count = 0
+    cdef int last_seen = 4  # have to start with an known invalid base
+
+    # for each position in the kmer
+    for i in range(k):
+        # Isolate i-th kmer bases from right to left
+        base_val = (kmer_encoding >> (2 * i)) & 3       # next line equivalent but processes bases left-to-right instead
+
+        if base_val == last_seen:
+            count += 1
+        else:
+            last_seen = base_val
+            count = 1
+        
+        if count == min_len:
+            return True
+
+    return False
