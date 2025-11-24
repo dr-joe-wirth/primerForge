@@ -15,9 +15,9 @@ from bin.kmer_counting.kmer_counter import (_decodeKmerEncoding,
 __JUNCTION_CHAR = '~'
 
 # functions
-def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, maxGc:float) -> set[int]:
+def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, maxGc:float, maxRepeat:int) -> set[int]:
     seq = __JUNCTION_CHAR.join([str(r.seq) for r in SeqIO.parse(fn, frmt)])
-    return _getFilteredKmerEncodings(seq, k, minGc, maxGc)
+    return _getFilteredKmerEncodings(seq, k, minGc, maxGc, maxRepeat)
 
 
 def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[int]) -> None:
@@ -31,12 +31,12 @@ def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[in
     sharedEncodings.intersection_update(newEncodings)
 
 
-def __getSharedKmersOneK(arguments:tuple[list[str],str,int,float,float]) -> set[str]:
+def __getSharedKmersOneK(arguments:tuple[list[str],str,int,float,float,int]) -> set[str]:
     # parse the arguments into its individual components
-    ingroupFns,frmt,k,minGc,maxGc = arguments
+    ingroupFns,frmt,k,minGc,maxGc,maxRepeatLen = arguments
 
     # get the kmers for the first (smallest) genome
-    sharedEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc)
+    sharedEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc, maxRepeatLen)
 
     # for each remaining genome, update the shared kmer encodings
     for fn in ingroupFns[1:]:
@@ -58,7 +58,7 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
     # helper function to generate arguments for __getSharedKmersOneK
     def genArgs() -> Iterator[tuple[list[str],str,int,float,float]]:
         for k in range(params.minLen, params.maxLen + 1):
-            yield (params.ingroupFns, params.format, k, params.minGc, params.maxGc)
+            yield (params.ingroupFns, params.format, k, params.minGc, params.maxGc, params.maxRepeatLen)
 
     def extractKmerStartPositions(seq:str, strand:str):
         for end,kmer in auto.iter(seq):
@@ -152,16 +152,14 @@ def __removeRedundantKmerGroups(positions:dict[str,dict[int,list[tuple[str,str]]
                 seen.add(group)
 
 
-def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str,str]], minGc:float, maxGc:float, minTm:float, maxTm:float, \
-                                 mvConc:float, dvConc:float, dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float, repeats:Automaton) -> Primer:
+def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str,str]], minTm:float, maxTm:float, mvConc:float, \
+                                 dvConc:float, dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float) -> Primer:
     """evaluates all the primers at a single position in the genome; designed for parallel calls
 
     Args:
         contig (str): the name of the contig
         start (int): the start position in the sequence
         positions (list[tuple[str,int]]): a list of positions (kmer, strand)
-        minGc (float): the minimum percent GC allowed
-        maxGc (float): the maximum percent GC allowed
         minTm (float): the minimum melting temperature allowed
         maxTm (float): the maximum melting temperature allowed
         mvConc (float): primer3 mv_conc
@@ -171,32 +169,14 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
         tempC (float): primer3 temp_c
         maxLoop (int): primer3 max_loop
         tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
-        repeats (Automaton): an Aho-Corasick Automaton consisting of only the disallowed homopolymers
     
     Returns:
         Primer: a suitable primer at the given position
     """
     # define helper functions to make booleans below more readable
-    def isGcWithinRange(primer:Primer) -> bool:
-        """is the percent GC within the acceptable range?"""
-        return primer.gcPer >= minGc and primer.gcPer <= maxGc
-
     def isTmWithinRange(primer:Primer) -> bool:
         """is the Tm within the acceptable range?"""
         return primer.Tm >= minTm and primer.Tm <= maxTm
-    
-    def noLongRepeats(primer:Primer) -> bool:
-        """verifies that a primer does not have long repeats
-        """
-        # check for any repeats in the primer
-        try:
-            # this will work if a repeat is present
-            next(iter(repeats.iter(str(primer))))
-            return False
-        
-        # absence of repeats will not be iterable
-        except StopIteration:
-            return True
 
     def noHairpins(primer:Primer) -> bool:
         """verifies that the primer does not form hairpins
@@ -260,11 +240,10 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
         primer = Primer(seq, contig, start, len(seq), strand)
         
         # evaluate the primer's percent GC, Tm, hairpin potential, and homodimer potential; save if passes
-        if isGcWithinRange(primer) and isTmWithinRange(primer): # O(1)
-            if noLongRepeats(primer):
-                if noHairpins(primer):
-                    if noHomodimers(primer):
-                        return primer
+        if isTmWithinRange(primer): # O(1)
+            if noHairpins(primer):
+                if noHomodimers(primer):
+                    return primer
 
 
 def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], params:Parameters) -> list[Primer]:
@@ -281,12 +260,6 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], params:Pa
     def generateArgs() -> Iterator[tuple[str,int,list[tuple[str,str]],float,float,float,float]]:
         """ generates arguments for __evaluateKmersAtOnePosition
         """
-        # create an Aho-Corasick Automaton for detecting homopolymers in primer sequences
-        repeats = Automaton()
-        for ch in 'ATCG':
-            repeats.add_word(ch * params.maxRepeatLen, ch)
-        repeats.make_automaton()
-        
         # each contig needs to be evalutated
         for contig in kmers.keys():
             # each start position within the contig needs to be evaluated
@@ -295,8 +268,6 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], params:Pa
                 yield (contig,
                        start,
                        kmers[contig][start],
-                       params.minGc,
-                       params.maxGc,
                        params.minTm,
                        params.maxTm,
                        params.p3_mvConc,
@@ -305,8 +276,7 @@ def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], params:Pa
                        params.p3_dnaConc,
                        params.p3_tempC,
                        params.p3_maxLoop,
-                       params.tempTolerance,
-                       repeats)
+                       params.tempTolerance)
 
     # parallelize primer evaluations
     pool = multiprocessing.Pool(processes=params.numThreads)

@@ -4,7 +4,8 @@ from bin.kmer_counting._kmer_counter import (count_kmers_rolling_encoding,
                                              decode_kmer_encoding,
                                              gc_percentage_kmer_encoding,
                                              is_palindrome_kmer_encoding,
-                                             has_gc_clamp_kmer_encoding)
+                                             has_gc_clamp_kmer_encoding,
+                                             has_long_homopolymer_in_kmer_encoding)
 
 
 def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
@@ -19,7 +20,7 @@ def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
     return {encoding for encoding,count in counts.items() if count == 1}
 
 
-def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float) -> set[int]:
+def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepeatLen:int) -> set[int]:
     """gets kmer encodings that pass a collection of filters
 
     Args:
@@ -27,6 +28,7 @@ def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float) -> set[i
         k (int): the size of the kmer
         minGc (float): the minimum allowed GC (%)
         maxGc (float): the maximum allowed GC (%)
+        maxHomoLen (int): the maximum allowed repeat length
 
     Returns:
         set[int]: a set of kmer encodings that:
@@ -45,6 +47,9 @@ def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float) -> set[i
     
     def hasGcClamp(enc:int) -> bool:
         return has_gc_clamp_kmer_encoding(enc, k)
+    
+    def hasNoLongHomopolymers(enc:int) -> bool:
+        return not has_long_homopolymer_in_kmer_encoding(enc, k, maxRepeatLen)
 
     # count all the kmers in the sequence
     kmerCounts:dict[int,int] = count_kmers_rolling_encoding(seq, k)
@@ -53,7 +58,7 @@ def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float) -> set[i
     out = __getSingletonEncodings(kmerCounts)
 
     # keep non-palindromes, those within GC range, and those with a GC clamp
-    return {x for x in out if isNotPalindromic(x) and isGcWithinRange(x) and hasGcClamp(x)}
+    return {x for x in out if isNotPalindromic(x) and isGcWithinRange(x) and hasGcClamp(x) and hasNoLongHomopolymers(x)}
 
 
 def _getAllowedKmerEncodings(seq:str, k:int, allowed:set[int]) -> set[int]:

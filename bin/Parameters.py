@@ -46,7 +46,7 @@ class Parameters():
     _DEF_ISPCR_MIN_PERFECT = 8
     _DEF_ISPCR_TILE_SIZE = 10
     _DEF_DEGREES = 5.0
-    _DEF_REPEATS = 4
+    _DEF_REPEATS = 3
     _DEF_BINSIZE = 64
     _DEF_KEEP = False
     _DEF_DEBUG = False

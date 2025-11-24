@@ -324,7 +324,7 @@ cpdef has_long_homopolymer_in_kmer_encoding(uint64_t kmer_encoding, int k, int m
             last_seen = base_val
             count = 1
         
-        if count == min_len:
+        if count > min_len:
             return True
 
     return False

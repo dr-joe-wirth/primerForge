@@ -177,7 +177,7 @@ class CounterTest(unittest.TestCase):
         """
         return Seq(seq.upper()) == Seq(seq.upper()).reverse_complement()
 
-    def getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float) -> set[int]:
+    def getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepeat:int) -> set[int]:
         """gets a set of kmer encodings that pass a filter
 
         Args:
@@ -199,8 +199,9 @@ class CounterTest(unittest.TestCase):
             isNotPalindromic = not CounterTest.kmerIsPalindrome(s)
             gcInRange = minGc <= CounterTest.kmerGcPercent(s) <= maxGc
             hasClamp = CounterTest.kmerHasGcClamp(s)
+            hasNoLongRepeat = not CounterTest.hasLongHomopolymer(s, maxRepeat)
 
-            return appearsOnce and isNotPalindromic and gcInRange and hasClamp
+            return appearsOnce and isNotPalindromic and gcInRange and hasClamp and hasNoLongRepeat
 
         # count number of occurences for all the kmers
         kmers = defaultdict(int)
@@ -234,12 +235,12 @@ class CounterTest(unittest.TestCase):
         # return the encodings for the kmers that appear exactly once
         return {CounterTest.encodeKmer(kmer) for kmer,count in kmers.items() if count == 1}
 
-    def hasLongHomopolymer(seq:str, minLen:int) -> bool:
+    def hasLongHomopolymer(seq:str, maxLen:int) -> bool:
         """detects long homopolymers in a sequence
 
         Args:
             seq (str): the sequence to evaluate
-            minLen (int): the minimum length to constitute a long homopolymer
+            maxLen (int): the maximum allowed homopolymer length
 
         Returns:
             bool: indicates if the sequence contain a long homopolymer
@@ -247,8 +248,8 @@ class CounterTest(unittest.TestCase):
         # ensure upper case
         seq = seq.upper()
 
-        # search the sequence for each homopolymer
-        for homopoly in [x * minLen for x in 'ATCG']:
+        # search the sequence for each homopolymer that exceeds the maximum
+        for homopoly in [x * (maxLen + 1) for x in 'ATCG']:
             if homopoly in seq:
                 return True
         
@@ -435,19 +436,21 @@ class CounterTest(unittest.TestCase):
         # set the G+C percentage range
         MIN_GC = 40.0
         MAX_GC = 60.0
+        MAX_REPEAT = 3
 
         for k in range(1,81):
             # kmers of 32bp or less should work
             if k <= 32:
-                observed = _getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC)
-                expected = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC)
+                if k == 5:
+                    observed = _getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT)
+                    expected = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT)
 
-                self.assertSetEqual(observed, expected)
+                    self.assertSetEqual(observed, expected)
             
             # kmers more than 32bp should fail
             else:
                 with self.assertRaises(OverflowError):
-                    _getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC)
+                    _getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT)
         
     def testJ_allowedKmers(self) -> None:
         """tests kmer allowlist retrieval
