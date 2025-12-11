@@ -60,8 +60,9 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
         for k in range(params.minLen, params.maxLen + 1):
             yield (params.ingroupFns, params.format, k, params.minGc, params.maxGc, params.maxRepeatLen)
 
-    def extractKmerStartPositions(seq:str, strand:str):
-        for end,kmer in auto.iter(seq):
+    # helper function to extract start positions of kmers in a genome
+    def extractKmerStartPositions(seq:Seq, strand:str):
+        for end,kmer in auto.iter(str(seq)):
             if strand == Primer.PLUS:
                 start = end - len(kmer) + 1
 
@@ -70,32 +71,35 @@ def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]
 
             yield start,kmer
 
-    # initialize output
+    # initialize variables
     out = defaultdict(dict)
-
-    # # open the pool
-    # with multiprocessing.Pool(params.numThreads) as pool:
-    #     # save results as they become available
-    #     for result in pool.imap_unordered(__getSharedKmersOneK, genArgs()):
-    #         out.update(result)
     auto = Automaton()
-    for args in genArgs():
-        for kmer in __getSharedKmersOneK(args):
-            auto.add_word(kmer, kmer)
+    
+    # add words to the automaton in parallel
+    with multiprocessing.Pool(params.numThreads) as pool:
+        # impa_unordered allows us to evaluate results as they become available
+        for result in pool.imap_unordered(__getSharedKmersOneK, genArgs()):
+            for kmer in result:
+                auto.add_word(kmer, kmer)
+
+    # build the automaton
     auto.make_automaton()
     
+    # extract the genomic positions of the kmers in each genome
     for fn in params.ingroupFns:
         name = os.path.basename(fn)
 
         for rec in SeqIO.parse(fn, params.format):
-            for start,kmer in extractKmerStartPositions(str(rec.seq), Primer.PLUS):
+            # process the plus strand
+            for start,kmer in extractKmerStartPositions(rec.seq, Primer.PLUS):
                 out[kmer][name] = (rec.id, start, Primer.PLUS)
         
+            # process the reverse strand unless it is the first genome
             if fn != params.ingroupFns[0]:
-                for start,kmer in extractKmerStartPositions(str(rec.seq.reverse_complement()), Primer.MINUS):
+                for start,kmer in extractKmerStartPositions(rec.seq.reverse_complement(), Primer.MINUS):
                     out[kmer][name] = (rec.id, start, Primer.MINUS)
 
-    return out
+    return dict(out)
 
 
 def __reorganizeDataByPosition(name:str, kmers:dict[str,dict[str,tuple[str,int,str]]]) -> dict[str,dict[int,list[tuple[str,str]]]]:
