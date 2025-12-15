@@ -5,7 +5,9 @@ from bin.kmer_counting._kmer_counter import (count_kmers_rolling_encoding,
                                              gc_percentage_kmer_encoding,
                                              is_palindrome_kmer_encoding,
                                              has_gc_clamp_kmer_encoding,
-                                             has_long_homopolymer_in_kmer_encoding)
+                                             has_long_homopolymer_in_kmer_encoding,
+                                             start_position_from_kmer_encodings
+                                             )
 
 
 def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
@@ -90,3 +92,24 @@ def _decodeKmerEncoding(encoding:int, k:int) -> str:
         str: the decoded kmer
     """
     return decode_kmer_encoding(encoding, k)
+
+
+def _getStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str) -> dict[str,int]:
+    """gets the start positions and decoded kmers from a set of encodings
+
+    Args:
+        allowed (set[int]): a set of kmer encodings
+        k (int): the length of the encoded kmers
+        seq (str): the sequence to search
+        strand (str): the strand of the sequence
+
+    Returns:
+        dict[str,int]: {kmer: start position}; negative positions indicate minus strand
+    """
+    # intialize output
+    out = {x: None for x in allowed}
+    
+    # get the positions for this sequence
+    start_position_from_kmer_encodings(seq, k, out)
+
+    return {x:y for x,y in out.items() if y is not None}

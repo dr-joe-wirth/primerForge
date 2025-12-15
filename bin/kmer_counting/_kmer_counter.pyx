@@ -29,6 +29,35 @@ cpdef inline int encode_base(char base) nogil:
         return 4  # Invalid base (N, etc.)
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef inline uint64_t reverse_complement_kmer_encoding(uint64_t kmer_encoding, int k) nogil:
+    """
+    Reverse-complement a 2-bit encoded kmer.
+
+    Encoding: A=0, C=1, G=2, T=3
+    NOTE: k must be <= 32
+    """
+    cdef uint64_t revcomp = 0
+    cdef int i
+    cdef uint64_t base
+
+    for i in range(k):
+        # extract lowest 2 bits
+        base = kmer_encoding & 3
+
+        # complement (flip both bits)
+        base = (~base) & 3
+
+        # shift into result
+        revcomp = (revcomp << 2) | base
+
+        # shift input down
+        kmer_encoding >>= 2
+
+    return revcomp
+
+
 # boundscheck(False) is safe here because looping over i in range(seq_len), so indices are guaranteed to be in-bounds
 # wraparound(False) is safe here because no negative indexing is utilized
 @cython.boundscheck(False)
@@ -328,3 +357,77 @@ cpdef has_long_homopolymer_in_kmer_encoding(uint64_t kmer_encoding, int k, int m
             return True
 
     return False
+
+
+# boundscheck(False) is safe here because looping over i in range(seq_len), so indices are guaranteed to be in-bounds
+# wraparound(False) is safe here because no negative indexing is utilized
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def start_position_from_kmer_encodings(str sequence, int k, dict kmer_start_positions):
+    """Fast k-mer counting with allowlist filtering using rolling hash.
+
+    :param sequence: a nucleotide sequence to count kmers for
+    :param k: the size of kmers to count (must be <=32)
+    :param allowlist_hashes: set of k-mer hashes to count (ignore others)
+    :param strand: indicate whether the sequence represents the forward strand (43) or reverse strand (45)
+
+    :return: {kmer_str: index} # index is the last seen start position (strand is indicated by positive or negative start positions)
+    """
+
+    # For masking out high bits irrelevant to kmers smaller than 32 bits
+    # `mask` starts as all 1s, then we shift right until only kmer-relevant bits are 1s
+    cdef uint64_t mask = (~0ULL) >> (64 - (2 * k))
+    cdef int seq_len = len(sequence)
+    cdef uint64_t kmer_encoding = 0
+    cdef int valid_bases = 0
+    cdef uint32_t base_val
+    cdef int end
+    cdef int start
+    cdef bytes seq_bytes = sequence.encode('utf-8')
+    cdef char* seq_ptr = seq_bytes
+
+    # go through the sequence
+    for end in range(seq_len):
+        # encode the current base
+        base_val = encode_base(seq_ptr[end])
+
+        # Invalid base resets the encoding and base count
+        if base_val == 4:
+            kmer_encoding = 0
+            valid_bases = 0
+            continue
+        
+        # SHIFT the existing encoding leftwards 2 bits
+        # OR with base_value to load the current base encoding into the bottom bits
+        # AND with mask to blank out the high bits not relevant to this kmer size
+        kmer_encoding = ((kmer_encoding << 2) | base_val) & mask
+
+        valid_bases += 1
+
+        # If we've encountered enough sequential valid bases that this encoding corresponds to a valid kmer
+        # AND the kmer is one we've been told to care about, count it
+        if valid_bases >= k:
+            # determine the reverse complement of the kmer
+            rev_comp_encoding = reverse_complement_kmer_encoding(kmer_encoding, k)
+            start = end - k + 1
+
+            # save the current encoding and its start position if found on the plus strand
+            if kmer_encoding in kmer_start_positions.keys():
+                desired_encoding = kmer_encoding
+
+            
+            # calculate the start position for minus strand
+            elif rev_comp_encoding in kmer_start_positions.keys():
+                start = -end
+                desired_encoding = rev_comp_encoding
+            
+            else:
+                continue
+            
+            # remove the encoding from the dictionary (it will be replaced with its decoded string)
+            del kmer_start_positions[desired_encoding]
+
+            # save the decoded kmer and its start position
+            kmer_start_positions[decode_kmer_encoding(desired_encoding, k)] = start
+
+    return kmer_start_positions
