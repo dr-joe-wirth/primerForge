@@ -31,13 +31,14 @@ def __makeFastaFile(params:Parameters) -> None:
         os.remove(params.allContigsFna)
     
     # open the file in append mode
-    with open(params.allContigsFna, 'a') as fh:
+    with open(params.allContigsFna, 'w') as outFh:
         # for each sequence file
         for fn in params.ingroupFns + params.outgroupFns:
             # write each contig to file
-            for contig in SeqIO.parse(fn, params.format):
-                # make sure the sequence name matches what was saved in other data structures
-                SeqIO.write(SeqRecord(contig.seq, contig.id, '', ''), fh, OUT_FORMAT)
+            with open(fn, 'r') as inFh:
+                for contig in SeqIO.parse(inFh, params.format):
+                    # make sure the sequence name matches what was saved in other data structures
+                    SeqIO.write(SeqRecord(contig.seq, contig.id, '', ''), outFh, OUT_FORMAT)
 
 
 def __makeQueryString(pairs:list[tuple[Primer,Primer]]) -> str:

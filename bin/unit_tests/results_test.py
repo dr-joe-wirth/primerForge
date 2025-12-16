@@ -487,9 +487,10 @@ class ResultsTest(unittest.TestCase):
         contig:SeqRecord
         
         # store each contig underneath its name
-        for contig in SeqIO.parse(os.path.join(ResultsTest.TEST_DIR, fn), 'genbank'):
-            out[contig.id] = {Primer.PLUS:  contig.seq.upper(),
-                              Primer.MINUS: contig.seq.reverse_complement().upper()}
+        with open(os.path.join(ResultsTest.TEST_DIR, fn), 'r') as fh:
+            for contig in SeqIO.parse(fh, 'genbank'):
+                out[contig.id] = {Primer.PLUS:  contig.seq.upper(),
+                                Primer.MINUS: contig.seq.reverse_complement().upper()}
         
         return out
 

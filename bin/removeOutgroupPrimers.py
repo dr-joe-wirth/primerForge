@@ -1,63 +1,82 @@
+import os
+from Bio import SeqIO
 from bin.Clock import Clock
-from typing import Generator
+from typing import Iterator
 from bin.Primer import Primer
 from bin.Product import Product
-from ahocorasick import Automaton
+from collections import defaultdict
 from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
+from bin.kmer_counting.kmer_counter import _encodeKmer, _getAllStartPositionsAndDecodeAllowedEncodings
+
 
 # global constant
 __NULL_PRODUCT = ("NA", 0)
 
 
 # functions
-def __getAutomaton(pairs:list[tuple[Primer,Primer]]) -> Automaton:
-    """creates an Aho-Corasick Automaton for substring lookup
+def __getKmerEncodings(pairs:Iterator[tuple[Primer,Primer]]) -> dict[int,set[int]]:
+    """gets the kmer encodings from a collection of primer pairs
 
     Args:
-        pairs (list[tuple[Primer,Primer]]): a list of primer pairs
+        pairs (Iterator[tuple[Primer,Primer]]): a collection of primer pairs (eg dictionary keys)
 
     Returns:
-        Automaton: an Aho-Corasick Automaton
+        dict[int,set[int]]: {kmer length: {encodings}}
     """
-    # initialize output
-    out = Automaton()
+    # initialize the output
+    out = defaultdict(set)
+
+    # create a set of kmer encodings stored under their lengths
+    for kmer in {p for pair in pairs for p in pair}:
+        out[len(kmer)].add(_encodeKmer(str(kmer)))
     
-    # add each kmer in the pairs to the automaton once and make the automaton
-    for kmer in {str(primer) for pair in pairs for primer in pair}:
-        out.add_word(kmer, kmer)
-    out.make_automaton()
-
-    return out
+    return dict(out)
 
 
-def __extractKmerData(seq:str, strand:str, kmers:Automaton) -> dict[str, list[int]]:
-    """extracts data from a contig sequence for a collection of kmers
+def __extractKmerPositions(seq:str, encodings:dict[int,set[int]]) -> dict[str,dict[str,list[int]]]:
+    """extracts kmer positions from a collection of encodings
 
     Args:
-        seq (str): the contig sequence
-        strand (str): the strand of the sequence
-        kmers (Automaton): the collection of kmers as an Aho-Corasick Automaton
+        seq (str): the sequence to evaluate
+        encodings (dict[int,set[int]]): {kmer length: {encodings}}
 
     Returns:
-        dict[str, list[int]]: key=kmer; val=list of start positions
+        dict[str,dict[str,list[int]]]: {strand: {kmer: [start positions]}}
     """
     # initialize output
-    out = dict()
+    out = {Primer.PLUS: defaultdict(list),
+           Primer.MINUS: defaultdict(list)}
+
+    # for each kmer length
+    for k in encodings.keys():
+        # decode encodings and get their start positions
+        positions = _getAllStartPositionsAndDecodeAllowedEncodings(encodings[k], k, seq)
+
+        # for each kmer
+        for kmer,starts in positions.items():
+            # for each start position, save the start positions under the correct strand
+            for start in starts:
+                # positive start indicates plus strand
+                if start > 0:
+                    out[Primer.PLUS][kmer].append(start)
+                
+                # negatave start indicates minus strand
+                elif start < 0:
+                    out[Primer.MINUS][kmer].append(-start)
+                
+                # zero start that matches beginning of seq indicates plus strand
+                elif seq[:len(kmer)] == kmer:
+                    out[Primer.PLUS][kmer].append(start)
+                
+                # zero start that doesn't match beginning of seq indicates minus strand
+                else:
+                    out[Primer.MINUS][kmer].append(start)
     
-    # for each kmer in the sequence
-    for end,kmer in kmers.iter(seq):
-        # extract the start position if on the 
-        start = end - len(kmer) + 1
-        
-        # modify the start position if on the (-) strand
-        if strand == Primer.MINUS:
-            start = len(seq) - start - 1
-        
-        # build the output
-        out[kmer] = out.get(kmer, list())
-        out[kmer].append(start)
-    
+    # recast defaultdict to dict
+    out[Primer.PLUS] = dict(out[Primer.PLUS])
+    out[Primer.MINUS] = dict(out[Primer.MINUS])
+
     return out
 
 
@@ -178,11 +197,10 @@ def __processOutgroupResults(outgroupProducts:dict[str,dict[tuple[Primer,Primer]
             pairs[pair][name] = Product(contig, size, FAKE_BIN, FAKE_BIN, pairs[pair][ingroupName].dimerTm, FAKE_COORD, FAKE_COORD, FAKE_STRAND, FAKE_COORD, FAKE_COORD, FAKE_STRAND)
 
 
-def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord,None,None]], pairs:dict[tuple[Primer,Primer],dict[str,Product]], params:Parameters) -> None:
+def _removeOutgroupPrimers(pairs:dict[tuple[Primer,Primer],dict[str,Product]], params:Parameters) -> None:
     """removes primers found in the outgroup that produce disallowed product sizes
 
     Args:
-        outgroup (dict[str,Generator[SeqRecord,None,None]]): key=genome name; val=contig generator
         pairs (dict[tuple[Primer,Primer],dict[str,Product]]): key=Primer pair; dict:key=genome name; val=Product
         params (Parameters): a Parameters object
 
@@ -216,27 +234,23 @@ def _removeOutgroupPrimers(outgroup:dict[str,Generator[SeqRecord,None,None]], pa
     clock.printStart(MSG_2)
     params.log.info(MSG_2)
     
-    # create the automaton from the pairs
-    kmers = __getAutomaton(pairs.keys())
+    # get kmer encodings
+    encodings = __getKmerEncodings(pairs.keys())
     
     # for each outgroup genome
-    for name in outgroup.keys():
+    for fn in params.outgroupFns:
+        # get the name 
+        name = os.path.basename(fn)
+        
         # initialize a dictionary for the current outgroup genome
         outgroupKmers[name] = dict()
+
+        with open(fn, 'r') as fh:
+            # add each contig in the genome to the argument list
+            for contig in SeqIO.parse(fh, params.format):
+                # extract kmer data
+                outgroupKmers[name][contig.id] = __extractKmerPositions(str(contig.seq), encodings)
         
-        # add each contig in the genome to the argument list
-        for contig in outgroup[name]:
-            outgroupKmers[name][contig.id] = {Primer.PLUS:  dict(),
-                                              Primer.MINUS: dict()}
-            
-            # extract the forward and reverse sequences
-            fwd = str(contig.seq)
-            rev = str(contig.seq.reverse_complement())
-            
-            # extract kmer data
-            outgroupKmers[name][contig.id][Primer.PLUS].update((__extractKmerData(fwd, Primer.PLUS, kmers)))
-            outgroupKmers[name][contig.id][Primer.MINUS].update(__extractKmerData(rev, Primer.MINUS, kmers))
-    
     # print status and log
     clock.printDone()
     params.log.info(f"{DONE}{clock.getTimeString()}")

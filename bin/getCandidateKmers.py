@@ -28,11 +28,12 @@ def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, ma
         set[int]: a collection of kmer encodings
     """
     # extract either the forward or reverse strand sequences
-    if strand == Primer.PLUS:
-        seqs = [str(r.seq) for r in SeqIO.parse(fn, frmt)]
-    
-    else:
-        seqs = [str(r.seq.reverse_complement()) for r in SeqIO.parse(fn, frmt)]
+    with open(fn, 'r') as fh:
+        if strand == Primer.PLUS:
+            seqs = [str(r.seq) for r in SeqIO.parse(fh, frmt)]
+        
+        else:
+            seqs = [str(r.seq.reverse_complement()) for r in SeqIO.parse(fh, frmt)]
     
     # concatenate sequences
     seq = __JUNCTION_CHAR.join(seqs)
@@ -54,9 +55,10 @@ def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[in
     seqs = list()
 
     # add the forward and reverse sequences to the list
-    for rec in SeqIO.parse(fn, frmt):
-        seqs.append(str(rec.seq))
-        seqs.append(str(rec.seq.reverse_complement()))
+    with open(fn, 'r') as fh:
+        for rec in SeqIO.parse(fh, frmt):
+            seqs.append(str(rec.seq))
+            seqs.append(str(rec.seq.reverse_complement()))
     
     # combine all sequences into a single string
     seq = __JUNCTION_CHAR.join(seqs)
@@ -89,31 +91,32 @@ def __convertKmerEncodingsToPrimers(files:list[str], frmt:str, encodings:set[int
         name = os.path.basename(fn)
 
         # for each contig
-        for rec in SeqIO.parse(fn, frmt):
-            # get the start positions and decode the encoding
-            positions = _getFirstStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq)).items()
+        with open(fn, 'r') as fh:
+            for rec in SeqIO.parse(fh, frmt):
+                # get the start positions and decode the encoding
+                positions = _getFirstStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq)).items()
 
-            # for each kmer and its start position
-            for kmer,start in positions:
-                # positive coordinate indicates plus strand
-                if start > 0:
-                    strand = Primer.PLUS
+                # for each kmer and its start position
+                for kmer,start in positions:
+                    # positive coordinate indicates plus strand
+                    if start > 0:
+                        strand = Primer.PLUS
 
-                # negative coordinate indicates minus strand
-                elif start < 0:
-                    start = abs(start)
-                    strand = Primer.MINUS
-                
-                # if the start is 0, then does it match the beginning of the sequence?
-                elif kmer == rec.seq[:len(kmer)]:
-                    strand = Primer.PLUS
-                
-                # if not, then it must be minus strand
-                else:
-                    strand = Primer.MINUS
+                    # negative coordinate indicates minus strand
+                    elif start < 0:
+                        start = abs(start)
+                        strand = Primer.MINUS
+                    
+                    # if the start is 0, then does it match the beginning of the sequence?
+                    elif kmer == rec.seq[:len(kmer)]:
+                        strand = Primer.PLUS
+                    
+                    # if not, then it must be minus strand
+                    else:
+                        strand = Primer.MINUS
 
-                # create a Primer object and save it in the list
-                out[name].append(Primer(kmer, rec.id, start, k, strand))
+                    # create a Primer object and save it in the list
+                    out[name].append(Primer(kmer, rec.id, start, k, strand))
     
     return dict(out)
 

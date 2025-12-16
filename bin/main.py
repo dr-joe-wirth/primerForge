@@ -38,28 +38,6 @@ def __getCheckpoint(params:Parameters) -> tuple[bool,bool,bool,bool,bool]:
     return sharedExists, candidExists, unfiltExists, filterExists, validsExists
 
 
-def __readSequenceData(seqFiles:list[str], frmt:str) -> dict[str, Generator[SeqRecord,None,None]]:
-    """reads sequence data into file
-
-    Args:
-        seqFiles (list[str]): a list of sequence files to read
-        frmt (str): the format of the sequence files
-
-    Returns:
-        dict[str, Generator[SeqRecord,None,None]]: key=genome name; val=a generator that yields contigs
-    """
-    # initialize output
-    out = dict()
-    
-    # for each file in the list
-    for fn in seqFiles:
-        # get the genome name and use it as a key to store the list of parsed contigs
-        name = os.path.basename(fn)
-        out[name] = SeqIO.parse(fn, frmt)
-    
-    return out
-
-
 def __getCandidates(params:Parameters, sharedExists:bool, clock:Clock) -> dict[str,dict[str,list[Primer]]]:
     """gets the candidate kmers
 
@@ -147,14 +125,11 @@ def __removeOutgroup(params:Parameters, pairs:dict[tuple[Primer,Primer],dict[str
     
     # only have work to do if there are outgroup genomes
     if params.outgroupFns != []:
-        # load genome sequences
-        outgroupSeqs = __readSequenceData(params.outgroupFns, params.format)
-        
         # determine the starting number of pairs
         startingNum = len(pairs)
         
         # remove the outgroup primers
-        _removeOutgroupPrimers(outgroupSeqs, pairs, params)
+        _removeOutgroupPrimers(pairs, params)
         
         # move the log back
         params.log.rename(__removeOutgroup.__name__)

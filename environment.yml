@@ -15,7 +15,6 @@ dependencies:
   - numpy
   - pip >=23
   - primer3-py >=2.0
-  - pyahocorasick >=2.1
   - python >=3.9
   - scipy >=1.10
   - setuptools
