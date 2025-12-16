@@ -6,6 +6,7 @@ sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
 from bin.getCandidateKmers import __JUNCTION_CHAR as JC
 from bin.kmer_counting.kmer_counter import (_decodeKmerEncoding,
+                                            _encodeKmer,
                                             _getAllowedKmerEncodings,
                                             _getStartPositionsAndDecodeAllowedEncodings,
                                             _getFilteredKmerEncodings,
@@ -64,30 +65,7 @@ class CounterTest(unittest.TestCase):
     SEQ = 'TAATCAATTACGCGGAAGCCGTCGAACTTAACGCGACGTCAAGATTGGATCGGACGGCGCGCGAAATATATCGAAGTCAAGTCAACCATGGTTGACTTCGGACGATGCTGTGTCAGTAGTGCAATTTTAATTGGTACTAGGCCTAGCTAGCTATACGTACGTTTCAA'
     SEQ_RC = str(Seq(SEQ).reverse_complement())
 
-    # python implementations to test functionality
-    def encodeKmer(kmer:str) -> int:
-        """encodes a kmer to its integer
-
-        Args:
-            kmer (str): the kmer to encode
-
-        Returns:
-            int: the encoding
-        """
-        # initialize a string
-        binaryString = ''
-
-        # for each base
-        for base in kmer:
-            # get the binary encoding of the base
-            binary = bin(encode_base(ord(base)))
-
-            # ensure the string is 2 characters long and drop the preceding 0b
-            binaryString += binary.removeprefix('0b').rjust(2, '0')
-        
-        # cast the string as an integer (base 2 counting)
-        return int(binaryString, 2)
-    
+    # python implementations to test functionality    
     def countKmerEncodings(seq:str, k:int) -> dict[int,int]:
         """counts kmer encodings in a given sequence
 
@@ -104,7 +82,7 @@ class CounterTest(unittest.TestCase):
         # count each kmer (key is the encoding)
         for i in range(len(seq) - k + 1):
             kmer = seq[i:i+k]
-            out[CounterTest.encodeKmer(kmer)] += 1
+            out[_encodeKmer(kmer)] += 1
         
         return out
     
@@ -214,7 +192,7 @@ class CounterTest(unittest.TestCase):
             kmers[seq[i:i+k]] += 1
         
         # keep only kmers that pass the filter; return the encodings
-        return {CounterTest.encodeKmer(kmer) for kmer,count in kmers.items() if passesFilter(kmer, count)}
+        return {_encodeKmer(kmer) for kmer,count in kmers.items() if passesFilter(kmer, count)}
 
     def getAllowedKmerEncodings(seq:str, k:int, allowed:set[str]) -> set[int]:
         """gets all the kmer encodings that appear once and are in the allowed list
@@ -238,7 +216,7 @@ class CounterTest(unittest.TestCase):
                 kmers[kmer] += 1
         
         # return the encodings for the kmers that appear exactly once
-        return {CounterTest.encodeKmer(kmer) for kmer,count in kmers.items() if count == 1}
+        return {_encodeKmer(kmer) for kmer,count in kmers.items() if count == 1}
 
     def hasLongHomopolymer(seq:str, maxLen:int) -> bool:
         """detects long homopolymers in a sequence
@@ -296,7 +274,7 @@ class CounterTest(unittest.TestCase):
         # check that valid bases get encoded properly
         for base,val in CounterTest.SINGLE_BASES.items():
             self.assertEqual(encode_base(ord(base)), val)
-            self.assertEqual(encode_base(ord(base)), CounterTest.encodeKmer(base))
+            self.assertEqual(encode_base(ord(base)), _encodeKmer(base))
         
         # check that the junction character is 4
         self.assertEqual(encode_base(ord(JC)), INVALID_VAL)
@@ -312,7 +290,7 @@ class CounterTest(unittest.TestCase):
             if len(kmer) <= 32:
                 counts = count_kmers_rolling_encoding(kmer, len(kmer))
                 encoding = next(iter(counts.keys()))
-                self.assertEqual(encoding, CounterTest.encodeKmer(kmer))
+                self.assertEqual(encoding, _encodeKmer(kmer))
     
     def testB_decoding(self) -> None:
         """test if the decoding functionality is working
@@ -325,7 +303,7 @@ class CounterTest(unittest.TestCase):
         # decode the test kmers
         for kmer in CounterTest.KMERS:
             # encode the kmer
-            encoding = CounterTest.encodeKmer(kmer)
+            encoding = _encodeKmer(kmer)
 
             # encodings of 32bp or less should work
             if len(kmer) <= 32:
@@ -362,7 +340,7 @@ class CounterTest(unittest.TestCase):
         """
         for k in range(1,81):
             # only keep the first six kmers
-            allowed = {CounterTest.encodeKmer(x) for x in CounterTest.KMERS[:6] if len(x) == k}
+            allowed = {_encodeKmer(x) for x in CounterTest.KMERS[:6] if len(x) == k}
 
             # all counts should match for kmers of size 1-32
             if k <= 32:
@@ -380,7 +358,7 @@ class CounterTest(unittest.TestCase):
         """
         for kmer in CounterTest.KMERS:
             # encode the kmer and count the G+C
-            encoding = CounterTest.encodeKmer(kmer)
+            encoding = _encodeKmer(kmer)
             expected = CounterTest.countKmerGc(kmer)
 
             # encodings of 32bp or less should work
@@ -401,7 +379,7 @@ class CounterTest(unittest.TestCase):
         """
         for kmer in CounterTest.KMERS:
             # encode the kmer and get the G+C %
-            encoding = CounterTest.encodeKmer(kmer)
+            encoding = _encodeKmer(kmer)
             expected = CounterTest.kmerGcPercent(kmer)
 
             # encodings of 32bp or less should work
@@ -423,7 +401,7 @@ class CounterTest(unittest.TestCase):
         """
         for kmer in CounterTest.KMERS:
             # encode the kmer and detect a clamp
-            encoding = CounterTest.encodeKmer(kmer)
+            encoding = _encodeKmer(kmer)
             expected = CounterTest.kmerHasGcClamp(kmer)
 
             # encodings of 32bp or less should work
@@ -445,7 +423,7 @@ class CounterTest(unittest.TestCase):
         """
         for kmer in CounterTest.KMERS:
             # encode the kmer and detect a palindrome
-            encoding = CounterTest.encodeKmer(kmer)
+            encoding = _encodeKmer(kmer)
             expected = CounterTest.kmerIsPalindrome(kmer)
 
             # encodings of 32bp or less should work
@@ -489,7 +467,7 @@ class CounterTest(unittest.TestCase):
         for k in range(1,81):
             # only keep the first six kmers
             allowedSeqs = {x for x in CounterTest.KMERS[:6] if len(x) == k}
-            allowedEncodings = {CounterTest.encodeKmer(x) for x in allowedSeqs}
+            allowedEncodings = {_encodeKmer(x) for x in allowedSeqs}
 
             # any k less than or equal to 32 should work
             if k <= 32:
@@ -510,7 +488,7 @@ class CounterTest(unittest.TestCase):
         for length in range(2,31):
             for kmer in CounterTest.KMERS:
                 # encode each kmer
-                encoding = CounterTest.encodeKmer(kmer)
+                encoding = _encodeKmer(kmer)
 
                 # should work for 32bp or
                 if len(kmer) <= 32:
@@ -535,10 +513,10 @@ class CounterTest(unittest.TestCase):
         for kmer in CounterTest.KMERS:
             if len(kmer) <= 32:
                 # get the encoding for the kmer
-                encoding = CounterTest.encodeKmer(kmer)
+                encoding = _encodeKmer(kmer)
 
                 # get the expected and observed encoding for the rc kmer
-                expected = CounterTest.encodeKmer(Seq(kmer).reverse_complement())
+                expected = _encodeKmer(Seq(kmer).reverse_complement())
                 observed = reverse_complement_kmer_encoding(encoding, len(kmer))
 
                 # they should match
@@ -564,8 +542,8 @@ class CounterTest(unittest.TestCase):
         minusEncodings.difference_update(shared)
 
         # add a valid kmer that is absent from the sequences to the encodings
-        plusEncodings.add(CounterTest.encodeKmer(ABSENT_KMER))
-        minusEncodings.add(CounterTest.encodeKmer(ABSENT_KMER))
+        plusEncodings.add(_encodeKmer(ABSENT_KMER))
+        minusEncodings.add(_encodeKmer(ABSENT_KMER))
 
         # decode the kmer encodings
         plusKmers = {_decodeKmerEncoding(x, K) for x in plusEncodings}
@@ -576,8 +554,8 @@ class CounterTest(unittest.TestCase):
         expectedMinus = {x: CounterTest.getKmerStartPosition(CounterTest.SEQ, x) for x in minusKmers if x != ABSENT_KMER}
 
         # add the absent encoding; its value should be None
-        expectedPlus[CounterTest.encodeKmer(ABSENT_KMER)] = None
-        expectedMinus[CounterTest.encodeKmer(ABSENT_KMER)] = None
+        expectedPlus[_encodeKmer(ABSENT_KMER)] = None
+        expectedMinus[_encodeKmer(ABSENT_KMER)] = None
 
         # test that CounterTest.getKmerStartPosition is working as expected
         ## check the plus strand kmers

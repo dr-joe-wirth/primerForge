@@ -2,6 +2,7 @@ from Bio import SeqIO
 from bin.kmer_counting._kmer_counter import (count_kmers_rolling_encoding,
                                              count_allowlist_kmers_rolling_encoding,
                                              decode_kmer_encoding,
+                                             encode_base,
                                              gc_percentage_kmer_encoding,
                                              is_palindrome_kmer_encoding,
                                              has_gc_clamp_kmer_encoding,
@@ -54,7 +55,7 @@ def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepea
         return not has_long_homopolymer_in_kmer_encoding(enc, k, maxRepeatLen)
 
     # count all the kmers in the sequence
-    kmerCounts:dict[int,int] = count_kmers_rolling_encoding(seq, k)
+    kmerCounts = count_kmers_rolling_encoding(seq, k)
 
     # only keep singleton kmers
     out = __getSingletonEncodings(kmerCounts)
@@ -79,6 +80,30 @@ def _getAllowedKmerEncodings(seq:str, k:int, allowed:set[int]) -> set[int]:
 
     # return only those kmer ecodings that appear exactly once
     return __getSingletonEncodings(kmerCounts)
+
+
+def _encodeKmer(kmer:str) -> int:
+    """encodes a kmer to its integer
+
+    Args:
+        kmer (str): the kmer to encode
+
+    Returns:
+        int: the encoding
+    """
+    # initialize a string
+    binaryString = ''
+
+    # for each base
+    for base in kmer:
+        # get the binary encoding of the base
+        binary = bin(encode_base(ord(base)))
+
+        # ensure the string is 2 characters long and drop the preceding 0b
+        binaryString += binary.removeprefix('0b').rjust(2, '0')
+    
+    # cast the string as an integer (base 2 counting)
+    return int(binaryString, 2)
 
 
 def _decodeKmerEncoding(encoding:int, k:int) -> str:
