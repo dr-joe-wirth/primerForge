@@ -1,169 +1,190 @@
 from Bio import SeqIO
-from Bio.Seq import Seq
-from typing import Iterator
 from bin.Clock import Clock
 from bin.Primer import Primer
-from ahocorasick import Automaton
-import multiprocessing, os, primer3
+from typing import Iterator, Union
 from collections import defaultdict
+import multiprocessing, os, primer3
 from bin.Parameters import Parameters
-from bin.kmer_counting.kmer_counter import (_decodeKmerEncoding,
-                                            _getAllowedKmerEncodings,
+from bin.kmer_counting.kmer_counter import (_getAllowedKmerEncodings,
+                                            _getStartPositionsAndDecodeAllowedEncodings,
                                             _getFilteredKmerEncodings)
 
 # constant
 __JUNCTION_CHAR = '~'
 
 # functions
-def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, maxGc:float, maxRepeat:int) -> set[int]:
-    seq = __JUNCTION_CHAR.join([str(r.seq) for r in SeqIO.parse(fn, frmt)])
+def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, maxGc:float, maxRepeat:int, strand:str=Primer.PLUS) -> set[int]:
+    """gets the allowed kmer encodings from the plus strand
+
+    Args:
+        fn (str): the sequence filename
+        frmt (str): the sequence file format
+        k (int): the kmer length
+        minGc (float): the minimum allowed GC percent
+        maxGc (float): the maximum allowed GC percent
+        maxRepeat (int): the maximum allowed repeat length
+
+    Returns:
+        set[int]: a collection of kmer encodings
+    """
+    # extract either the forward or reverse strand sequences
+    if strand == Primer.PLUS:
+        seqs = [str(r.seq) for r in SeqIO.parse(fn, frmt)]
+    
+    else:
+        seqs = [str(r.seq.reverse_complement()) for r in SeqIO.parse(fn, frmt)]
+    
+    # concatenate sequences
+    seq = __JUNCTION_CHAR.join(seqs)
+
+    # get kmer encodings and filter out kmers that are missing specific characteristics
     return _getFilteredKmerEncodings(seq, k, minGc, maxGc, maxRepeat)
 
 
 def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[int]) -> None:
+    """updates the shared encodings set with those that are found in the provided sequence
+
+    Args:
+        fn (str): the sequence filename
+        frmt (str): the sequence file format
+        k (int): the kmer length
+        sharedEncodings (set[int]): a collection of allowed kmer encodings
+    """
+    # initialize a list
     seqs = list()
+
+    # add the forward and reverse sequences to the list
     for rec in SeqIO.parse(fn, frmt):
         seqs.append(str(rec.seq))
         seqs.append(str(rec.seq.reverse_complement()))
     
+    # combine all sequences into a single string
     seq = __JUNCTION_CHAR.join(seqs)
+    
+    # get the kmer encodings that appear in this genome
     newEncodings = _getAllowedKmerEncodings(seq, k, sharedEncodings)
+
+    # update the shared encodings to only keep those that are truly shared
     sharedEncodings.intersection_update(newEncodings)
 
 
-def __getSharedKmersOneK(arguments:tuple[list[str],str,int,float,float,int]) -> set[str]:
-    # parse the arguments into its individual components
-    ingroupFns,frmt,k,minGc,maxGc,maxRepeatLen = arguments
+def __convertKmerEncodingsToPrimers(files:list[str], frmt:str, encodings:set[int], k:int) -> dict[str,list[Primer]]:
+    """converts kmer encodings to a list of Primer objects
 
+    Args:
+        files (list[str]): a list of sequence filenames
+        frmt (str): the sequence file format
+        encodings (set[int]): a collection of kmer encodings
+        k (int): the kmer length
+
+    Returns:
+        dict[str,list[Primer]]: a list of Primer objects
+    """
+    # initialize the output
+    out = defaultdict(list)
+
+    # for each file
+    for fn in files:
+        # get the genome name
+        name = os.path.basename(fn)
+
+        # for each contig
+        for rec in SeqIO.parse(fn, frmt):
+            # get the start positions and decode the encoding
+            positions = _getStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq)).items()
+
+            # for each kmer and its start position
+            for kmer,start in positions:
+                # positive coordinate indicates plus strand
+                if start > 0:
+                    strand = Primer.PLUS
+
+                # negative coordinate indicates minus strand
+                elif start < 0:
+                    start = abs(start)
+                    strand = Primer.MINUS
+                
+                # if the start is 0, then does it match the beginning of the sequence?
+                elif kmer == rec.seq[:len(kmer)]:
+                    strand = Primer.PLUS
+                
+                # if not, then it must be minus strand
+                else:
+                    strand = Primer.MINUS
+
+                # create a Primer object and save it in the list
+                out[name].append(Primer(kmer, rec.id, start, k, strand))
+    
+    return dict(out)
+
+
+def __getSharedPrimersOneK(ingroupFns:list[str], frmt:str, k:int, minGc:float, maxGc:float, maxRepeatLen:int) -> dict[str,list[Primer]]:
+    """gets shared primers for a single kmer length
+
+    Args:
+        ingroupFns (list[str]): the sequence filenames
+        frmt (str): the sequence file format
+        k (int): the kmer length
+        minGc (float): the minimum allowed GC percent
+        maxGc (float): the maximum allowed GC percent
+        maxRepeatLen (int): the maximum allowed repeat length
+
+    Returns:
+        list[Primer]: a list of shared Primer objects
+    """
     # get the kmers for the first (smallest) genome
     sharedEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc, maxRepeatLen)
+
+    # remove any minus strand encodings that are present
+    minusEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc, maxRepeatLen, strand=Primer.MINUS)
+    sharedEncodings.difference_update(minusEncodings)
+    del minusEncodings
 
     # for each remaining genome, update the shared kmer encodings
     for fn in ingroupFns[1:]:
         __updateAllowedKmerEncodings(fn, frmt, k, sharedEncodings)
     
-    # decode the kmers
-    return {_decodeKmerEncoding(x, k) for x in sharedEncodings}
+    # convert the shared kmers to Primer objects
+    return __convertKmerEncodingsToPrimers(ingroupFns, frmt, sharedEncodings, k)
 
 
-def __getSharedKmers(params:Parameters) -> dict[str,dict[str,tuple[str,int,str]]]:
-    """retrieves all the kmers that are shared between the input genomes
+def __getSharedPrimers(params:Parameters) -> dict[str,list[Primer]]:
+    """retrieves all the primers that are shared between the input genomes
 
     Args:
         params (Parameters): a Parameters object
 
     Returns:
-        dict[str,dict[str,tuple[str,int,str]]]: key=kmer; val=dict: key=genome name: val=tuple: contig, start, strand
+        list[Primer]: a list of shared Primers
     """
     # helper function to generate arguments for __getSharedKmersOneK
     def genArgs() -> Iterator[tuple[list[str],str,int,float,float]]:
         for k in range(params.minLen, params.maxLen + 1):
-            yield (params.ingroupFns, params.format, k, params.minGc, params.maxGc, params.maxRepeatLen)
+            yield params.ingroupFns, params.format, k, params.minGc, params.maxGc, params.maxRepeatLen
 
-    # helper function to extract start positions of kmers in a genome
-    def extractKmerStartPositions(seq:Seq, strand:str):
-        for end,kmer in auto.iter(str(seq)):
-            if strand == Primer.PLUS:
-                start = end - len(kmer) + 1
-
-            elif strand == Primer.MINUS:
-                start = len(seq) - end - 1
-
-            yield start,kmer
-
-    # initialize variables
-    out = defaultdict(dict)
-    auto = Automaton()
+    # initialize output
+    out = defaultdict(list)
     
-    # add words to the automaton in parallel
+    # get the shared primers for each kmer length in parallel
     with multiprocessing.Pool(params.numThreads) as pool:
-        # impa_unordered allows us to evaluate results as they become available
-        for result in pool.imap_unordered(__getSharedKmersOneK, genArgs()):
-            for kmer in result:
-                auto.add_word(kmer, kmer)
-
-    # build the automaton
-    auto.make_automaton()
+        for result in pool.starmap(__getSharedPrimersOneK, genArgs()):
+            for name,primers in result.items():
+                out[name].extend(primers)
     
-    # extract the genomic positions of the kmers in each genome
-    for fn in params.ingroupFns:
-        name = os.path.basename(fn)
-
-        for rec in SeqIO.parse(fn, params.format):
-            # process the plus strand
-            for start,kmer in extractKmerStartPositions(rec.seq, Primer.PLUS):
-                out[kmer][name] = (rec.id, start, Primer.PLUS)
-        
-            # process the reverse strand unless it is the first genome
-            if fn != params.ingroupFns[0]:
-                for start,kmer in extractKmerStartPositions(rec.seq.reverse_complement(), Primer.MINUS):
-                    out[kmer][name] = (rec.id, start, Primer.MINUS)
+    # sort the lists of primers alphabetically
+    for name in out.keys():
+        out[name].sort()
 
     return dict(out)
+ 
 
-
-def __reorganizeDataByPosition(name:str, kmers:dict[str,dict[str,tuple[str,int,str]]]) -> dict[str,dict[int,list[tuple[str,str]]]]:
-    """reorganizes data from __getSharedKmers by its genomic position
-
-    Args:
-        name (str): the name of the genome to be processed
-        kmers (dict[str,dict[str,tuple[str,int,str]]]): the dictionary produced by __getSharedKmers
-
-    Returns:
-        dict[str,dict[int,list[tuple[str,str]]]]: key=contig; val=dict: key=start position; val=list of tuples: kmer, strand
-    """
-    # initialize output
-    out = dict()
-    
-    # for each kmer
-    for kmer in kmers.keys():
-        # extract data from the dictionary
-        contig, start, strand = kmers[kmer][name]
-        
-        # contig = top level key; start position = second level key; val = list
-        out[contig] = out.get(contig, dict())
-        out[contig][start] = out[contig].get(start, list())
-        
-        # add the sequence and its length to the list
-        out[contig][start].append((kmer, strand))
-    
-    return out
-
-
-def __removeRedundantKmerGroups(positions:dict[str,dict[int,list[tuple[str,str]]]], seen:set[tuple[str]]) -> None:
-    """removes redundant groups of kmers from the positions dictionary
+def __evaluateOnePrimerSequence(primer:Primer, idx:int, minTm:float, maxTm:float, mvConc:float, dvConc:float, \
+                        dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float) -> tuple[Union[Primer,None],int]:
+    """evaluates one primer; designed for parallel calls
 
     Args:
-        positions (dict[str,dict[int,list[tuple[str,str]]]]): the dictionary produced by __reorganizeDataByPosition
-        seen (set[tuple[str]]): a set of kmer groups that have already been processed
-    """
-    # for each contig
-    for contig in positions.keys():
-        # get a list of kmer positions to allow on-the-fly deleting
-        starts = list(positions[contig].keys())
-        
-        # for each start position
-        for start in starts:
-            # extract the group of kmers for this position
-            group = tuple(sorted(x[0] for x in positions[contig][start]))
-            
-            # remove this from the dictionary if its kmer group has been seen
-            if group in seen:
-                del positions[contig][start]
-            
-            # mark previously unseen groups as seen
-            else:
-                seen.add(group)
-
-
-def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str,str]], minTm:float, maxTm:float, mvConc:float, \
-                                 dvConc:float, dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float) -> Primer:
-    """evaluates all the primers at a single position in the genome; designed for parallel calls
-
-    Args:
-        contig (str): the name of the contig
-        start (int): the start position in the sequence
-        positions (list[tuple[str,int]]): a list of positions (kmer, strand)
+        primer (Primer): the Primer to evaluate
+        idx (int): the index of the primer in the list of the calling function
         minTm (float): the minimum melting temperature allowed
         maxTm (float): the maximum melting temperature allowed
         mvConc (float): primer3 mv_conc
@@ -175,196 +196,156 @@ def __evaluateKmersAtOnePosition(contig:str, start:int, positions:list[tuple[str
         tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
     
     Returns:
-        Primer: a suitable primer at the given position
+        tuple[Union[Primer,None],int]: a Primer object (or None if the eval failed) and its index
     """
     # define helper functions to make booleans below more readable
-    def isTmWithinRange(primer:Primer) -> bool:
+    def isTmWithinRange(p:Primer) -> bool:
         """is the Tm within the acceptable range?"""
-        return primer.Tm >= minTm and primer.Tm <= maxTm
+        return p.Tm >= minTm and p.Tm <= maxTm
 
-    def noHairpins(primer:Primer) -> bool:
+    def noHairpins(p:Primer) -> bool:
         """verifies that the primer does not form hairpins
         """
-        # save the hairpin Tms
-        primer.hairpinTm = primer3.calc_hairpin_tm(str(primer),
-                                                   mv_conc=mvConc,
-                                                   dv_conc=dvConc,
-                                                   dntp_conc=dntpConc,
-                                                   dna_conc=dnaConc,
-                                                   temp_c=tempC,
-                                                   max_loop=maxLoop)
-        primer.rcHairpin = primer3.calc_hairpin_tm(str(primer.reverseComplement()),
-                                                   mv_conc=mvConc,
-                                                   dv_conc=dvConc,
-                                                   dntp_conc=dntpConc,
-                                                   dna_conc=dnaConc,
-                                                   temp_c=tempC,
-                                                   max_loop=maxLoop)
+        # calculate the hairpin Tms
+        p.hairpinTm = primer3.calc_hairpin_tm(str(p),
+                                              mv_conc=mvConc,
+                                              dv_conc=dvConc,
+                                              dntp_conc=dntpConc,
+                                              dna_conc=dnaConc,
+                                              temp_c=tempC,
+                                              max_loop=maxLoop)
+        p.rcHairpin = primer3.calc_hairpin_tm(str(p.reverseComplement()),
+                                              mv_conc=mvConc,
+                                              dv_conc=dvConc,
+                                              dntp_conc=dntpConc,
+                                              dna_conc=dnaConc,
+                                              temp_c=tempC,
+                                              max_loop=maxLoop)
         
-        # hairpin tm should be less than (minTm - 5°); need to check both strands
-        fwdOk = primer.hairpinTm < (minTm - tempTolerance)
-        revOk = primer.rcHairpin < (minTm - tempTolerance)
+        # hairpin tm should be less than (minTm - tolerance°); need to check both strands
+        fwdOk = p.hairpinTm < (minTm - tempTolerance)
+        revOk = p.rcHairpin < (minTm - tempTolerance)
         
         return fwdOk and revOk
 
-    def noHomodimers(primer:Primer) -> bool:
+    def noHomodimers(p:Primer) -> bool:
         """verifies that the primer does not form homodimers
         """
-        # save the homodimer Tms
-        primer.homodimerTm = primer3.calc_homodimer_tm(str(primer),
-                                                       mv_conc=mvConc,
-                                                       dv_conc=dvConc,
-                                                       dntp_conc=dntpConc,
-                                                       dna_conc=dnaConc,
-                                                       temp_c=tempC,
-                                                       max_loop=maxLoop)
-        primer.rcHomodimer = primer3.calc_homodimer_tm(str(primer.reverseComplement()),
-                                                       mv_conc=mvConc,
-                                                       dv_conc=dvConc,
-                                                       dntp_conc=dntpConc,
-                                                       dna_conc=dnaConc,
-                                                       temp_c=tempC,
-                                                       max_loop=maxLoop)
+        # calculate the homodimer Tms
+        p.homodimerTm = primer3.calc_homodimer_tm(str(p),
+                                                  mv_conc=mvConc,
+                                                  dv_conc=dvConc,
+                                                  dntp_conc=dntpConc,
+                                                  dna_conc=dnaConc,
+                                                  temp_c=tempC,
+                                                  max_loop=maxLoop)
+        p.rcHomodimer = primer3.calc_homodimer_tm(str(p.reverseComplement()),
+                                                  mv_conc=mvConc,
+                                                  dv_conc=dvConc,
+                                                  dntp_conc=dntpConc,
+                                                  dna_conc=dnaConc,
+                                                  temp_c=tempC,
+                                                  max_loop=maxLoop)
         
-        # homodimer tm should be less than (minTm - 5°); need to check both strands
-        fwdOk = primer.homodimerTm < (minTm - tempTolerance)
-        revOk = primer.rcHomodimer < (minTm - tempTolerance)
+        # homodimer tm should be less than (minTm - tolerance°); need to check both strands
+        fwdOk = p.homodimerTm < (minTm - tempTolerance)
+        revOk = p.rcHomodimer < (minTm - tempTolerance)
         
         return fwdOk and revOk
+
+    # evaluate the primer's percent GC, Tm, hairpin potential, and homodimer potential
+    if isTmWithinRange(primer):
+        if noHairpins(primer):
+            if noHomodimers(primer):
+                # don't return this index if the primer is good
+                return primer, idx
     
-    # initialize values for the while loop
-    idx = 0
-    
-    # continue to iterate through each primer in the list until a primer is found 
-    for idx in range(len(positions)):
-        # extract data from the list
-        seq,strand = positions[idx]
-        
-        # create a Primer object
-        primer = Primer(seq, contig, start, len(seq), strand)
-        
-        # evaluate the primer's percent GC, Tm, hairpin potential, and homodimer potential; save if passes
-        if isTmWithinRange(primer): # O(1)
-            if noHairpins(primer):
-                if noHomodimers(primer):
-                    return primer
+    return None, idx
 
 
-def __evaluateAllKmers(kmers:dict[str,dict[int,list[tuple[str,str]]]], params:Parameters) -> list[Primer]:
-    """evaluates kmers at each position for their suitability as primers
+def __removeBadPrimers(primers:dict[str,list[Primer]], params:Parameters) -> None:
+    """evaluates primers and removes those that are not suitable; updates hairpin and homodimer Tm
 
     Args:
-        kmers (dict[str,dict[int,list[tuple[str,str]]]]): the dictionary produced by __reorganizeDataByPosition
+        primers (list[Primer]): the list produced by __getSharedPrimers; sorted alphabetically
         params (Parameters): a Parameters object
-
-    Returns:
-        list[Primer]: a list of suitable primers as Primer objects
     """
     # generator function for getting arguments
-    def generateArgs() -> Iterator[tuple[str,int,list[tuple[str,str]],float,float,float,float]]:
-        """ generates arguments for __evaluateKmersAtOnePosition
+    def generateArgs(n:str) -> Iterator[tuple[Primer,int,float,float,float,float,float,float,float,int,float]]:
+        """ generates arguments for __evaluateOnePrimerSequence
         """
-        # each contig needs to be evalutated
-        for contig in kmers.keys():
-            # each start position within the contig needs to be evaluated
-            for start in kmers[contig].keys():
-                # save arguments to pass in parallel
-                yield (contig,
-                       start,
-                       kmers[contig][start],
-                       params.minTm,
-                       params.maxTm,
-                       params.p3_mvConc,
-                       params.p3_dvConc,
-                       params.p3_dntpConc,
-                       params.p3_dnaConc,
-                       params.p3_tempC,
-                       params.p3_maxLoop,
-                       params.tempTolerance)
+        # emit arguments for each primer for the first genome only (primer lists are equivalent)
+        for idx in range(len(primers[n])):
+            yield (primers[n][idx],
+                   idx,
+                   params.minTm,
+                   params.maxTm,
+                   params.p3_mvConc,
+                   params.p3_dvConc,
+                   params.p3_dntpConc,
+                   params.p3_dnaConc,
+                   params.p3_tempC,
+                   params.p3_maxLoop,
+                   params.tempTolerance)
+
+    # get the names
+    names = list(primers.keys())
+
+    # initialize a list of bad indices
+    badIndices = list()
 
     # parallelize primer evaluations
-    pool = multiprocessing.Pool(processes=params.numThreads)
-    results = pool.starmap(__evaluateKmersAtOnePosition, generateArgs())
-    pool.close()
-    pool.join()
+    with multiprocessing.Pool(processes=params.numThreads) as pool:
+        # only need to evaluate the first genome; primer lists are equivalent
+        for primer,index in pool.starmap(__evaluateOnePrimerSequence, generateArgs(names[0])):
+            # track which indices failed the evaluation
+            if primer is None:
+                badIndices.append(index)
+            
+            # replace the existing primer with one that has hairpin and homodimer Tm
+            else:
+                primers[names[0]][index] = primer
 
-    # remove failed searches before returning
-    return [x for x in results if x is not None]
+    # remove bad primers from the list
+    badIndices.sort(reverse=True)
+    for name in names:
+        for idx in badIndices:
+            primers[name].pop(idx)
+    
+    # update the hairpin and homodimer melting temps for the other genomes
+    for name in names[1:]:
+        for idx in range(len(primers[names[0]])):
+            primers[name][idx].hairpinTm = primers[names[0]][idx].hairpinTm
+            primers[name][idx].rcHairpin = primers[names[0]][idx].rcHairpin
+            primers[name][idx].homodimerTm = primers[names[0]][idx].homodimerTm
+            primers[name][idx].rcHomodimer = primers[names[0]][idx].rcHomodimer
 
 
-def __buildOutput(kmers:dict[str,dict[str,tuple[str,int,str]]], candidates:list[Primer]) -> dict[str,dict[str,list[Primer]]]:
-    """builds the candidate primer output
+def __buildOutput(primers:dict[str,list[Primer]]) -> dict[str,dict[str,list[Primer]]]:
+    """builds the datastructure needed for downstream applications
 
     Args:
-        kmers (dict[str,dict[str,tuple[str,int,str]]]): the dictionary produced by __getSharedKmers
-        candidates (list[Primer]): the list produced by __evaluateAllKmers
+        primers (dict[str,list[Primer]]): the dictionary produced by __getSharedPrimers
 
     Returns:
-        dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
+        dict[str,dict[str,list[Primer]]]: {name: {contig: [Primer objects]}}
     """
-    # initialize output
+    # initialize the output
     out = dict()
-    
-    # for each candidate primer
-    for cand in candidates:
-        # identify which sequence is present in the genome
-        try:
-            entry = kmers[cand.seq]
-            hairpinTm = cand.hairpinTm
-            rcHairpin = cand.rcHairpin
-            homodimerTm = cand.homodimerTm
-            rcHomodimer = cand.rcHomodimer
-        
-        except:
-            entry = kmers[cand.seq.reverse_complement()]
-            hairpinTm = cand.rcHairpin
-            rcHairpin = cand.hairpinTm
-            homodimerTm = cand.rcHomodimer
-            rcHomodimer = cand.homodimerTm
-        
-        # for each genome
-        for name in entry.keys():
-            # extract the data from the entry
-            contig, start, strand = entry[name]
 
-            # create the new primer for this genome
-            primer = Primer(cand.seq, contig, start, len(cand.seq), strand)
-            primer.hairpinTm = hairpinTm
-            primer.rcHairpin = rcHairpin
-            primer.homodimerTm = homodimerTm
-            primer.rcHomodimer = rcHomodimer
-            
-            # save the Primer in this contig's list
-            out[name] = out.get(name, dict())
-            out[name][contig] = out[name].get(contig, list())
-            out[name][contig].append(primer)
+    # for each name
+    for name in primers.keys():
+        # create the subordinate dictionary
+        out[name] = defaultdict(list)
+
+        # store each primer under its respective contig
+        for primer in primers[name]:
+            out[name][primer.contig].append(primer)
+        
+        # recast defaultdict to dict
+        out[name] = dict(out[name])
     
     return out
-
-
-def __getCandidatesForOneGenome(name:str, kmers:dict[str,dict[str,tuple[str,int,str]]], seen:set[tuple[str]], params:Parameters) -> dict[str,dict[str,list[Primer]]]:
-    """gets candidate primers for a single genome
-
-    Args:
-        name (str): the name of the genome to get primers for
-        kmers (dict[str,dict[str,tuple[str,int,str]]]): the dictionary produced by __getSharedKmers
-        seen (set[tuple[str]]): a set of kmer groups (tuple of strings) that have already been processed
-        params (Parameters): a Parameters object
-
-    Returns:
-        dict[str,dict[str,list[Primer]]]: key=genome name; val=dict: key=contig; val=list of Primers
-    """
-    # reorganize data by each unique start positions for one genome
-    positions = __reorganizeDataByPosition(name, kmers)
-    
-    # remove groups of kmers that have already been seen
-    __removeRedundantKmerGroups(positions, seen)
-    
-    # get a list of the kmers that pass the evaulation
-    candidates = __evaluateAllKmers(positions, params)
-    
-    # create a dictionary whose keys are contigs and values are lists of candidate primers
-    return __buildOutput(kmers, candidates)
 
 
 def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict[str,list[Primer]]]:
@@ -391,78 +372,57 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     ERR_MSG_1 = "failed to identify a set of kmers shared between the ingroup genomes"
     ERR_MSG_2 = "none of the ingroup kmers are suitable for use as a primer"
     
-    # initialize variables
+    # initialize clock
     clock = Clock()
-    numCand = 0
-    seen = set()
-    out = dict()
     
     # setup debugger
     params.log.rename(_getAllCandidateKmers.__name__)
     
     if sharedExists:
         # load existing shared kmers from file
-        kmers = params.loadObj(params.pickles[Parameters._SHARED])
+        primers = params.loadObj(params.pickles[Parameters._SHARED])
+
+        # determine the number of kmers that were identified
+        numCand = len(next(iter(primers.values())))
 
     else:
         # get all non-duplicated kmers that are shared in the ingroup
         params.log.info(MSG_1)
         clock.printStart(MSG_1)
-        kmers = __getSharedKmers(params)
+        primers = __getSharedPrimers(params)
         clock.printDone()
         
         # move log back to this function
         params.log.rename(_getAllCandidateKmers.__name__)
         params.log.info(f'{GAP}done {clock.getTimeString()}')
+
+        # determine the number of kmers that were identified
+        numCand = len(next(iter(primers.values())))
     
         # make sure that ingroup kmers were identified
-        if kmers == dict():
+        if numCand == 0:
             params.log.error(ERR_MSG_1)
             raise RuntimeError(ERR_MSG_1)
         
         # dump the shared kmers to file
-        params.dumpObj(kmers, params.pickles[Parameters._SHARED], "shared kmers", prefix=GAP)
-    
+        params.dumpObj(primers, params.pickles[Parameters._SHARED], "shared kmers", prefix=GAP)
+
     # print status
-    clock.printStart(f'{MSG_2A}{len(kmers)}{MSG_2B}')
-    params.log.info(f'{MSG_2A}{len(kmers)}{MSG_2B}')
+    clock.printStart(f'{MSG_2A}{numCand}{MSG_2B}')
+    params.log.info(f'{MSG_2A}{numCand}{MSG_2B}')
     
-    # go through each genome name
-    names = list(next(iter(kmers.values())).keys())
-    for name in names:
-        # get the candidate kmers for the genome
-        candidates = __getCandidatesForOneGenome(name, kmers, seen, params)
-        
-        # for each genome in the candidates
-        for genome in candidates.keys():
-            # create a sub dictionary if one does not already exist
-            out[genome] = out.get(genome, dict())
-            
-            # for each contig in the genome
-            for contig in candidates[genome].keys():
-                # store a set of all the candidates for this contig
-                out[genome][contig] = out[genome].get(contig, set())
-                out[genome][contig].update(candidates[genome][contig])
-    
-    # done with seen; remove it
-    del seen
-    
-    # for each genome
-    for name in out.keys():
-        # for each contig
-        for contig in out[name].keys():
-            # sort kmers by their start position on the (+) strand
-            out[name][contig] = sorted(out[name][contig], key=lambda x: min(x.start, x.end))
-            
-            # count the number of candidate kmers for the first genome only
-            if name == names[0]:
-                numCand += len(out[name][contig])
+    # evaluate the candidates to remove bad primers
+    __removeBadPrimers(primers, params)
 
     # make sure candidates were found
+    numCand = len(next(iter(primers.values())))
     if numCand == 0:
         params.log.error(ERR_MSG_2)
         raise RuntimeError(ERR_MSG_2)
     
+    # build the output
+    out = __buildOutput(primers)
+
     # print status
     clock.printDone()
     print(f"{MSG_3A}{numCand}{MSG_3B}")
@@ -472,6 +432,6 @@ def _getAllCandidateKmers(params:Parameters, sharedExists:bool) -> dict[str,dict
     params.log.info(f'{MSG_3A}{numCand}{MSG_3B}')
     
     # dump the candidate kmers to file
-    params.dumpObj(out, params.pickles[Parameters._CAND], "candidate kmers", prefix=GAP)
+    params.dumpObj(primers, params.pickles[Parameters._CAND], "candidate kmers", prefix=GAP)
 
     return out
