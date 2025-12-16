@@ -261,15 +261,28 @@ class CounterTest(unittest.TestCase):
         return False
 
     def getKmerStartPosition(seq:str, kmer:str) -> int:
-        revComp = str(Seq(seq).reverse_complement())
+        """gets the start position of a kmer; sign indicates strand
 
+        Args:
+            seq (str): the sequence to search
+            kmer (str): the kmer
+
+        Returns:
+            int: the start position of the kmer (relative to plus strand)
+        """
+        # reverse complement the kmer
+        revComp = str(Seq(kmer).reverse_complement())
+
+        # check if kmer is in sequence; return the index
         if kmer in seq:
             return seq.index(kmer)
         
-        elif kmer in revComp:
-            end = revComp.index(kmer)
-            return -(len(seq) - end - 1)
+        # check if reverse complement is in sequence; return the negative index
+        elif revComp in seq:
+            # return 
+            return -seq.index(revComp)
         
+        # absent kmers return None
         else:
             return None
 
@@ -545,7 +558,7 @@ class CounterTest(unittest.TestCase):
         plusEncodings = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ, K, MIN_GC, MAX_GC, MAX_HOMO)
         minusEncodings = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ_RC, K, MIN_GC, MAX_GC, MAX_HOMO)
 
-        # drop shared kmers (palindromes)
+        # drop any shared kmers as these are never allowed
         shared = plusEncodings.intersection(minusEncodings)
         plusEncodings.difference_update(shared)
         minusEncodings.difference_update(shared)
@@ -558,30 +571,41 @@ class CounterTest(unittest.TestCase):
         plusKmers = {_decodeKmerEncoding(x, K) for x in plusEncodings}
         minusKmers = {_decodeKmerEncoding(x, K) for x in minusEncodings}
 
-        # get the expected dictionaries for these kmers
-        expectedPlus = {x: CounterTest.getKmerStartPosition(CounterTest.SEQ, x) for x in plusKmers}
-        expectedMinus = {x: CounterTest.getKmerStartPosition(CounterTest.SEQ, x) for x in minusKmers}
+        # get the expected dictionaries for these kmers; ignore the absent one for now
+        expectedPlus = {x: CounterTest.getKmerStartPosition(CounterTest.SEQ, x) for x in plusKmers if x != ABSENT_KMER}
+        expectedMinus = {x: CounterTest.getKmerStartPosition(CounterTest.SEQ, x) for x in minusKmers if x != ABSENT_KMER}
 
-        # replace the absent kmer with its encoding
-        del expectedPlus[ABSENT_KMER]
-        del expectedMinus[ABSENT_KMER]
+        # add the absent encoding; its value should be None
         expectedPlus[CounterTest.encodeKmer(ABSENT_KMER)] = None
         expectedMinus[CounterTest.encodeKmer(ABSENT_KMER)] = None
 
-        # test that CounterTest.getKmerStartPosition is working
+        # test that CounterTest.getKmerStartPosition is working as expected
+        ## check the plus strand kmers
         for kmer,start in expectedPlus.items():
             if start is not None:
+                # the value should be positive (or zero)
+                self.assertGreaterEqual(start, 0)
+
+                # the kmer should match the slice from the start coordinate
                 self.assertEqual(kmer, CounterTest.SEQ[start:start + K])
 
-                rc = str(Seq(kmer).reverse_complement())
-                end = -expectedMinus[rc]
+        ## check the minus strand kmers
+        for kmer, start in expectedMinus.items():
+            if start is not None:
+                # the value should be negative (or zero)
+                self.assertLessEqual(start, 0)
 
-                self.assertEqual(kmer, CounterTest.SEQ[end-K+1:end+1])
+                # for slicing, drop the negative
+                start = 0 - start
+
+                # the reverse complement of the kmer should match the forward sequence slice
+                self.assertEqual(str(Seq(kmer).reverse_complement()), CounterTest.SEQ[start:start + K])
         
-        # check the base cython implementation
+        # get the dictionaries from the cython implementation
         observedPlus = start_position_from_kmer_encodings(CounterTest.SEQ, K, {x: None for x in plusEncodings})
         observedMinus = start_position_from_kmer_encodings(CounterTest.SEQ, K, {x: None for x in minusEncodings})
 
+        # check that the dictionaries match
         self.assertDictEqual(observedPlus, expectedPlus)
         self.assertDictEqual(observedMinus, expectedMinus)
 
@@ -589,10 +613,11 @@ class CounterTest(unittest.TestCase):
         expectedPlus = {k:v for k,v in expectedPlus.items() if v is not None}
         expectedMinus = {k:v for k,v in expectedMinus.items() if v is not None}
 
-        # check the python wrapper implementation
+        # get the dictionaries from the python wrapper implementation
         observedPlus = _getStartPositionsAndDecodeAllowedEncodings(plusEncodings, K, CounterTest.SEQ)
         observedMinus = _getStartPositionsAndDecodeAllowedEncodings(minusEncodings, K, CounterTest.SEQ)
 
+        # check that the dictionaries match
         self.assertDictEqual(observedPlus, expectedPlus)
         self.assertDictEqual(observedMinus, expectedMinus)
 
