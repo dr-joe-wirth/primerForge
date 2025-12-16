@@ -6,7 +6,7 @@ from collections import defaultdict
 import multiprocessing, os, primer3
 from bin.Parameters import Parameters
 from bin.kmer_counting.kmer_counter import (_getAllowedKmerEncodings,
-                                            _getStartPositionsAndDecodeAllowedEncodings,
+                                            _getFirstStartPositionsAndDecodeAllowedEncodings,
                                             _getFilteredKmerEncodings)
 
 # constant
@@ -91,7 +91,7 @@ def __convertKmerEncodingsToPrimers(files:list[str], frmt:str, encodings:set[int
         # for each contig
         for rec in SeqIO.parse(fn, frmt):
             # get the start positions and decode the encoding
-            positions = _getStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq)).items()
+            positions = _getFirstStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq)).items()
 
             # for each kmer and its start position
             for kmer,start in positions:

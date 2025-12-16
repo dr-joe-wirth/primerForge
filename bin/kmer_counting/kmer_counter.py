@@ -1,14 +1,14 @@
 from Bio import SeqIO
-from bin.kmer_counting._kmer_counter import (count_kmers_rolling_encoding,
+from bin.kmer_counting._kmer_counter import (all_start_positions_from_kmer_encodings,
+                                             count_kmers_rolling_encoding,
                                              count_allowlist_kmers_rolling_encoding,
                                              decode_kmer_encoding,
                                              encode_base,
+                                             first_start_position_from_kmer_encodings,
                                              gc_percentage_kmer_encoding,
-                                             is_palindrome_kmer_encoding,
                                              has_gc_clamp_kmer_encoding,
                                              has_long_homopolymer_in_kmer_encoding,
-                                             start_position_from_kmer_encodings
-                                             )
+                                             is_palindrome_kmer_encoding)
 
 
 def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
@@ -119,7 +119,7 @@ def _decodeKmerEncoding(encoding:int, k:int) -> str:
     return decode_kmer_encoding(encoding, k)
 
 
-def _getStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str) -> dict[str,int]:
+def _getFirstStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str) -> dict[str,int]:
     """gets the start positions and decoded kmers from a set of encodings
 
     Args:
@@ -135,6 +135,20 @@ def _getStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str
     out = {x: None for x in allowed}
     
     # get the positions for this sequence
-    start_position_from_kmer_encodings(seq, k, out)
+    first_start_position_from_kmer_encodings(seq, k, out)
 
     return {x:y for x,y in out.items() if y is not None}
+
+
+def _getAllStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str) -> dict[str,list[int]]:
+    """gets all start positions and decoded kmers from a set of encodings
+
+    Args:
+        allowed (set[int]): the set of allowed kmer encodings
+        k (int): the kmer length
+        seq (str): the sequence to search
+
+    Returns:
+        dict[str,list[int]]: {kmer: [start positions]}; negative positions indicate minus strand
+    """
+    return all_start_positions_from_kmer_encodings(seq, k, allowed)
