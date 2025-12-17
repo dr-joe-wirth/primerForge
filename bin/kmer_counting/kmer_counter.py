@@ -1,4 +1,3 @@
-from Bio import SeqIO
 from bin.kmer_counting._kmer_counter import (all_start_positions_from_kmer_encodings,
                                              count_kmers_rolling_encoding,
                                              count_allowlist_kmers_rolling_encoding,

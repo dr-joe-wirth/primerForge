@@ -3,7 +3,6 @@ from bin.Clock import Clock
 from typing import Generator
 from bin.Primer import Primer
 from bin.Product import Product
-from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _getPrimerPairs
