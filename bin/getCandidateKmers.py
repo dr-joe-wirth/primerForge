@@ -5,7 +5,8 @@ from typing import Iterator, Union
 from collections import defaultdict
 import multiprocessing, os, primer3
 from bin.Parameters import Parameters
-from bin.kmer_counting.kmer_counter import (_getAllowedKmerEncodings,
+from bin.kmer_counting.kmer_counter import (_getAllKmerEncodings,
+                                            _getAllowedKmerEncodings,
                                             _getFirstStartPositionsAndDecodeAllowedEncodings,
                                             _getFilteredKmerEncodings)
 
@@ -13,33 +14,36 @@ from bin.kmer_counting.kmer_counter import (_getAllowedKmerEncodings,
 __JUNCTION_CHAR = '~'
 
 # functions
-def __getAllowedPlusStrandKmerEncodings(fn:str, frmt:str, k:int, minGc:float, maxGc:float, maxRepeat:int, strand:str=Primer.PLUS) -> set[int]:
-    """gets the allowed kmer encodings from the plus strand
+def __getConcatenatedSequence(fn:str, frmt:str, strand:str) -> str:
+    """gets the entire sequence from a file, concatenated with __JUNCTION_CHAR
 
     Args:
         fn (str): the sequence filename
         frmt (str): the sequence file format
-        k (int): the kmer length
-        minGc (float): the minimum allowed GC percent
-        maxGc (float): the maximum allowed GC percent
-        maxRepeat (int): the maximum allowed repeat length
+        strand (str): the strand to retrieve
+
+    Raises:
+        ValueError: invalid strand specified
 
     Returns:
-        set[int]: a collection of kmer encodings
+        str: the concatenated sequence
     """
-    # extract either the forward or reverse strand sequences
+    # open the file
     with open(fn, 'r') as fh:
+        # import the forward sequences if requested
         if strand == Primer.PLUS:
             seqs = [str(r.seq) for r in SeqIO.parse(fh, frmt)]
         
-        else:
+        # import the reverse sequences if requested
+        elif strand == Primer.MINUS:
             seqs = [str(r.seq.reverse_complement()) for r in SeqIO.parse(fh, frmt)]
+        
+        # fail on invalid strand
+        else:
+            raise ValueError(f'invalid strand specified: {strand}')
     
     # concatenate sequences
-    seq = __JUNCTION_CHAR.join(seqs)
-
-    # get kmer encodings and filter out kmers that are missing specific characteristics
-    return _getFilteredKmerEncodings(seq, k, minGc, maxGc, maxRepeat)
+    return __JUNCTION_CHAR.join(seqs)
 
 
 def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[int]) -> None:
@@ -51,17 +55,12 @@ def __updateAllowedKmerEncodings(fn:str, frmt:str, k:int, sharedEncodings:set[in
         k (int): the kmer length
         sharedEncodings (set[int]): a collection of allowed kmer encodings
     """
-    # initialize a list
-    seqs = list()
-
-    # add the forward and reverse sequences to the list
-    with open(fn, 'r') as fh:
-        for rec in SeqIO.parse(fh, frmt):
-            seqs.append(str(rec.seq))
-            seqs.append(str(rec.seq.reverse_complement()))
+    # get the forward and reverse sequences
+    fwd = __getConcatenatedSequence(fn, frmt, Primer.PLUS)
+    rev = __getConcatenatedSequence(fn, frmt, Primer.MINUS)
     
-    # combine all sequences into a single string
-    seq = __JUNCTION_CHAR.join(seqs)
+    # combine sequences into a single string
+    seq = __JUNCTION_CHAR.join((fwd,rev))
     
     # get the kmer encodings that appear in this genome
     newEncodings = _getAllowedKmerEncodings(seq, k, sharedEncodings)
@@ -94,10 +93,10 @@ def __convertKmerEncodingsToPrimers(files:list[str], frmt:str, encodings:set[int
         with open(fn, 'r') as fh:
             for rec in SeqIO.parse(fh, frmt):
                 # get the start positions and decode the encoding
-                positions = _getFirstStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq)).items()
+                positions = _getFirstStartPositionsAndDecodeAllowedEncodings(encodings, k, str(rec.seq))
 
                 # for each kmer and its start position
-                for kmer,start in positions:
+                for kmer,start in positions.items():
                     # positive coordinate indicates plus strand
                     if start > 0:
                         strand = Primer.PLUS
@@ -135,13 +134,23 @@ def __getSharedPrimersOneK(ingroupFns:list[str], frmt:str, k:int, minGc:float, m
     Returns:
         list[Primer]: a list of shared Primer objects
     """
-    # get the kmers for the first (smallest) genome
-    sharedEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc, maxRepeatLen)
+    # get the first genome's forward and reverse sequences
+    fwd = __getConcatenatedSequence(ingroupFns[0], frmt, Primer.PLUS)
+    rev = __getConcatenatedSequence(ingroupFns[0], frmt, Primer.MINUS)
+
+    # get the kmer encodings for the first (smallest) genome's plus strand
+    sharedEncodings = _getFilteredKmerEncodings(fwd, k, minGc, maxGc, maxRepeatLen)
+
+    # get ALL the kmer encodings for first genome's minus strand
+    minusEncodings = _getAllKmerEncodings(rev, k)
 
     # remove any minus strand encodings that are present
-    minusEncodings = __getAllowedPlusStrandKmerEncodings(ingroupFns[0], frmt, k, minGc, maxGc, maxRepeatLen, strand=Primer.MINUS)
     sharedEncodings.difference_update(minusEncodings)
+
+    # discard unused items
     del minusEncodings
+    del fwd
+    del rev
 
     # for each remaining genome, update the shared kmer encodings
     for fn in ingroupFns[1:]:
@@ -158,7 +167,7 @@ def __getSharedPrimers(params:Parameters) -> dict[str,list[Primer]]:
         params (Parameters): a Parameters object
 
     Returns:
-        list[Primer]: a list of shared Primers
+        dict[str,list[Primer]]: {genome name: [shared Primers]}
     """
     # helper function to generate arguments for __getSharedKmersOneK
     def genArgs() -> Iterator[tuple[list[str],str,int,float,float]]:
@@ -181,22 +190,22 @@ def __getSharedPrimers(params:Parameters) -> dict[str,list[Primer]]:
     return dict(out)
  
 
-def __evaluateOnePrimerSequence(primer:Primer, idx:int, minTm:float, maxTm:float, mvConc:float, dvConc:float, \
-                        dntpConc:float, dnaConc:float, tempC:float, maxLoop:int, tempTolerance:float) -> tuple[Union[Primer,None],int]:
+def __evaluateOnePrimerSequence(args:tuple[Primer,int,float,float,float,float,float,float,float,int,float]) -> tuple[Union[Primer,None],int]:
     """evaluates one primer; designed for parallel calls
 
     Args:
-        primer (Primer): the Primer to evaluate
-        idx (int): the index of the primer in the list of the calling function
-        minTm (float): the minimum melting temperature allowed
-        maxTm (float): the maximum melting temperature allowed
-        mvConc (float): primer3 mv_conc
-        dvConc (float): primer3 dv_conc
-        dntpConc (float): primer3 dntp_conc
-        dnaConc (float): primer3 dna_conc
-        tempC (float): primer3 temp_c
-        maxLoop (int): primer3 max_loop
-        tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
+        args (tuple):
+            primer (Primer): the Primer to evaluate
+            idx (int): the index of the primer in the list of the calling function
+            minTm (float): the minimum melting temperature allowed
+            maxTm (float): the maximum melting temperature allowed
+            mvConc (float): primer3 mv_conc
+            dvConc (float): primer3 dv_conc
+            dntpConc (float): primer3 dntp_conc
+            dnaConc (float): primer3 dna_conc
+            tempC (float): primer3 temp_c
+            maxLoop (int): primer3 max_loop
+            tempTolerance (float): the minimum degrees below primer Tm allowed for secondary structures
     
     Returns:
         tuple[Union[Primer,None],int]: a Primer object (or None if the eval failed) and its index
@@ -256,6 +265,9 @@ def __evaluateOnePrimerSequence(primer:Primer, idx:int, minTm:float, maxTm:float
         
         return fwdOk and revOk
 
+    # parse the arguments
+    primer,idx,minTm,maxTm,mvConc,dvConc,dntpConc,dnaConc,tempC,maxLoop,tempTolerance = args
+
     # evaluate the primer's percent GC, Tm, hairpin potential, and homodimer potential
     if isTmWithinRange(primer):
         if noHairpins(primer):
@@ -300,7 +312,8 @@ def __removeBadPrimers(primers:dict[str,list[Primer]], params:Parameters) -> Non
     # parallelize primer evaluations
     with multiprocessing.Pool(processes=params.numThreads) as pool:
         # only need to evaluate the first genome; primer lists are equivalent
-        for primer,index in pool.starmap(__evaluateOnePrimerSequence, generateArgs(names[0])):
+        # process results as they become available
+        for primer,index in pool.imap_unordered(__evaluateOnePrimerSequence, generateArgs(names[0])):
             # track which indices failed the evaluation
             if primer is None:
                 badIndices.append(index)
