@@ -5,7 +5,6 @@ from typing import Iterator
 from bin.Primer import Primer
 from bin.Product import Product
 from collections import defaultdict
-from Bio.SeqRecord import SeqRecord
 from bin.Parameters import Parameters
 from bin.kmer_counting.kmer_counter import _encodeKmer, _getAllStartPositionsAndDecodeAllowedEncodings
 
