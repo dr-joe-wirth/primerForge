@@ -414,7 +414,6 @@ def first_start_position_from_kmer_encodings(str sequence, int k, dict kmer_star
             if kmer_encoding in kmer_start_positions.keys():
                 desired_encoding = kmer_encoding
 
-            
             # calculate the start position for minus strand
             elif rev_comp_encoding in kmer_start_positions.keys():
                 start = -start

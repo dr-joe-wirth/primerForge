@@ -11,6 +11,21 @@ from bin.kmer_counting._kmer_counter import (all_start_positions_from_kmer_encod
                                              is_palindrome_kmer_encoding)
 
 
+def _getAllKmerEncodings(seq:str, k:int) -> set[int]:
+    """gets all kmer encodings for a sequence
+
+    Args:
+        seq (str): the sequence to evaluate
+        k (int): the kmer length
+
+    Returns:
+        set[int]: all kmer encodings detected
+    """
+    kmerCounts = count_kmers_rolling_encoding(seq, k)
+
+    return set(kmerCounts.keys())
+
+
 def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
     """gets kmer encodings that appeared exactly once
 
