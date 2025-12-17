@@ -26,7 +26,7 @@ pythonVersion = (sys.version_info.major, sys.version_info.minor, sys.version_inf
 
 setup(
     name='primerforge',
-    version='2.2.1',
+    version='2.2.2',
     author='Joseph S. Wirth',
     packages=find_packages(),
     description='software to identify primers that can be used to distinguish genomes',

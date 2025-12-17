@@ -11,7 +11,7 @@ from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
 
 # global constants
-__version__ = "2.2.1"
+__version__ = "2.2.2"
 __author__ = ["Joseph S. Wirth", "Christian Gauthier", "Lee S. Katz", "Jessica C. Chen"]
 __FWD = 'f'
 __REV = 'r'
