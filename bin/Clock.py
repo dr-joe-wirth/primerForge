@@ -3,7 +3,9 @@ from __future__ import annotations
 import os
 import sys
 import time
+import multiprocessing
 from multiprocessing import Process, Event
+multiprocessing.set_start_method('fork')        # fix Wheel.__spin problem on Python >=3.12
 
 
 class Wheel:
