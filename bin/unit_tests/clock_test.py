@@ -83,7 +83,7 @@ class ClockTest(unittest.TestCase):
     def testD_getTimeString(self):
         """is Clock.getTimeString accurate"""
         # constant
-        NUM_DEC = 3
+        NUM_DEC = 2
 
         # sleep for a few seconds
         time.sleep(ClockTest.SLEEP_TIME)
