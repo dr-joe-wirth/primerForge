@@ -32,8 +32,7 @@ pixi shell
 
 
 ### `conda` installation
-The `khmer` dependency has been replaced by a fast, exact kmer counter we implemented with Cython, 
-allowing us to move toward a bioconda recipe now that the environment is simpler. This is expected to come soon.
+A `conda` installation is currently unavailable due to `khmer` being unsupported. We are actively working to resolve this.
 
 ### Manual installation
 
