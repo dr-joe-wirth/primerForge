@@ -1,74 +1,81 @@
-from Bio.Seq import Seq
+import pathlib
+import string
+import sys
+import unittest
 from collections import defaultdict
-import pathlib, unittest, string, sys
+
+from Bio.Seq import Seq
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
 from bin.getCandidateKmers import __JUNCTION_CHAR as JC
-from bin.kmer_counting.kmer_counter import (_decodeKmerEncoding,
-                                            _encodeKmer,
-                                            _getAllowedKmerEncodings,
-                                            _getAllStartPositionsAndDecodeAllowedEncodings,
-                                            _getFirstStartPositionsAndDecodeAllowedEncodings,
-                                            _getFilteredKmerEncodings,
-                                            )
-from bin.kmer_counting._kmer_counter import (all_start_positions_from_kmer_encodings,
-                                             count_allowlist_kmers_rolling_encoding,
-                                             count_kmers_rolling_encoding,
-                                             count_gc_kmer_encoding,
-                                             decode_kmer_encoding,
-                                             encode_base,
-                                             first_start_position_from_kmer_encodings,
-                                             gc_percentage_kmer_encoding,
-                                             has_gc_clamp_kmer_encoding,
-                                             has_long_homopolymer_in_kmer_encoding,
-                                             is_palindrome_kmer_encoding,
-                                             reverse_complement_kmer_encoding)
+from bin.kmer_counting.kmer_counter import (
+    _decodeKmerEncoding,
+    _encodeKmer,
+    _getAllowedKmerEncodings,
+    _getAllStartPositionsAndDecodeAllowedEncodings,
+    _getFirstStartPositionsAndDecodeAllowedEncodings,
+    _getFilteredKmerEncodings,
+)
+from bin.kmer_counting._kmer_counter import (
+    all_start_positions_from_kmer_encodings,
+    count_allowlist_kmers_rolling_encoding,
+    count_kmers_rolling_encoding,
+    count_gc_kmer_encoding,
+    decode_kmer_encoding,
+    encode_base,
+    first_start_position_from_kmer_encodings,
+    gc_percentage_kmer_encoding,
+    has_gc_clamp_kmer_encoding,
+    has_long_homopolymer_in_kmer_encoding,
+    is_palindrome_kmer_encoding,
+    reverse_complement_kmer_encoding,
+)
+
 
 class CounterTest(unittest.TestCase):
-    """test class for evaluating kmer counting functionality
-    """
+    """test class for evaluating kmer counting functionality"""
+
     # characters that are not expected to appear in sequences
-    BAD_CHARS = [x for x in string.ascii_letters + string.digits + string.punctuation if x not in f'AaCcGgTt{JC}']
+    BAD_CHARS = [
+        x
+        for x in string.ascii_letters + string.digits + string.punctuation
+        if x not in f"AaCcGgTt{JC}"
+    ]
 
     # expected key-value pairs for single-base encodings
-    SINGLE_BASES = {'a': 0,
-                    'A': 0,
-                    'c': 1,
-                    'C': 1,
-                    'g': 2,
-                    'G': 2,
-                    't': 3,
-                    'T': 3}
+    SINGLE_BASES = {"a": 0, "A": 0, "c": 1, "C": 1, "g": 2, "G": 2, "t": 3, "T": 3}
 
     # a collection of kmers to test with
-    KMERS = ['ATTACGCGGAAGCCG',
-             'TTAACGCGACGTCA',
-             'GATCGGACGGCGCGCGAAATATATCGA',
-             'GTCAACCATGGTTGAC',   # palindrome
-             'cgatgctgtgtcagtagtgcaattttaat',
-             'TAGGCCTAGCTAGCTATACGTACG',
-             'CGTACGTATAGCTAGCTAGGCCTA', # revcomp of prev seq
-             'ATCG' * 10,
-             'A',
-             'C',
-             'G',
-             'T'
-             'A' * 32,
-             'a' * 32,
-             'C' * 32,
-             'c' * 32,
-             'G' * 32,
-             'g' * 32,
-             'T' * 32,
-             't' * 32]
-    
+    KMERS = [
+        "ATTACGCGGAAGCCG",
+        "TTAACGCGACGTCA",
+        "GATCGGACGGCGCGCGAAATATATCGA",
+        "GTCAACCATGGTTGAC",  # palindrome
+        "cgatgctgtgtcagtagtgcaattttaat",
+        "TAGGCCTAGCTAGCTATACGTACG",
+        "CGTACGTATAGCTAGCTAGGCCTA",  # revcomp of prev seq
+        "ATCG" * 10,
+        "A",
+        "C",
+        "G",
+        "T" "A" * 32,
+        "a" * 32,
+        "C" * 32,
+        "c" * 32,
+        "G" * 32,
+        "g" * 32,
+        "T" * 32,
+        "t" * 32,
+    ]
+
     # a sequence to test with
-    SEQ = 'TAATCAATTACGCGGAAGCCGTCGAACTTAACGCGACGTCAAGATTGGATCGGACGGCGCGCGAAATATATCGAAGTCAAGTCAACCATGGTTGACTTCGGACGATGCTGTGTCAGTAGTGCAATTTTAATTGGTACTAGGCCTAGCTAGCTATACGTACGTTTCAATACTAGGCCTAGCTAG'
+    SEQ = "TAATCAATTACGCGGAAGCCGTCGAACTTAACGCGACGTCAAGATTGGATCGGACGGCGCGCGAAATATATCGAAGTCAAGTCAACCATGGTTGACTTCGGACGATGCTGTGTCAGTAGTGCAATTTTAATTGGTACTAGGCCTAGCTAGCTATACGTACGTTTCAATACTAGGCCTAGCTAG"
     SEQ_RC = str(Seq(SEQ).reverse_complement())
 
-    # python implementations to test functionality    
-    def countKmerEncodings(seq:str, k:int) -> dict[int,int]:
+    # python implementations to test functionality
+    @staticmethod
+    def countKmerEncodings(seq: str, k: int) -> dict[int, int]:
         """counts kmer encodings in a given sequence
 
         Args:
@@ -83,12 +90,15 @@ class CounterTest(unittest.TestCase):
 
         # count each kmer (key is the encoding)
         for i in range(len(seq) - k + 1):
-            kmer = seq[i:i+k]
+            kmer = seq[i : i + k]
             out[_encodeKmer(kmer)] += 1
-        
+
         return out
-    
-    def countKmerEncodingsAllowList(seq:str, k:int, allowed:set[int]) -> dict[int,int]:
+
+    @staticmethod
+    def countKmerEncodingsAllowList(
+        seq: str, k: int, allowed: set[int]
+    ) -> dict[int, int]:
         """counts kmer encodings for those encodings in an allowed set
 
         Args:
@@ -103,9 +113,10 @@ class CounterTest(unittest.TestCase):
         kmerCounts = CounterTest.countKmerEncodings(seq, k)
 
         # return the counts for those encodings in the allowed set
-        return {k:v for k,v in kmerCounts.items() if k in allowed}
-    
-    def countKmerGc(seq:str) -> int:
+        return {k: v for k, v in kmerCounts.items() if k in allowed}
+
+    @staticmethod
+    def countKmerGc(seq: str) -> int:
         """counts the number of G/C in a sequence
 
         Args:
@@ -114,9 +125,10 @@ class CounterTest(unittest.TestCase):
         Returns:
             int: the number G/C
         """
-        return seq.upper().count('C') + seq.upper().count('G')
-    
-    def kmerGcPercent(seq:str) -> float:
+        return seq.upper().count("C") + seq.upper().count("G")
+
+    @staticmethod
+    def kmerGcPercent(seq: str) -> float:
         """calculates the GC % for a given sequence
 
         Args:
@@ -127,7 +139,8 @@ class CounterTest(unittest.TestCase):
         """
         return CounterTest.countKmerGc(seq) / len(seq) * 100.0
 
-    def kmerHasGcClamp(seq:str) -> bool:
+    @staticmethod
+    def kmerHasGcClamp(seq: str) -> bool:
         """determines if a sequence has a GC clamp on at least one side
 
         Args:
@@ -151,7 +164,8 @@ class CounterTest(unittest.TestCase):
         # report if at least one side has a clamp
         return MIN_GC <= lhs <= MAX_GC or MIN_GC <= rhs <= MAX_GC
 
-    def kmerIsPalindrome(seq:str) -> bool:
+    @staticmethod
+    def kmerIsPalindrome(seq: str) -> bool:
         """reports if the sequence is palindromic
 
         Args:
@@ -162,7 +176,10 @@ class CounterTest(unittest.TestCase):
         """
         return Seq(seq.upper()) == Seq(seq.upper()).reverse_complement()
 
-    def getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepeat:int) -> set[int]:
+    @staticmethod
+    def getFilteredKmerEncodings(
+        seq: str, k: int, minGc: float, maxGc: float, maxRepeat: int
+    ) -> set[int]:
         """gets a set of kmer encodings that pass a filter
 
         Args:
@@ -178,25 +195,37 @@ class CounterTest(unittest.TestCase):
                         * fall within (inclusive) the GC range
                         * has a GC clamp on at least one end
         """
+
         # helper function to filter kmers
-        def passesFilter(s:str, c:int) -> bool:
+        def passesFilter(s: str, c: int) -> bool:
             appearsOnce = c == 1
             isNotPalindromic = not CounterTest.kmerIsPalindrome(s)
             gcInRange = minGc <= CounterTest.kmerGcPercent(s) <= maxGc
             hasClamp = CounterTest.kmerHasGcClamp(s)
             hasNoLongRepeat = not CounterTest.hasLongHomopolymer(s, maxRepeat)
 
-            return appearsOnce and isNotPalindromic and gcInRange and hasClamp and hasNoLongRepeat
+            return (
+                appearsOnce
+                and isNotPalindromic
+                and gcInRange
+                and hasClamp
+                and hasNoLongRepeat
+            )
 
         # count number of occurences for all the kmers
         kmers = defaultdict(int)
         for i in range(len(seq) - k + 1):
-            kmers[seq[i:i+k]] += 1
-        
-        # keep only kmers that pass the filter; return the encodings
-        return {_encodeKmer(kmer) for kmer,count in kmers.items() if passesFilter(kmer, count)}
+            kmers[seq[i : i + k]] += 1
 
-    def getAllowedKmerEncodings(seq:str, k:int, allowed:set[str]) -> set[int]:
+        # keep only kmers that pass the filter; return the encodings
+        return {
+            _encodeKmer(kmer)
+            for kmer, count in kmers.items()
+            if passesFilter(kmer, count)
+        }
+
+    @staticmethod
+    def getAllowedKmerEncodings(seq: str, k: int, allowed: set[str]) -> set[int]:
         """gets all the kmer encodings that appear once and are in the allowed list
 
         Args:
@@ -213,14 +242,15 @@ class CounterTest(unittest.TestCase):
         # count the number of times each kmer appears
         kmers = defaultdict(int)
         for i in range(len(seq) - k + 1):
-            kmer = seq[i:i+k].upper()
+            kmer = seq[i : i + k].upper()
             if kmer in allowed:
                 kmers[kmer] += 1
-        
-        # return the encodings for the kmers that appear exactly once
-        return {_encodeKmer(kmer) for kmer,count in kmers.items() if count == 1}
 
-    def hasLongHomopolymer(seq:str, maxLen:int) -> bool:
+        # return the encodings for the kmers that appear exactly once
+        return {_encodeKmer(kmer) for kmer, count in kmers.items() if count == 1}
+
+    @staticmethod
+    def hasLongHomopolymer(seq: str, maxLen: int) -> bool:
         """detects long homopolymers in a sequence
 
         Args:
@@ -234,13 +264,14 @@ class CounterTest(unittest.TestCase):
         seq = seq.upper()
 
         # search the sequence for each homopolymer that exceeds the maximum
-        for homopoly in [x * (maxLen + 1) for x in 'ATCG']:
+        for homopoly in [x * (maxLen + 1) for x in "ATCG"]:
             if homopoly in seq:
                 return True
-        
+
         return False
 
-    def getAllKmerStartPositions(seq:str, kmer:str) -> list[int]:
+    @staticmethod
+    def getAllKmerStartPositions(seq: str, kmer: str) -> list[int]:
         # initialize output
         out = list()
 
@@ -253,21 +284,21 @@ class CounterTest(unittest.TestCase):
             if kmer in seq:
                 idx = seq.index(kmer)
                 out.append(idx + truncLen)
-                newSeq = seq[(idx + 1):]
+                newSeq = seq[(idx + 1) :]
                 truncLen += len(seq) - len(newSeq)
                 seq = newSeq
-            
+
             elif revComp in seq:
                 idx = seq.index(revComp)
                 out.append(-(idx + truncLen))
-                newSeq = seq[(idx + 1):]
+                newSeq = seq[(idx + 1) :]
                 truncLen += len(seq) - len(newSeq)
                 seq = newSeq
-        
-        return out
-                
 
-    def getFirstKmerStartPosition(seq:str, kmer:str) -> int:
+        return out
+
+    @staticmethod
+    def getFirstKmerStartPosition(seq: str, kmer: str) -> int:
         """gets the first start position of a kmer; sign indicates strand
 
         Args:
@@ -281,16 +312,15 @@ class CounterTest(unittest.TestCase):
 
     # tests
     def testA_encoding(self) -> None:
-        """test if the encoding functionality is working
-        """
+        """test if the encoding functionality is working"""
         # encoding of all invalid characters
         INVALID_VAL = 4
 
         # check that valid bases get encoded properly
-        for base,val in CounterTest.SINGLE_BASES.items():
+        for base, val in CounterTest.SINGLE_BASES.items():
             self.assertEqual(encode_base(ord(base)), val)
             self.assertEqual(encode_base(ord(base)), _encodeKmer(base))
-        
+
         # check that the junction character is 4
         self.assertEqual(encode_base(ord(JC)), INVALID_VAL)
 
@@ -298,7 +328,7 @@ class CounterTest(unittest.TestCase):
         for char in CounterTest.BAD_CHARS:
             if char not in CounterTest.SINGLE_BASES.keys() and char != JC:
                 self.assertEqual(encode_base(ord(char)), INVALID_VAL)
-        
+
         # check that the rolling encoder is properly encoding kmers
         for kmer in CounterTest.KMERS:
             # kmers less than 32bp are allowed
@@ -306,15 +336,14 @@ class CounterTest(unittest.TestCase):
                 counts = count_kmers_rolling_encoding(kmer, len(kmer))
                 encoding = next(iter(counts.keys()))
                 self.assertEqual(encoding, _encodeKmer(kmer))
-    
+
     def testB_decoding(self) -> None:
-        """test if the decoding functionality is working
-        """
+        """test if the decoding functionality is working"""
         # make sure all single bases work
-        for base,val in CounterTest.SINGLE_BASES.items():
+        for base, val in CounterTest.SINGLE_BASES.items():
             self.assertEqual(decode_kmer_encoding(val, 1), base.upper())
             self.assertEqual(_decodeKmerEncoding(val, 1), base.upper())
-        
+
         # decode the test kmers
         for kmer in CounterTest.KMERS:
             # encode the kmer
@@ -322,9 +351,11 @@ class CounterTest(unittest.TestCase):
 
             # encodings of 32bp or less should work
             if len(kmer) <= 32:
-                self.assertEqual(decode_kmer_encoding(encoding, len(kmer)), kmer.upper())
+                self.assertEqual(
+                    decode_kmer_encoding(encoding, len(kmer)), kmer.upper()
+                )
                 self.assertEqual(_decodeKmerEncoding(encoding, len(kmer)), kmer.upper())
-            
+
             # encodings greater than 32bp should fail bc the integers are too large
             # NOTE: this class's encoder can generate integers that are too big but
             #       the rolling counter encoder will generate undefined 32bit ints that
@@ -336,41 +367,42 @@ class CounterTest(unittest.TestCase):
                     _decodeKmerEncoding(encoding, len(kmer))
 
     def testC_countKmers(self) -> None:
-        """test if the rolling kmer counter works
-        """
-        for k in range(1,81):
+        """test if the rolling kmer counter works"""
+        for k in range(1, 81):
             # all counts should match for kmers of size 1-32
             if k <= 32:
                 observed = count_kmers_rolling_encoding(CounterTest.SEQ, k)
                 expected = CounterTest.countKmerEncodings(CounterTest.SEQ, k)
                 self.assertDictEqual(observed, expected)
-            
+
             # k greater than 32 should fail
             else:
                 with self.assertRaises(OverflowError):
                     count_kmers_rolling_encoding(CounterTest.SEQ, k)
 
     def testD_countKmersAllowList(self) -> None:
-        """tests if rolling allowlist kmer counter
-        """
-        for k in range(1,81):
+        """tests if rolling allowlist kmer counter"""
+        for k in range(1, 81):
             # only keep the first six kmers
             allowed = {_encodeKmer(x) for x in CounterTest.KMERS[:6] if len(x) == k}
 
             # all counts should match for kmers of size 1-32
             if k <= 32:
-                observed = count_allowlist_kmers_rolling_encoding(CounterTest.SEQ, k, allowed)
-                expected = CounterTest.countKmerEncodingsAllowList(CounterTest.SEQ, k, allowed)
+                observed = count_allowlist_kmers_rolling_encoding(
+                    CounterTest.SEQ, k, allowed
+                )
+                expected = CounterTest.countKmerEncodingsAllowList(
+                    CounterTest.SEQ, k, allowed
+                )
                 self.assertDictEqual(observed, expected)
-            
+
             # k greater than 32 should fail
             else:
                 with self.assertRaises(OverflowError):
                     count_allowlist_kmers_rolling_encoding(CounterTest.SEQ, k, allowed)
 
     def testE_countKmerGc(self) -> None:
-        """tests the G+C counting functionality
-        """
+        """tests the G+C counting functionality"""
         for kmer in CounterTest.KMERS:
             # encode the kmer and count the G+C
             encoding = _encodeKmer(kmer)
@@ -380,7 +412,7 @@ class CounterTest(unittest.TestCase):
             if len(kmer) <= 32:
                 observed = count_gc_kmer_encoding(encoding, len(kmer))
                 self.assertEqual(observed, expected)
-            
+
             # encodings greater than 32bp should fail bc the integers are too large
             # NOTE: this class's encoder can generate integers that are too big but
             #       the rolling counter encoder will generate undefined 32bit ints that
@@ -390,8 +422,7 @@ class CounterTest(unittest.TestCase):
                     count_gc_kmer_encoding(encoding, len(kmer))
 
     def testF_kmerGcPercentage(self) -> None:
-        """tests the G+C percentage calculator
-        """
+        """tests the G+C percentage calculator"""
         for kmer in CounterTest.KMERS:
             # encode the kmer and get the G+C %
             encoding = _encodeKmer(kmer)
@@ -402,7 +433,7 @@ class CounterTest(unittest.TestCase):
             if len(kmer) <= 32:
                 observed = gc_percentage_kmer_encoding(encoding, len(kmer))
                 self.assertAlmostEqual(observed, expected, 10)
-            
+
             # encodings greater than 32bp should fail bc the integers are too large
             # NOTE: this class's encoder can generate integers that are too big but
             #       the rolling counter encoder will generate undefined 32bit ints that
@@ -412,8 +443,7 @@ class CounterTest(unittest.TestCase):
                     gc_percentage_kmer_encoding(encoding, len(kmer))
 
     def testG_kmerGcClamp(self) -> None:
-        """tests GC clamp detection
-        """
+        """tests GC clamp detection"""
         for kmer in CounterTest.KMERS:
             # encode the kmer and detect a clamp
             encoding = _encodeKmer(kmer)
@@ -424,7 +454,7 @@ class CounterTest(unittest.TestCase):
             if len(kmer) <= 32:
                 observed = has_gc_clamp_kmer_encoding(encoding, len(kmer))
                 self.assertAlmostEqual(observed, expected, 10)
-            
+
             # encodings greater than 32bp should fail bc the integers are too large
             # NOTE: this class's encoder can generate integers that are too big but
             #       the rolling counter encoder will generate undefined 32bit ints that
@@ -434,8 +464,7 @@ class CounterTest(unittest.TestCase):
                     has_gc_clamp_kmer_encoding(encoding, len(kmer))
 
     def testH_kmerPalindrome(self) -> None:
-        """tests palindrome detection
-        """
+        """tests palindrome detection"""
         for kmer in CounterTest.KMERS:
             # encode the kmer and detect a palindrome
             encoding = _encodeKmer(kmer)
@@ -445,7 +474,7 @@ class CounterTest(unittest.TestCase):
             if len(kmer) <= 32:
                 observed = is_palindrome_kmer_encoding(encoding, len(kmer))
                 self.assertEqual(observed, expected)
-            
+
             # encodings greater than 32bp should fail bc the integers are too large
             # NOTE: this class's encoder can generate integers that are too big but
             #       the rolling counter encoder will generate undefined 32bit ints that
@@ -455,63 +484,72 @@ class CounterTest(unittest.TestCase):
                     is_palindrome_kmer_encoding(encoding, len(kmer))
 
     def testI_filteredKmers(self) -> None:
-        """tests filtered kmer retrieval
-        """
+        """tests filtered kmer retrieval"""
         # set the G+C percentage range
         MIN_GC = 40.0
         MAX_GC = 60.0
         MAX_REPEAT = 3
 
-        for k in range(1,81):
+        for k in range(1, 81):
             # kmers of 32bp or less should work
             if k <= 32:
                 if k == 5:
-                    observed = _getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT)
-                    expected = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT)
+                    observed = _getFilteredKmerEncodings(
+                        CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT
+                    )
+                    expected = CounterTest.getFilteredKmerEncodings(
+                        CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT
+                    )
 
                     self.assertSetEqual(observed, expected)
-            
+
             # kmers more than 32bp should fail
             else:
                 with self.assertRaises(OverflowError):
-                    _getFilteredKmerEncodings(CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT)
-        
+                    _getFilteredKmerEncodings(
+                        CounterTest.SEQ, k, MIN_GC, MAX_GC, MAX_REPEAT
+                    )
+
     def testJ_allowedKmers(self) -> None:
-        """tests kmer allowlist retrieval
-        """
-        for k in range(1,81):
+        """tests kmer allowlist retrieval"""
+        for k in range(1, 81):
             # only keep the first six kmers
             allowedSeqs = {x for x in CounterTest.KMERS[:6] if len(x) == k}
             allowedEncodings = {_encodeKmer(x) for x in allowedSeqs}
 
             # any k less than or equal to 32 should work
             if k <= 32:
-                observed = _getAllowedKmerEncodings(CounterTest.SEQ, k, allowedEncodings)
-                expected = CounterTest.getAllowedKmerEncodings(CounterTest.SEQ, k, allowedSeqs)
+                observed = _getAllowedKmerEncodings(
+                    CounterTest.SEQ, k, allowedEncodings
+                )
+                expected = CounterTest.getAllowedKmerEncodings(
+                    CounterTest.SEQ, k, allowedSeqs
+                )
 
                 self.assertSetEqual(observed, expected)
-            
+
             # k larger than 32 should throw an overflow error
             else:
                 with self.assertRaises(OverflowError):
                     _getAllowedKmerEncodings(CounterTest.SEQ, k, allowedEncodings)
-    
+
     def testK_noLongHomopolymers(self) -> None:
-        """tests long homopolymer detection
-        """
+        """tests long homopolymer detection"""
         # for lengths 2 through 31
-        for length in range(2,31):
+        for length in range(2, 31):
             for kmer in CounterTest.KMERS:
                 # encode each kmer
                 encoding = _encodeKmer(kmer)
 
                 # should work for 32bp or
                 if len(kmer) <= 32:
-                    observed = has_long_homopolymer_in_kmer_encoding(encoding, len(kmer), length)
+                    observed = has_long_homopolymer_in_kmer_encoding(
+                        encoding, len(kmer), length
+                    )
                     expected = CounterTest.hasLongHomopolymer(kmer, length)
 
                     self.assertEqual(observed, expected)
-                
+
                 # encodings greater than 32bp should fail bc the integers are too large
                 # NOTE: this class's encoder can generate integers that are too big but
                 #       the rolling counter encoder will generate undefined 32bit ints that
@@ -519,11 +557,12 @@ class CounterTest(unittest.TestCase):
                 #       match the original kmer
                 else:
                     with self.assertRaises(OverflowError):
-                        has_long_homopolymer_in_kmer_encoding(encoding, len(kmer), length)
+                        has_long_homopolymer_in_kmer_encoding(
+                            encoding, len(kmer), length
+                        )
 
     def testL_reverseComplement(self) -> None:
-        """checks reverse complementation of kmer encodings
-        """
+        """checks reverse complementation of kmer encodings"""
         # for each kmer in the allowed length
         for kmer in CounterTest.KMERS:
             if len(kmer) <= 32:
@@ -538,21 +577,24 @@ class CounterTest(unittest.TestCase):
                 self.assertEqual(expected, observed)
 
     def testM_firstStartPositions(self) -> None:
-        """tests first start position retrieval functions
-        """
+        """tests first start position retrieval functions"""
         # constants
         K = 16
         MIN_GC = 40
         MAX_GC = 60
         MAX_HOMO = 4
-        ABSENT_KMER = 'ATCG' * 4
+        ABSENT_KMER = "ATCG" * 4
         RC_ABSENT_KMER = str(Seq(ABSENT_KMER).reverse_complement())
-        DUPLICATED_KMER = 'TACTAGGCCTAGCTAG'
+        DUPLICATED_KMER = "TACTAGGCCTAGCTAG"
         RC_DUBPLICATED_KMER = str(Seq(DUPLICATED_KMER).reverse_complement())
 
         # get the encodings for kmers on both strands
-        plusEncodings = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ, K, MIN_GC, MAX_GC, MAX_HOMO)
-        minusEncodings = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ_RC, K, MIN_GC, MAX_GC, MAX_HOMO)
+        plusEncodings = CounterTest.getFilteredKmerEncodings(
+            CounterTest.SEQ, K, MIN_GC, MAX_GC, MAX_HOMO
+        )
+        minusEncodings = CounterTest.getFilteredKmerEncodings(
+            CounterTest.SEQ_RC, K, MIN_GC, MAX_GC, MAX_HOMO
+        )
 
         # drop any shared kmers as these are never allowed
         shared = plusEncodings.intersection(minusEncodings)
@@ -572,8 +614,16 @@ class CounterTest(unittest.TestCase):
         minusKmers = {_decodeKmerEncoding(x, K) for x in minusEncodings}
 
         # get the expected dictionaries for these kmers; ignore the absent one for now
-        expectedPlus = {x: CounterTest.getFirstKmerStartPosition(CounterTest.SEQ, x) for x in plusKmers if x != ABSENT_KMER}
-        expectedMinus = {x: CounterTest.getFirstKmerStartPosition(CounterTest.SEQ, x) for x in minusKmers if x != RC_ABSENT_KMER}
+        expectedPlus = {
+            x: CounterTest.getFirstKmerStartPosition(CounterTest.SEQ, x)
+            for x in plusKmers
+            if x != ABSENT_KMER
+        }
+        expectedMinus = {
+            x: CounterTest.getFirstKmerStartPosition(CounterTest.SEQ, x)
+            for x in minusKmers
+            if x != RC_ABSENT_KMER
+        }
 
         # add the absent encoding; its value should be None
         expectedPlus[_encodeKmer(ABSENT_KMER)] = None
@@ -581,13 +631,13 @@ class CounterTest(unittest.TestCase):
 
         # test that CounterTest.getFirstKmerStartPosition is working as expected
         ## check the plus strand kmers
-        for kmer,start in expectedPlus.items():
+        for kmer, start in expectedPlus.items():
             if start is not None:
                 # the value should be positive (or zero)
                 self.assertGreaterEqual(start, 0)
 
                 # the kmer should match the slice from the start coordinate
-                self.assertEqual(kmer, CounterTest.SEQ[start:start + K])
+                self.assertEqual(kmer, CounterTest.SEQ[start : start + K])
 
         ## check the minus strand kmers
         for kmer, start in expectedMinus.items():
@@ -599,44 +649,58 @@ class CounterTest(unittest.TestCase):
                 start = 0 - start
 
                 # the reverse complement of the kmer should match the forward sequence slice
-                self.assertEqual(str(Seq(kmer).reverse_complement()), CounterTest.SEQ[start:start + K])
-        
+                self.assertEqual(
+                    str(Seq(kmer).reverse_complement()),
+                    CounterTest.SEQ[start : start + K],
+                )
+
         # get the dictionaries from the cython implementation
-        observedPlus = first_start_position_from_kmer_encodings(CounterTest.SEQ, K, {x: None for x in plusEncodings})
-        observedMinus = first_start_position_from_kmer_encodings(CounterTest.SEQ, K, {x: None for x in minusEncodings})
+        observedPlus = first_start_position_from_kmer_encodings(
+            CounterTest.SEQ, K, {x: None for x in plusEncodings}
+        )
+        observedMinus = first_start_position_from_kmer_encodings(
+            CounterTest.SEQ, K, {x: None for x in minusEncodings}
+        )
 
         # check that the dictionaries match
         self.assertDictEqual(observedPlus, expectedPlus)
         self.assertDictEqual(observedMinus, expectedMinus)
 
         # drop None from the expected (None are dropped by the python wrapper)
-        expectedPlus = {k:v for k,v in expectedPlus.items() if v is not None}
-        expectedMinus = {k:v for k,v in expectedMinus.items() if v is not None}
+        expectedPlus = {k: v for k, v in expectedPlus.items() if v is not None}
+        expectedMinus = {k: v for k, v in expectedMinus.items() if v is not None}
 
         # get the dictionaries from the python wrapper implementation
-        observedPlus = _getFirstStartPositionsAndDecodeAllowedEncodings(plusEncodings, K, CounterTest.SEQ)
-        observedMinus = _getFirstStartPositionsAndDecodeAllowedEncodings(minusEncodings, K, CounterTest.SEQ)
+        observedPlus = _getFirstStartPositionsAndDecodeAllowedEncodings(
+            plusEncodings, K, CounterTest.SEQ
+        )
+        observedMinus = _getFirstStartPositionsAndDecodeAllowedEncodings(
+            minusEncodings, K, CounterTest.SEQ
+        )
 
         # check that the dictionaries match
         self.assertDictEqual(observedPlus, expectedPlus)
         self.assertDictEqual(observedMinus, expectedMinus)
 
     def testN_allStartPositions(self) -> None:
-        """tests all start position retrieval functions
-        """
+        """tests all start position retrieval functions"""
         # constants
         K = 16
         MIN_GC = 40
         MAX_GC = 60
         MAX_HOMO = 4
-        ABSENT_KMER = 'ATCG' * 4
+        ABSENT_KMER = "ATCG" * 4
         RC_ABSENT_KMER = str(Seq(ABSENT_KMER).reverse_complement())
-        DUPLICATED_KMER = 'TACTAGGCCTAGCTAG'
+        DUPLICATED_KMER = "TACTAGGCCTAGCTAG"
         RC_DUBPLICATED_KMER = str(Seq(DUPLICATED_KMER).reverse_complement())
 
         # get the encodings for kmers on both strands
-        plusEncodings = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ, K, MIN_GC, MAX_GC, MAX_HOMO)
-        minusEncodings = CounterTest.getFilteredKmerEncodings(CounterTest.SEQ_RC, K, MIN_GC, MAX_GC, MAX_HOMO)
+        plusEncodings = CounterTest.getFilteredKmerEncodings(
+            CounterTest.SEQ, K, MIN_GC, MAX_GC, MAX_HOMO
+        )
+        minusEncodings = CounterTest.getFilteredKmerEncodings(
+            CounterTest.SEQ_RC, K, MIN_GC, MAX_GC, MAX_HOMO
+        )
 
         # drop any shared kmers as these are never allowed
         shared = plusEncodings.intersection(minusEncodings)
@@ -651,17 +715,25 @@ class CounterTest(unittest.TestCase):
         plusEncodings.add(_encodeKmer(DUPLICATED_KMER))
         minusEncodings.add(_encodeKmer(RC_DUBPLICATED_KMER))
 
-                # decode the kmer encodings
+        # decode the kmer encodings
         plusKmers = {_decodeKmerEncoding(x, K) for x in plusEncodings}
         minusKmers = {_decodeKmerEncoding(x, K) for x in minusEncodings}
 
         # get the expected dictionaries for these kmers; ignore the absent kmer
-        expectedPlus = {x: CounterTest.getAllKmerStartPositions(CounterTest.SEQ, x) for x in plusKmers if x != ABSENT_KMER}
-        expectedMinus = {x: CounterTest.getAllKmerStartPositions(CounterTest.SEQ, x) for x in minusKmers if x != RC_ABSENT_KMER}
+        expectedPlus = {
+            x: CounterTest.getAllKmerStartPositions(CounterTest.SEQ, x)
+            for x in plusKmers
+            if x != ABSENT_KMER
+        }
+        expectedMinus = {
+            x: CounterTest.getAllKmerStartPositions(CounterTest.SEQ, x)
+            for x in minusKmers
+            if x != RC_ABSENT_KMER
+        }
 
         # test that CounterTest.getAllKmerStartPositions is working as expected
         ## check the plus strand kmers
-        for kmer,starts in expectedPlus.items():
+        for kmer, starts in expectedPlus.items():
             # starts should be a non-empty list
             self.assertIsInstance(starts, list)
             self.assertNotEqual(starts, list())
@@ -672,7 +744,7 @@ class CounterTest(unittest.TestCase):
                 self.assertGreaterEqual(start, 0)
 
                 # the kmer should match the slice from the start coordinate
-                self.assertEqual(kmer, CounterTest.SEQ[start:start + K])
+                self.assertEqual(kmer, CounterTest.SEQ[start : start + K])
 
         ## check the minus strand kmers
         for kmer, starts in expectedMinus.items():
@@ -689,23 +761,35 @@ class CounterTest(unittest.TestCase):
                 start = 0 - start
 
                 # the reverse complement of the kmer should match the forward sequence slice
-                self.assertEqual(str(Seq(kmer).reverse_complement()), CounterTest.SEQ[start:start + K])
+                self.assertEqual(
+                    str(Seq(kmer).reverse_complement()),
+                    CounterTest.SEQ[start : start + K],
+                )
 
         # get the dictionaries from the cython implementation
-        observedPlus = all_start_positions_from_kmer_encodings(CounterTest.SEQ, K, plusEncodings)
-        observedMinus = all_start_positions_from_kmer_encodings(CounterTest.SEQ, K, minusEncodings)
+        observedPlus = all_start_positions_from_kmer_encodings(
+            CounterTest.SEQ, K, plusEncodings
+        )
+        observedMinus = all_start_positions_from_kmer_encodings(
+            CounterTest.SEQ, K, minusEncodings
+        )
 
         # check that the dictionaries match
         self.assertDictEqual(observedPlus, expectedPlus)
         self.assertDictEqual(observedMinus, expectedMinus)
 
         # get the dictionaries from the python wrapper implementation
-        observedPlus = _getAllStartPositionsAndDecodeAllowedEncodings(plusEncodings, K, CounterTest.SEQ)
-        observedMinus = _getAllStartPositionsAndDecodeAllowedEncodings(minusEncodings, K, CounterTest.SEQ)
+        observedPlus = _getAllStartPositionsAndDecodeAllowedEncodings(
+            plusEncodings, K, CounterTest.SEQ
+        )
+        observedMinus = _getAllStartPositionsAndDecodeAllowedEncodings(
+            minusEncodings, K, CounterTest.SEQ
+        )
 
         # check that the dictionaries match
         self.assertDictEqual(observedPlus, expectedPlus)
         self.assertDictEqual(observedMinus, expectedMinus)
+
 
 if __name__ == "__main__":
     unittest.main()

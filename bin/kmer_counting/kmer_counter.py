@@ -1,16 +1,18 @@
-from bin.kmer_counting._kmer_counter import (all_start_positions_from_kmer_encodings,
-                                             count_kmers_rolling_encoding,
-                                             count_allowlist_kmers_rolling_encoding,
-                                             decode_kmer_encoding,
-                                             encode_base,
-                                             first_start_position_from_kmer_encodings,
-                                             gc_percentage_kmer_encoding,
-                                             has_gc_clamp_kmer_encoding,
-                                             has_long_homopolymer_in_kmer_encoding,
-                                             is_palindrome_kmer_encoding)
+from bin.kmer_counting._kmer_counter import (
+    all_start_positions_from_kmer_encodings,
+    count_kmers_rolling_encoding,
+    count_allowlist_kmers_rolling_encoding,
+    decode_kmer_encoding,
+    encode_base,
+    first_start_position_from_kmer_encodings,
+    gc_percentage_kmer_encoding,
+    has_gc_clamp_kmer_encoding,
+    has_long_homopolymer_in_kmer_encoding,
+    is_palindrome_kmer_encoding,
+)
 
 
-def _getAllKmerEncodings(seq:str, k:int) -> set[int]:
+def _getAllKmerEncodings(seq: str, k: int) -> set[int]:
     """gets all kmer encodings for a sequence
 
     Args:
@@ -25,7 +27,7 @@ def _getAllKmerEncodings(seq:str, k:int) -> set[int]:
     return set(kmerCounts.keys())
 
 
-def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
+def __getSingletonEncodings(counts: dict[int, int]) -> set[int]:
     """gets kmer encodings that appeared exactly once
 
     Args:
@@ -34,10 +36,12 @@ def __getSingletonEncodings(counts:dict[int,int]) -> set[int]:
     Returns:
         set[int]: kmer encodings that appear once
     """
-    return {encoding for encoding,count in counts.items() if count == 1}
+    return {encoding for encoding, count in counts.items() if count == 1}
 
 
-def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepeatLen:int) -> set[int]:
+def _getFilteredKmerEncodings(
+    seq: str, k: int, minGc: float, maxGc: float, maxRepeatLen: int
+) -> set[int]:
     """gets kmer encodings that pass a collection of filters
 
     Args:
@@ -54,18 +58,19 @@ def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepea
                     * fall within (inclusive) the GC range
                     * has a GC clamp on at least one end
     """
+
     # helper functions
-    def isNotPalindromic(enc:int) -> bool:
+    def isNotPalindromic(enc: int) -> bool:
         return not is_palindrome_kmer_encoding(enc, k)
-    
-    def isGcWithinRange(enc:int) -> bool:
+
+    def isGcWithinRange(enc: int) -> bool:
         gc = gc_percentage_kmer_encoding(enc, k)
         return minGc <= gc <= maxGc
-    
-    def hasGcClamp(enc:int) -> bool:
+
+    def hasGcClamp(enc: int) -> bool:
         return has_gc_clamp_kmer_encoding(enc, k)
-    
-    def hasNoLongHomopolymers(enc:int) -> bool:
+
+    def hasNoLongHomopolymers(enc: int) -> bool:
         return not has_long_homopolymer_in_kmer_encoding(enc, k, maxRepeatLen)
 
     # count all the kmers in the sequence
@@ -75,10 +80,17 @@ def _getFilteredKmerEncodings(seq:str, k:int, minGc:float, maxGc:float, maxRepea
     out = __getSingletonEncodings(kmerCounts)
 
     # keep non-palindromes, those within GC range, and those with a GC clamp
-    return {x for x in out if isNotPalindromic(x) and isGcWithinRange(x) and hasGcClamp(x) and hasNoLongHomopolymers(x)}
+    return {
+        x
+        for x in out
+        if isNotPalindromic(x)
+        and isGcWithinRange(x)
+        and hasGcClamp(x)
+        and hasNoLongHomopolymers(x)
+    }
 
 
-def _getAllowedKmerEncodings(seq:str, k:int, allowed:set[int]) -> set[int]:
+def _getAllowedKmerEncodings(seq: str, k: int, allowed: set[int]) -> set[int]:
     """gets kmer encodings that appear exactly once and are contained in the allowed set
 
     Args:
@@ -96,7 +108,7 @@ def _getAllowedKmerEncodings(seq:str, k:int, allowed:set[int]) -> set[int]:
     return __getSingletonEncodings(kmerCounts)
 
 
-def _encodeKmer(kmer:str) -> int:
+def _encodeKmer(kmer: str) -> int:
     """encodes a kmer to its integer
 
     Args:
@@ -106,7 +118,7 @@ def _encodeKmer(kmer:str) -> int:
         int: the encoding
     """
     # initialize a string
-    binaryString = ''
+    binaryString = ""
 
     # for each base
     for base in kmer:
@@ -114,13 +126,13 @@ def _encodeKmer(kmer:str) -> int:
         binary = bin(encode_base(ord(base)))
 
         # ensure the string is 2 characters long and drop the preceding 0b
-        binaryString += binary.removeprefix('0b').rjust(2, '0')
-    
+        binaryString += binary.removeprefix("0b").rjust(2, "0")
+
     # cast the string as an integer (base 2 counting)
     return int(binaryString, 2)
 
 
-def _decodeKmerEncoding(encoding:int, k:int) -> str:
+def _decodeKmerEncoding(encoding: int, k: int) -> str:
     """decodes a kmer encoding to its corresponding string
 
     Args:
@@ -133,7 +145,9 @@ def _decodeKmerEncoding(encoding:int, k:int) -> str:
     return decode_kmer_encoding(encoding, k)
 
 
-def _getFirstStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str) -> dict[str,int]:
+def _getFirstStartPositionsAndDecodeAllowedEncodings(
+    allowed: set[int], k: int, seq: str
+) -> dict[str, int]:
     """gets the start positions and decoded kmers from a set of encodings
 
     Args:
@@ -147,14 +161,16 @@ def _getFirstStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, se
     """
     # intialize output
     out = {x: None for x in allowed}
-    
+
     # get the positions for this sequence
     first_start_position_from_kmer_encodings(seq, k, out)
 
-    return {x:y for x,y in out.items() if y is not None}
+    return {x: y for x, y in out.items() if y is not None}
 
 
-def _getAllStartPositionsAndDecodeAllowedEncodings(allowed:set[int], k:int, seq:str) -> dict[str,list[int]]:
+def _getAllStartPositionsAndDecodeAllowedEncodings(
+    allowed: set[int], k: int, seq: str
+) -> dict[str, list[int]]:
     """gets all start positions and decoded kmers from a set of encodings
 
     Args:
