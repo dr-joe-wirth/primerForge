@@ -1,11 +1,13 @@
 import os
 import shutil
+import sys
 from typing import Generator
 
 from bin.Clock import Clock
 from bin.Parameters import Parameters
 from bin.Primer import Primer
 from bin.Product import Product
+from bin.cli import parse_args
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.getPrimerPairs import _getPrimerPairs
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
@@ -13,8 +15,6 @@ from bin.sortPrimerPairs import _sortPairs
 from bin.validatePrimers import _validatePrimerPairs
 
 # global constants
-__version__ = "2.2.2"
-__author__ = ["Joseph S. Wirth", "Christian Gauthier", "Lee S. Katz", "Jessica C. Chen"]
 __FWD = "f"
 __REV = "r"
 
@@ -501,23 +501,26 @@ def main() -> None:
         Exception: catches all downstream exceptions
     """
     # parse command line arguments
-    params = Parameters(__author__, __version__)
+    if len(sys.argv) == 1:
+        sys.argv.append("--help")
+    params = parse_args()
+    params.workdir.mkdir(exist_ok=True, parents=True)
+    # params = Parameters(__author__, __version__)
 
-    if not params.helpRequested:
-        try:
-            # start up the logger
-            params.log.rename(__name__)
-            params.logRunDetails()
+    try:
+        # start up the logger
+        params.log.rename(__name__)
+        params.logRunDetails()
 
-            # run primerForge
-            _runner(params)
+        # run primerForge
+        _runner(params)
 
-        # catch all error messages
-        except Exception as e:
-            # save the error message if in debug mode
-            params.log.critical(e)
+    # catch all error messages
+    except Exception as e:
+        # save the error message if in debug mode
+        params.log.critical(e)
 
-            Clock._killWheel()
+        Clock._killWheel()
 
-            # terminate
-            raise Exception(e)
+        # terminate
+        raise Exception(e)

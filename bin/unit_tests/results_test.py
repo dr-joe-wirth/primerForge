@@ -25,6 +25,7 @@ from bin.Primer import Primer
 from bin.Product import Product
 from bin.Parameters import Parameters
 from bin.main import _runner
+from bin.cli import parse_args
 from bin.sortPrimerPairs import _sortPairs
 from bin.getPrimerPairs import _formsDimers
 
@@ -320,19 +321,23 @@ class ResultsTest(unittest.TestCase):
         Returns:
             Parameters: a Parameters object
         """
+        # Keep track of starting directory + change directory to test directory
+        start_dir = pathlib.Path().cwd().absolute()
+        os.chdir(ResultsTest.TEST_DIR)
+
         # make the parameters object
         sys.argv = [
             "primerForge.py",
             "-i",
-            os.path.join(ResultsTest.TEST_DIR, "i[123].gbff"),
+            *[str(pathlib.Path(x).absolute()) for x in ResultsTest.INGROUP_FILES],
             "-u",
-            os.path.join(ResultsTest.TEST_DIR, "o[12].gbff"),
+            *[str(pathlib.Path(x).absolute()) for x in ResultsTest.OUTGROUP_FILES],
             "-r",
             "70,120",
             "-b",
             "45,150",
             "-n",
-            numThreads,
+            str(numThreads),
             "-o",
             ResultsTest.RESULT_FN,
             "-B",
@@ -341,7 +346,11 @@ class ResultsTest(unittest.TestCase):
         ]
 
         # get the parameters
-        params = Parameters("", "", initializeLog=False)
+        params = parse_args()
+
+        # Now that params have been populated with workdir inside test directory we can move back to start directory
+        os.chdir(str(start_dir))
+        params.workdir.mkdir(exist_ok=True, parents=True)
 
         # move the log file to the test directory
         params.log = Log(debugDir=ResultsTest.TEST_DIR, debug=True)

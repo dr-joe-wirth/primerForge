@@ -10,6 +10,7 @@ from Bio.SeqRecord import SeqRecord
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
 from bin.Parameters import Parameters, Log
+from bin.cli import parse_args
 
 
 class ParametersTest(unittest.TestCase):
@@ -18,10 +19,6 @@ class ParametersTest(unittest.TestCase):
     IG_FNS_FA = ("itmp1.fa", "itmp2.fa", "itmp3.fa")
     OG_FNS_GB = ("otmp1.gb", "otmp2.gb", "otmp3.gb")
     OG_FNS_FA = ("otmp1.fa", "otmp2.fa", "otmp3.fa")
-    IG_PATTERN_GB = "itmp*gb"
-    IG_PATTERN_FA = "itmp*fa"
-    OG_PATTERN_GB = "otmp*gb"
-    OG_PATTERN_FA = "otmp*fa"
     OUT_FN = "result.testfile"
     BAD_SIZE = "64,160"
     FORMAT_GB = "genbank"
@@ -53,13 +50,13 @@ class ParametersTest(unittest.TestCase):
         ParametersTest._makeDummyFiles()
 
         # save the directory
-        self.dir = os.getcwd()
+        self.dir = pathlib.Path().cwd()
 
         # sys.argv for default values using short args
         self.basic1 = [
             "primerForge.py",
             "-i",
-            ParametersTest.IG_PATTERN_GB,
+            *ParametersTest.IG_FNS_GB,
             "-o",
             ParametersTest.OUT_FN,
         ]
@@ -68,7 +65,7 @@ class ParametersTest(unittest.TestCase):
         self.basic2 = [
             "primerForge.py",
             "--ingroup",
-            ParametersTest.IG_PATTERN_GB,
+            *ParametersTest.IG_FNS_GB,
             "--out",
             ParametersTest.OUT_FN,
         ]
@@ -77,11 +74,11 @@ class ParametersTest(unittest.TestCase):
         self.short1 = [
             "primerForge.py",
             "-i",
-            ParametersTest.IG_PATTERN_GB,
+            *ParametersTest.IG_FNS_GB,
             "-o",
             ParametersTest.OUT_FN,
             "-u",
-            ParametersTest.OG_PATTERN_GB,
+            *ParametersTest.OG_FNS_GB,
             "-b",
             ParametersTest.BAD_SIZE,
             "-f",
@@ -104,11 +101,11 @@ class ParametersTest(unittest.TestCase):
         self.short2 = [
             "primerForge.py",
             "-i",
-            ParametersTest.IG_PATTERN_FA,
+            *ParametersTest.IG_FNS_FA,
             "-o",
             ParametersTest.OUT_FN,
             "-u",
-            ParametersTest.OG_PATTERN_FA,
+            *ParametersTest.OG_FNS_FA,
             "-b",
             ParametersTest.BAD_SIZE,
             "-f",
@@ -131,11 +128,11 @@ class ParametersTest(unittest.TestCase):
         self.long1 = [
             "primerForge.py",
             "--ingroup",
-            ParametersTest.IG_PATTERN_GB,
+            *ParametersTest.IG_FNS_GB,
             "--out",
             ParametersTest.OUT_FN,
             "--outgroup",
-            ParametersTest.OG_PATTERN_GB,
+            *ParametersTest.OG_FNS_GB,
             "--bad_sizes",
             ParametersTest.BAD_SIZE,
             "--format",
@@ -158,11 +155,11 @@ class ParametersTest(unittest.TestCase):
         self.long2 = [
             "primerForge.py",
             "--ingroup",
-            ParametersTest.IG_PATTERN_FA,
+            *ParametersTest.IG_FNS_FA,
             "--out",
             ParametersTest.OUT_FN,
             "--outgroup",
-            ParametersTest.OG_PATTERN_FA,
+            *ParametersTest.OG_FNS_FA,
             "--bad_sizes",
             ParametersTest.BAD_SIZE,
             "--format",
@@ -230,11 +227,11 @@ class ParametersTest(unittest.TestCase):
         """
         # make sure the ingroup files were correctly parsed
         for fn in self.IG_FNS_GB:
-            self.assertIn(fn, params.ingroupFns)
+            self.assertIn(fn, [x.name for x in params.ingroupFns])
 
         # make sure the outfile is correct
         self.assertEqual(
-            params.resultsFn, os.path.join(self.dir, ParametersTest.OUT_FN)
+            params.resultsFn.absolute(), self.dir.joinpath(ParametersTest.OUT_FN).absolute()
         )
 
         # check optional arguments match default values
@@ -250,7 +247,6 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.maxPcr, Parameters._DEF_MAX_PCR)
         self.assertEqual(params.maxTmDiff, Parameters._DEF_MAX_TM_DIFF)
         self.assertEqual(params.numThreads, Parameters._DEF_NUM_THREADS)
-        self.assertEqual(params.helpRequested, Parameters._DEF_HELP)
         self.assertEqual(params.debug, Parameters._DEF_DEBUG)
         self.assertEqual(
             params.disallowedLens,
@@ -272,11 +268,11 @@ class ParametersTest(unittest.TestCase):
             expectedOutgroupFns = ParametersTest.OG_FNS_FA
 
         for fn in params.ingroupFns:
-            self.assertIn(fn, expectedIngroupFns)
+            self.assertIn(fn.name, expectedIngroupFns)
 
         # check for all outgroup files
         for fn in params.outgroupFns:
-            self.assertIn(fn, expectedOutgroupFns)
+            self.assertIn(fn.name, expectedOutgroupFns)
 
     def _checkCustomValues(self, params: Parameters, frmt: str) -> None:
         """evaluates that params has the appropriate values when custom values are specified
@@ -301,7 +297,7 @@ class ParametersTest(unittest.TestCase):
 
         # make sure the parameters are correct
         self.assertEqual(
-            params.resultsFn, os.path.join(self.dir, ParametersTest.OUT_FN)
+            params.resultsFn.absolute(), self.dir.joinpath(ParametersTest.OUT_FN).absolute()
         )
         self.assertEqual(params.format, frmt)
         self.assertEqual(params.minLen, minLen)
@@ -315,7 +311,6 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.maxTmDiff, tmDiff)
         self.assertEqual(params.numThreads, threads)
         self.assertEqual(params.disallowedLens, badSizes)
-        self.assertEqual(params.helpRequested, Parameters._DEF_HELP)
         self.assertEqual(params.debug, Parameters._DEF_DEBUG)
 
     def _dumpLoadTest(self, params: Parameters, obj) -> None:
@@ -340,109 +335,108 @@ class ParametersTest(unittest.TestCase):
     def testA_parseBasic1(self) -> None:
         """are args parsed with short flags and default values"""
         sys.argv = self.basic1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self._checkDefaultValues(params)
 
     def testB_parseBasic2(self) -> None:
         """are args parsed with long flags and default values"""
         sys.argv = self.basic2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self._checkDefaultValues(params)
 
     def testC_parseShort1(self) -> None:
         """are args parsed with short flags and custom values for genbank files"""
         sys.argv = self.short1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self._checkCustomValues(params, ParametersTest.FORMAT_GB)
 
     def testD_parseShort2(self) -> None:
         """are args parsed with short flags and custom values for fasta files"""
         sys.argv = self.short2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self._checkCustomValues(params, ParametersTest.FORMAT_FA)
 
     def testE_parseLong1(self) -> None:
         """are args parsed with long flags and custom args for genbank files"""
         sys.argv = self.long1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self._checkCustomValues(params, ParametersTest.FORMAT_GB)
 
     def testF_parseLong2(self) -> None:
         """are args parsed with long flags and custom args for genbank files"""
         sys.argv = self.long2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self._checkCustomValues(params, ParametersTest.FORMAT_FA)
 
-    def testE_parseHelp(self) -> None:
-        """is params.helpRequested True when help is requested"""
+    def testG_parseHelp(self) -> None:
+        """Do we reach a sys.exit(0) when -h/--help is requested"""
         # check short flag
-        sys.argv = self.help1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-        self.assertTrue(params.helpRequested)
+        with self.assertRaises(SystemExit) as e:
+            sys.argv = self.help1
+            params = parse_args()
+            self.assertEqual(e.exception.code, 0)
 
         # check long flag
-        sys.argv = self.help2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-        self.assertTrue(params.helpRequested)
+        with self.assertRaises(SystemExit) as e:
+            sys.argv = self.help2
+            params = parse_args()
+            self.assertEqual(e.exception.code, 0)
 
-    def testF_version(self) -> None:
-        """is params.helpRequested True when version is requested"""
+    def testH_version(self) -> None:
+        """Do we reach a sys.exit(0) when -v/--version is requested"""
         # check short flag
-        sys.argv = self.vers1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-        self.assertTrue(params.helpRequested)
+        with self.assertRaises(SystemExit) as e:
+            sys.argv = self.vers1
+            params = parse_args()
+            self.assertEqual(e.exception.code, 0)
 
         # check long flag
-        sys.argv = self.vers2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-        self.assertTrue(params.helpRequested)
+        with self.assertRaises(SystemExit) as e:
+            sys.argv = self.vers2
+            params = parse_args()
+            self.assertEqual(e.exception.code, 0)
 
-    def testG_debug1(self) -> None:
+    def testI_debug1(self) -> None:
         """checks if params.debug is True and has default values when in debug mode"""
         # check short flags with default args
         sys.argv = self.debug1
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
 
         # check long flags with default args
         sys.argv = self.debug2
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
 
         # check short flags with custom args
         sys.argv = self.debug3
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self.assertTrue(params.debug)
         params.debug = False
         self._checkCustomValues(params, Parameters._DEF_FRMT)
 
         # check long flags with custom args
         sys.argv = self.debug4
-        params = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        params = parse_args()
         self.assertTrue(params.debug)
         params.debug = False
         self._checkCustomValues(params, Parameters._DEF_FRMT)
 
-    def testH_debug2(self) -> None:
+    def testJ_debug2(self) -> None:
         """is the logger working"""
         # create the params object
         sys.argv = self.debug1
-        params = Parameters(
-            ParametersTest.AUTHOR,
-            ParametersTest.VERSION,
-            makeWd=False,
-            initializeLog=False,
-        )
+        params = parse_args()
 
         # replace the current Log object with one that references this directory
         params.log = Log(os.getcwd(), debug=True)
 
         # rename the log
-        params.log.rename(ParametersTest.testH_debug2.__name__)
+        params.log.rename(ParametersTest.testJ_debug2.__name__)
 
         # verify that the log file exists
         self.assertTrue(os.path.exists(params.log.logFn))
@@ -456,20 +450,15 @@ class ParametersTest(unittest.TestCase):
         # remove the log file
         os.remove(params.log.logFn)
 
-    def testI_dumpObjects(self) -> None:
+    def testK_dumpObjects(self) -> None:
         """evaluate Parameters.dumpObj"""
         # create a parameters object
         sys.argv = self.basic1
-        params = Parameters(
-            ParametersTest.AUTHOR,
-            ParametersTest.VERSION,
-            makeWd=False,
-            initializeLog=False,
-        )
+        params = parse_args()
 
         # initialize the log object
         params.log = Log(os.getcwd())
-        params.log.rename(ParametersTest.testI_dumpObjects.__name__)
+        params.log.rename(ParametersTest.testK_dumpObjects.__name__)
 
         # check sets
         obj = {1, 2, 3, 4, 5}
@@ -483,63 +472,41 @@ class ParametersTest(unittest.TestCase):
         obj = {1: "one", 2: "two"}
         self._dumpLoadTest(params, obj)
 
-    def testJ_equality(self) -> None:
+    def testL_equality(self) -> None:
         """make sure equality overload works"""
         # create parameters objects for comparing
         sys.argv = self.basic1
-        basic1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        basic1 = parse_args()
 
         sys.argv = self.basic2
-        basic2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        basic2 = parse_args()
 
         sys.argv = self.short1
-        short1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        short1 = parse_args()
 
         sys.argv = self.short2
-        short2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        short2 = parse_args()
 
         sys.argv = self.long1
-        long1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        long1 = parse_args()
 
         sys.argv = self.long2
-        long2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-
-        sys.argv = self.help1
-        help1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-
-        sys.argv = self.help2
-        help2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-
-        sys.argv = self.vers1
-        vers1 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
-
-        sys.argv = self.vers2
-        vers2 = Parameters(ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False)
+        long2 = parse_args()
 
         sys.argv = self.debug1
-        debugBasic1 = Parameters(
-            ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False
-        )
+        debugBasic1 = parse_args()
 
         sys.argv = self.debug2
-        debugBasic2 = Parameters(
-            ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False
-        )
+        debugBasic2 = parse_args()
 
         sys.argv = self.debug3
-        debugShort1 = Parameters(
-            ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False
-        )
+        debugShort1 = parse_args()
 
         sys.argv = self.debug4
-        debugLong1 = Parameters(
-            ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False
-        )
+        debugLong1 = parse_args()
 
         sys.argv = self.long1[:-2] + ["--num_threads", "1"]
-        oneThreadLong1 = Parameters(
-            ParametersTest.AUTHOR, ParametersTest.VERSION, makeWd=False
-        )
+        oneThreadLong1 = parse_args()
 
         # the same objects should be equal
         self.assertEqual(basic1, basic1)
@@ -548,10 +515,6 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(short2, short2)
         self.assertEqual(long1, long1)
         self.assertEqual(long2, long2)
-        self.assertEqual(help1, help1)
-        self.assertEqual(help2, help2)
-        self.assertEqual(vers1, vers1)
-        self.assertEqual(vers2, vers2)
         self.assertEqual(debugBasic1, debugBasic1)
         self.assertEqual(debugBasic2, debugBasic2)
         self.assertEqual(debugShort1, debugShort1)
@@ -568,11 +531,6 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(long1, debugLong1)
         self.assertEqual(long1, debugShort1)
         self.assertEqual(long1, oneThreadLong1)
-
-        # help and vers should be equal
-        self.assertEqual(help1, help2)
-        self.assertEqual(help1, vers1)
-        self.assertEqual(help2, vers2)
 
         # different files should not be equal
         self.assertNotEqual(long1, long2)
