@@ -26,7 +26,7 @@ class ParametersTest(unittest.TestCase):
     BAD_SIZE = "64,160"
     FORMAT_GB = "genbank"
     FORMAT_FA = "fasta"
-    PRIMER_LEN = "14,25"
+    PRIMER_LEN = "15,25"
     GC_RANGE = "42,64"
     TM_RANGE = "68,72"
     PCR_SIZE = "80,128"
