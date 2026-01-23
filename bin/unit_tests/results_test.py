@@ -19,15 +19,15 @@ from Bio.SeqRecord import SeqRecord
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
+from bin.cli import _parseArgs
 from bin.Clock import Clock
+from bin.getPrimerPairs import _formsDimers
 from bin.Log import Log
+from bin.main import _runner
+from bin.Parameters import DefaultArgs, Parameters
 from bin.Primer import Primer
 from bin.Product import Product
-from bin.Parameters import Parameters
-from bin.main import _runner
-from bin.cli import parse_args
 from bin.sortPrimerPairs import _sortPairs
-from bin.getPrimerPairs import _formsDimers
 
 
 class Result:
@@ -35,19 +35,19 @@ class Result:
 
     def __init__(
         self,
-        rowNum: int,
-        fwdTm: float,
-        fwdGc: float,
-        revTm: float,
-        revGc: float,
-        additional: dict[str, dict[str, list]],
+        rowNum:int,
+        fwdTm:float,
+        fwdGc:float,
+        revTm:float,
+        revGc:float,
+        additional:dict[str,dict[str,list]],
     ):
-        self.rowNum: int = rowNum
-        self.fwdTm: float = fwdTm
-        self.fwdGc: float = fwdGc
-        self.revTm: float = revTm
-        self.revGc: float = revGc
-        self.additional: dict[str, dict[str, list]] = additional
+        self.rowNum:int = rowNum
+        self.fwdTm:float = fwdTm
+        self.fwdGc:float = fwdGc
+        self.revTm:float = revTm
+        self.revGc:float = revGc
+        self.additional:dict[str,dict[str,list]] = additional
 
     def __repr__(self) -> str:
         return str(vars(self))
@@ -57,11 +57,12 @@ class ResultsTest(unittest.TestCase):
     """class for testing the results of primerForge"""
 
     # constants
+    DEFAULT_ARGS = DefaultArgs()
     TEST_DIR = os.path.join(
         str(pathlib.Path(__file__).parent.parent.parent), "test_dir"
     )
-    RESULT_FN = os.path.join(TEST_DIR, Parameters._DEF_RESULTS_FN)
-    BED_FN = os.path.join(TEST_DIR, Parameters._DEF_BED_FN)
+    RESULT_FN = os.path.join(TEST_DIR, DEFAULT_ARGS.OUT_FN)
+    BED_FN = os.path.join(TEST_DIR, DEFAULT_ARGS.BED_FN)
     FAKE_FN = "fakefile"
     PCRLEN = "length"
     CONTIG = "contig"
@@ -183,7 +184,7 @@ class ResultsTest(unittest.TestCase):
         # load the pairs from the pickle
         clock.printStart("unpickling pairs")
         with open(ResultsTest.params.pickles[Parameters._PAIR_3], "rb") as fh:
-            cls.pairs: dict[tuple[Primer, Primer], dict[str, Product]] = pickle.load(fh)
+            cls.pairs:dict[tuple[Primer,Primer],dict[str,Product]] = pickle.load(fh)
         clock.printDone()
 
         # calculate the binding sites
@@ -346,7 +347,7 @@ class ResultsTest(unittest.TestCase):
         ]
 
         # get the parameters
-        params = parse_args()
+        params = _parseArgs()
 
         # Now that params have been populated with workdir inside test directory we can move back to start directory
         os.chdir(str(start_dir))
