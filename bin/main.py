@@ -7,7 +7,7 @@ from bin.Clock import Clock
 from bin.Parameters import Parameters
 from bin.Primer import Primer
 from bin.Product import Product
-from bin.cli import parse_args
+from bin.cli import _parseArgs
 from bin.getCandidateKmers import _getAllCandidateKmers
 from bin.getPrimerPairs import _getPrimerPairs
 from bin.removeOutgroupPrimers import _removeOutgroupPrimers
@@ -501,9 +501,7 @@ def main() -> None:
         Exception: catches all downstream exceptions
     """
     # parse command line arguments
-    if len(sys.argv) == 1:
-        sys.argv.append("--help")
-    params = parse_args()
+    params = _parseArgs()
     params.workdir.mkdir(exist_ok=True, parents=True)
     # params = Parameters(__author__, __version__)
 
