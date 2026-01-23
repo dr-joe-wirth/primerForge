@@ -1,6 +1,5 @@
 import os
 import shutil
-import sys
 from typing import Generator
 
 from bin.Clock import Clock
