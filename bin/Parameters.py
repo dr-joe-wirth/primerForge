@@ -6,7 +6,7 @@ import pathlib
 import pickle
 import sys
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from Bio import SeqIO
@@ -20,41 +20,42 @@ from bin.Log import Log
 @dataclass
 class DefaultArgs:
     """class to store default arguments"""
-    out: str = "results.tsv"
-    bed_file: str = "primers.bed"
-    format: str = "genbank"
-    min_len: int = 16
-    max_len: int = 20
-    min_gc: float = 40.0
-    max_gc: float = 60.0
-    min_tm: float = 55.0
-    max_tm: float = 68.0
-    min_pcr: int = 120
-    max_pcr: int = 2400
-    tm_diff: float = 5.0
-    num_threads: int = 1
-    primer3_mv_conc: float = DEFAULT_P3_ARGS.mv_conc
-    primer3_dv_conc: float = DEFAULT_P3_ARGS.dv_conc
-    primer3_dntp_conc: float = DEFAULT_P3_ARGS.dntp_conc
-    primer3_dna_conc: float = DEFAULT_P3_ARGS.dna_conc
-    primer3_temp_c: float = DEFAULT_P3_ARGS.temp_c
-    primer3_max_loop: int = DEFAULT_P3_ARGS.max_loop
-    ispcr_min_good: int = 6
-    ispcr_min_perfect: int = 8
-    ispcr_tile_size: int = 10
-    temp_tolerance: float = 5.0
-    max_repeats: int = 3
-    bin_size: int = 64
-    keep: bool = False
-    debug: bool = False
+    OUT_FN:str = "results.tsv"
+    BED_FN:str = "primers.bed"
+    FORMAT:str = "genbank"
+    OUTGROUP:list[str] = field(default_factory=list) 
+    MIN_LEN:int = 16
+    MAX_LEN:int = 20
+    MIN_GC:float = 40.0
+    MAX_GC:float = 60.0
+    MIN_TM:float = 55.0
+    MAX_TM:float = 68.0
+    MIN_PCR:int = 120
+    MAX_PCR:int = 2400
+    MAX_TM_DIFF:float = 5.0
+    NUM_THREADS:int = 1
+    PRIMER3_MV_CONC:float = DEFAULT_P3_ARGS.mv_conc
+    PRIMER3_DV_CONC:float = DEFAULT_P3_ARGS.dv_conc
+    PRIMER3_DNTP_CONC:float = DEFAULT_P3_ARGS.dntp_conc
+    PRIMER3_DNA_CONC:float = DEFAULT_P3_ARGS.dna_conc
+    PRIMER3_TEMP_C:float = DEFAULT_P3_ARGS.temp_c
+    PRIMER3_MAX_LOOP:int = DEFAULT_P3_ARGS.max_loop
+    ISPCR_MIN_GOOD:int = 6
+    ISPCR_MIN_PERFECT:int = 8
+    ISPCR_TILE_SIZE:int = 10
+    TEMP_TOLERANCE:float = 5.0
+    MAX_REPEATS:int = 3
+    BIN_SIZE:int = 64
+    KEEP:bool = False
+    DEBUG:bool = False
+    ALLOWED_FORMATS:tuple[str,str] = ('genbank', 'fasta')
 
 
 class Parameters:
     """class to store arguments and debug utilities"""
     # constants
-    _MIN_LEN = 15
-    _MAX_LEN = 32
-    __ALLOWED_FORMATS = ("genbank", "fasta")
+    _MIN_ALLOWED_LEN = 15
+    _MAX_ALLOWED_LEN = 32
     __ALL_CONTIGS_FNA = "all_contigs.fna"
     _WORKDIR_PREFIX = "primerforge_"
     _PARAMS = 0
@@ -72,84 +73,55 @@ class Parameters:
         _PAIR_3: "pairs_noOutgroup_validated.p",
     }
 
-    # default values
-    _DEF_RESULTS_FN = "results.tsv"
-    _DEF_BED_FN = "primers.bed"
-    _DEF_OUTGROUP = list()
-    _DEF_FRMT = __ALLOWED_FORMATS[0]
-    _DEF_MIN_LEN = 16
-    _DEF_MAX_LEN = 20
-    _DEF_MIN_GC = 40.0
-    _DEF_MAX_GC = 60.0
-    _DEF_MIN_TM = 55.0
-    _DEF_MAX_TM = 68.0
-    _DEF_MIN_PCR = 120
-    _DEF_MAX_PCR = 2400
-    _DEF_MAX_TM_DIFF = 5.0
-    _DEF_NUM_THREADS = 1
-    _DEF_ISPCR_MIN_GOOD = 6
-    _DEF_ISPCR_MIN_PERFECT = 8
-    _DEF_ISPCR_TILE_SIZE = 10
-    _DEF_DEGREES = 5.0
-    _DEF_REPEATS = 3
-    _DEF_BINSIZE = 64
-    _DEF_KEEP = False
-    _DEF_DEBUG = False
-    _DEF_HELP = False
-
     # overloads
-    def __init__(self, argparse_ns: argparse.Namespace, initializeLog: bool = True):
+    def __init__(self, parsedArgs:argparse.Namespace, initializeLog: bool = True):
         """Initialize a new Parameters object.
 
         Args:
-            argparse_ns: parsed command-line arguments
+            parsedArgs: parsed command-line arguments
             initializeLog: if True, initialize the log. Defaults to True.
         """
-        self.ingroupFns: list[pathlib.Path] = argparse_ns.ingroup
-        self.outgroupFns: list[pathlib.Path] = argparse_ns.outgroup
-        self.resultsFn: pathlib.Path = argparse_ns.out
-        self.bedFn: pathlib.Path = argparse_ns.bed_file
-        self.format: str = argparse_ns.format
-        self.minLen: int = argparse_ns.min_len
-        self.maxLen: int = argparse_ns.max_len
-        self.minGc: float = argparse_ns.min_gc
-        self.maxGc: float = argparse_ns.max_gc
-        self.minTm: float = argparse_ns.min_tm
-        self.maxTm: float = argparse_ns.max_tm
-        self.minPcr: int = argparse_ns.min_pcr
-        self.maxPcr: int = argparse_ns.max_pcr
-        self.maxTmDiff: float = argparse_ns.tm_diff
-        self.disallowedLens: range = range(argparse_ns.min_bad, argparse_ns.max_bad + 1)
-        self.numThreads: int = argparse_ns.num_threads
-        self.debug: bool = argparse_ns.debug
-        self.log: Log = Log(debug=self.debug, initialize=initializeLog)
-        self.__workdir: pathlib.Path
-        self.pickles: dict[int, pathlib.Path] = {}
-        self.allContigsFna: pathlib.Path
+        self.ingroupFns:list[pathlib.Path] = parsedArgs.ingroup
+        self.outgroupFns:list[pathlib.Path] = parsedArgs.outgroup
+        self.resultsFn:pathlib.Path = parsedArgs.out
+        self.bedFn:pathlib.Path = parsedArgs.bed_file
+        self.format:str = parsedArgs.format
+        self.minLen:int = parsedArgs.min_len
+        self.maxLen:int = parsedArgs.max_len
+        self.minGc:float = parsedArgs.min_gc
+        self.maxGc:float = parsedArgs.max_gc
+        self.minTm:float = parsedArgs.min_tm
+        self.maxTm:float = parsedArgs.max_tm
+        self.minPcr:int = parsedArgs.min_pcr
+        self.maxPcr:int = parsedArgs.max_pcr
+        self.maxTmDiff:float = parsedArgs.tm_diff
+        self.disallowedLens:range = range(parsedArgs.min_bad, parsedArgs.max_bad + 1)
+        self.numThreads:int = parsedArgs.num_threads
+        self.debug:bool = parsedArgs.debug
+        self.log:Log = Log(debug=self.debug, initialize=initializeLog)
+        self.__workdir:pathlib.Path
+        self.pickles:dict[int, pathlib.Path] = dict()
+        self.allContigsFna:pathlib.Path
 
-        self.keepIntermediateFiles: bool = argparse_ns.keep
+        self.keepIntermediateFiles: bool = parsedArgs.keep
 
         # advanced attributes for primer3
-        self.p3_mvConc: float = argparse_ns.primer3_mv_conc
-        self.p3_dvConc: float = argparse_ns.primer3_dv_conc
-        self.p3_dntpConc: float = argparse_ns.primer3_dntp_conc
-        self.p3_dnaConc: float = argparse_ns.primer3_dna_conc
-        self.p3_tempC: float = argparse_ns.primer3_temp_c
-        self.p3_maxLoop: int = argparse_ns.primer3_max_loop
+        self.p3_mvConc:float = parsedArgs.primer3_mv_conc
+        self.p3_dvConc:float = parsedArgs.primer3_dv_conc
+        self.p3_dntpConc:float = parsedArgs.primer3_dntp_conc
+        self.p3_dnaConc:float = parsedArgs.primer3_dna_conc
+        self.p3_tempC:float = parsedArgs.primer3_temp_c
+        self.p3_maxLoop:int = parsedArgs.primer3_max_loop
 
         # advanced attributes for isPcr
-        self.isPcr_minGood: int = argparse_ns.isPcr_minGood
-        self.isPcr_minPerfect: int = argparse_ns.isPcr_minPerfect
-        self.isPcr_tileSize: int = argparse_ns.isPcr_tileSize
+        self.isPcr_minGood:int = parsedArgs.isPcr_minGood
+        self.isPcr_minPerfect:int = parsedArgs.isPcr_minPerfect
+        self.isPcr_tileSize:int = parsedArgs.isPcr_tileSize
 
         # additional advanced attributes
-        self.tempTolerance: float = argparse_ns.temp_tolerance
-        self.maxRepeatLen: int = argparse_ns.max_repeats
-        self.maxBinSize: int = argparse_ns.bin_size
-
-        # save author and version as private attributes
-        self.__author: list[str] = __author__
-        self.__version: str = __version__
+        self.tempTolerance:float = parsedArgs.temp_tolerance
+        self.maxRepeatLen:int = parsedArgs.max_repeats
+        self.maxBinSize:int = parsedArgs.bin_size
 
         # Sort the ingroup files by size (smallest first)
         self.ingroupFns.sort(key=lambda x: x.stat().st_size)
@@ -162,20 +134,28 @@ class Parameters:
         nonexistent = [str(x) for x in self.ingroupFns if not x.exists()]
         if len(nonexistent) > 0:
             raise FileNotFoundError(f"the following ingroup files do not exist: {', '.join(nonexistent)}")
+        
         # Check 2 -- all outgroup files must exist
         nonexistent = [str(x) for x in self.outgroupFns if not x.is_file()]
         if len(nonexistent) > 0:
             raise FileNotFoundError(f"the following ingroup files do not exist: {', '.join(nonexistent)}")
+        
         # Check 3 -- all ingroup and outgroup files must be in the specified format
         self.__checkGenomeFormat()
+
         # Check 4 -- the output files must be writable
         for output_file in (self.bedFn, self.resultsFn):
             self.__checkOutputFile(output_file)
-        # Check 5 -- tileSize must be sanely set (must be less than min primer length)
-        if self.isPcr_tileSize > Parameters._MIN_LEN:
-            raise ValueError(f"maximum tileSize is {Parameters._MIN_LEN} bp")
+        
+        # Check 5 -- primer lengths must be within range
+        if self.minLen < Parameters._MIN_ALLOWED_LEN or self.maxLen > Parameters._MAX_ALLOWED_LEN:
+            raise ValueError(f"invalid primer sizes: '{self.minLen}-{self.maxLen}'. primer lengths must be {Parameters._MIN_ALLOWED_LEN}-{Parameters._MAX_ALLOWED_LEN}bp")
 
-    def __eq__(self, other: Parameters) -> bool:
+        # Check 6 -- tileSize must be sanely set (must be less than min primer length)
+        if self.isPcr_tileSize > Parameters._MIN_ALLOWED_LEN:
+            raise ValueError(f"maximum tileSize is {Parameters._MIN_ALLOWED_LEN} bp")
+
+    def __eq__(self, other:Parameters) -> bool:
         """equality overload
 
         Args:
@@ -256,7 +236,7 @@ class Parameters:
             )
         )
 
-    def __ne__(self, other: Parameters) -> bool:
+    def __ne__(self, other:Parameters) -> bool:
         """inequality overload
 
         Args:
@@ -269,7 +249,7 @@ class Parameters:
 
     # private methods
     @staticmethod
-    def __checkOutputFile(fn: pathlib.Path) -> None:
+    def __checkOutputFile(fn:pathlib.Path) -> None:
         """checks if an output file is valid
 
         Args:
@@ -435,7 +415,7 @@ class Parameters:
         )
         self.log.info(f'{"num threads:":<{WIDTH}}{self.numThreads}')
 
-    def dumpObj(self, obj: Any, fn: str, objName: str, prefix: str = "") -> None:
+    def dumpObj(self, obj:Any, fn:str, objName:str, prefix:str="") -> None:
         """dumps an object in memory to file as a pickle
 
         Args:
@@ -470,7 +450,7 @@ class Parameters:
         clock.printDone()
         self.log.info(f"done {clock.getTimeString()}")
 
-    def loadObj(self, fn: str):
+    def loadObj(self, fn:str):
         """loads an object from a pickle file
 
         Args:
@@ -513,7 +493,7 @@ class Parameters:
         return self.__workdir
 
     @workdir.setter
-    def workdir(self, value: pathlib.Path) -> None:
+    def workdir(self, value:pathlib.Path) -> None:
         """Update the working directory and all attributes that rely on it"""
         value = value.absolute()
         self.pickles = {x: value.joinpath(y) for x, y in self.__PICKLE_FNS.items()}
