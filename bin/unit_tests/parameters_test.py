@@ -9,11 +9,14 @@ from Bio.SeqRecord import SeqRecord
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
-from bin.Parameters import Parameters, Log
-from bin.cli import parse_args
+from bin.Parameters import DefaultArgs, Parameters, Log
+from bin.cli import _parseArgs
 
 
 class ParametersTest(unittest.TestCase):
+    # default arguments
+    DEFAULT_ARGS = DefaultArgs()
+
     # values for inputs
     IG_FNS_GB = ("itmp1.gb", "itmp2.gb", "itmp3.gb")
     IG_FNS_FA = ("itmp1.fa", "itmp2.fa", "itmp3.fa")
@@ -235,22 +238,22 @@ class ParametersTest(unittest.TestCase):
         )
 
         # check optional arguments match default values
-        self.assertEqual(params.outgroupFns, Parameters._DEF_OUTGROUP)
-        self.assertEqual(params.format, Parameters._DEF_FRMT)
-        self.assertEqual(params.minLen, Parameters._DEF_MIN_LEN)
-        self.assertEqual(params.maxLen, Parameters._DEF_MAX_LEN)
-        self.assertEqual(params.minGc, Parameters._DEF_MIN_GC)
-        self.assertEqual(params.maxGc, Parameters._DEF_MAX_GC)
-        self.assertEqual(params.minTm, Parameters._DEF_MIN_TM)
-        self.assertEqual(params.maxTm, Parameters._DEF_MAX_TM)
-        self.assertEqual(params.minPcr, Parameters._DEF_MIN_PCR)
-        self.assertEqual(params.maxPcr, Parameters._DEF_MAX_PCR)
-        self.assertEqual(params.maxTmDiff, Parameters._DEF_MAX_TM_DIFF)
-        self.assertEqual(params.numThreads, Parameters._DEF_NUM_THREADS)
-        self.assertEqual(params.debug, Parameters._DEF_DEBUG)
+        self.assertEqual(params.outgroupFns, ParametersTest.DEFAULT_ARGS.OUTGROUP)
+        self.assertEqual(params.format, ParametersTest.DEFAULT_ARGS.FORMAT)
+        self.assertEqual(params.minLen, ParametersTest.DEFAULT_ARGS.MIN_LEN)
+        self.assertEqual(params.maxLen, ParametersTest.DEFAULT_ARGS.MAX_LEN)
+        self.assertEqual(params.minGc, ParametersTest.DEFAULT_ARGS.MIN_GC)
+        self.assertEqual(params.maxGc, ParametersTest.DEFAULT_ARGS.MAX_GC)
+        self.assertEqual(params.minTm, ParametersTest.DEFAULT_ARGS.MIN_TM)
+        self.assertEqual(params.maxTm, ParametersTest.DEFAULT_ARGS.MAX_TM)
+        self.assertEqual(params.minPcr, ParametersTest.DEFAULT_ARGS.MIN_PCR)
+        self.assertEqual(params.maxPcr, ParametersTest.DEFAULT_ARGS.MAX_PCR)
+        self.assertEqual(params.maxTmDiff, ParametersTest.DEFAULT_ARGS.MAX_TM_DIFF)
+        self.assertEqual(params.numThreads, ParametersTest.DEFAULT_ARGS.NUM_THREADS)
+        self.assertEqual(params.debug, ParametersTest.DEFAULT_ARGS.DEBUG)
         self.assertEqual(
             params.disallowedLens,
-            range(Parameters._DEF_MIN_PCR, Parameters._DEF_MAX_PCR + 1),
+            range(DefaultArgs.MIN_PCR, DefaultArgs.MAX_PCR + 1),
         )
 
     def _checkGenomeFilesPresent(self, params: Parameters, frmt: str) -> None:
@@ -311,7 +314,7 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(params.maxTmDiff, tmDiff)
         self.assertEqual(params.numThreads, threads)
         self.assertEqual(params.disallowedLens, badSizes)
-        self.assertEqual(params.debug, Parameters._DEF_DEBUG)
+        self.assertEqual(params.debug, ParametersTest.DEFAULT_ARGS.DEBUG)
 
     def _dumpLoadTest(self, params: Parameters, obj) -> None:
         """evaluates if the dumpObj method is working
@@ -335,37 +338,37 @@ class ParametersTest(unittest.TestCase):
     def testA_parseBasic1(self) -> None:
         """are args parsed with short flags and default values"""
         sys.argv = self.basic1
-        params = parse_args()
+        params = _parseArgs()
         self._checkDefaultValues(params)
 
     def testB_parseBasic2(self) -> None:
         """are args parsed with long flags and default values"""
         sys.argv = self.basic2
-        params = parse_args()
+        params = _parseArgs()
         self._checkDefaultValues(params)
 
     def testC_parseShort1(self) -> None:
         """are args parsed with short flags and custom values for genbank files"""
         sys.argv = self.short1
-        params = parse_args()
+        params = _parseArgs()
         self._checkCustomValues(params, ParametersTest.FORMAT_GB)
 
     def testD_parseShort2(self) -> None:
         """are args parsed with short flags and custom values for fasta files"""
         sys.argv = self.short2
-        params = parse_args()
+        params = _parseArgs()
         self._checkCustomValues(params, ParametersTest.FORMAT_FA)
 
     def testE_parseLong1(self) -> None:
         """are args parsed with long flags and custom args for genbank files"""
         sys.argv = self.long1
-        params = parse_args()
+        params = _parseArgs()
         self._checkCustomValues(params, ParametersTest.FORMAT_GB)
 
     def testF_parseLong2(self) -> None:
         """are args parsed with long flags and custom args for genbank files"""
         sys.argv = self.long2
-        params = parse_args()
+        params = _parseArgs()
         self._checkCustomValues(params, ParametersTest.FORMAT_FA)
 
     def testG_parseHelp(self) -> None:
@@ -373,13 +376,13 @@ class ParametersTest(unittest.TestCase):
         # check short flag
         with self.assertRaises(SystemExit) as e:
             sys.argv = self.help1
-            params = parse_args()
+            params = _parseArgs()
             self.assertEqual(e.exception.code, 0)
 
         # check long flag
         with self.assertRaises(SystemExit) as e:
             sys.argv = self.help2
-            params = parse_args()
+            params = _parseArgs()
             self.assertEqual(e.exception.code, 0)
 
     def testH_version(self) -> None:
@@ -387,50 +390,50 @@ class ParametersTest(unittest.TestCase):
         # check short flag
         with self.assertRaises(SystemExit) as e:
             sys.argv = self.vers1
-            params = parse_args()
+            params = _parseArgs()
             self.assertEqual(e.exception.code, 0)
 
         # check long flag
         with self.assertRaises(SystemExit) as e:
             sys.argv = self.vers2
-            params = parse_args()
+            params = _parseArgs()
             self.assertEqual(e.exception.code, 0)
 
     def testI_debug1(self) -> None:
         """checks if params.debug is True and has default values when in debug mode"""
         # check short flags with default args
         sys.argv = self.debug1
-        params = parse_args()
+        params = _parseArgs()
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
 
         # check long flags with default args
         sys.argv = self.debug2
-        params = parse_args()
+        params = _parseArgs()
         self.assertTrue(params.debug)
         params.debug = False
         self._checkDefaultValues(params)
 
         # check short flags with custom args
         sys.argv = self.debug3
-        params = parse_args()
+        params = _parseArgs()
         self.assertTrue(params.debug)
         params.debug = False
-        self._checkCustomValues(params, Parameters._DEF_FRMT)
+        self._checkCustomValues(params, ParametersTest.DEFAULT_ARGS.FORMAT)
 
         # check long flags with custom args
         sys.argv = self.debug4
-        params = parse_args()
+        params = _parseArgs()
         self.assertTrue(params.debug)
         params.debug = False
-        self._checkCustomValues(params, Parameters._DEF_FRMT)
+        self._checkCustomValues(params, ParametersTest.DEFAULT_ARGS.FORMAT)
 
     def testJ_debug2(self) -> None:
         """is the logger working"""
         # create the params object
         sys.argv = self.debug1
-        params = parse_args()
+        params = _parseArgs()
 
         # replace the current Log object with one that references this directory
         params.log = Log(os.getcwd(), debug=True)
@@ -454,7 +457,7 @@ class ParametersTest(unittest.TestCase):
         """evaluate Parameters.dumpObj"""
         # create a parameters object
         sys.argv = self.basic1
-        params = parse_args()
+        params = _parseArgs()
 
         # initialize the log object
         params.log = Log(os.getcwd())
@@ -476,37 +479,37 @@ class ParametersTest(unittest.TestCase):
         """make sure equality overload works"""
         # create parameters objects for comparing
         sys.argv = self.basic1
-        basic1 = parse_args()
+        basic1 = _parseArgs()
 
         sys.argv = self.basic2
-        basic2 = parse_args()
+        basic2 = _parseArgs()
 
         sys.argv = self.short1
-        short1 = parse_args()
+        short1 = _parseArgs()
 
         sys.argv = self.short2
-        short2 = parse_args()
+        short2 = _parseArgs()
 
         sys.argv = self.long1
-        long1 = parse_args()
+        long1 = _parseArgs()
 
         sys.argv = self.long2
-        long2 = parse_args()
+        long2 = _parseArgs()
 
         sys.argv = self.debug1
-        debugBasic1 = parse_args()
+        debugBasic1 = _parseArgs()
 
         sys.argv = self.debug2
-        debugBasic2 = parse_args()
+        debugBasic2 = _parseArgs()
 
         sys.argv = self.debug3
-        debugShort1 = parse_args()
+        debugShort1 = _parseArgs()
 
         sys.argv = self.debug4
-        debugLong1 = parse_args()
+        debugLong1 = _parseArgs()
 
         sys.argv = self.long1[:-2] + ["--num_threads", "1"]
-        oneThreadLong1 = parse_args()
+        oneThreadLong1 = _parseArgs()
 
         # the same objects should be equal
         self.assertEqual(basic1, basic1)
