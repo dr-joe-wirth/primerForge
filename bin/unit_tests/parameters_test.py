@@ -9,6 +9,7 @@ from Bio.SeqRecord import SeqRecord
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent.parent))
 
+from bin.Genome import InvalidFileFormat
 from bin.Parameters import DefaultArgs, Parameters, Log
 from bin.cli import _parseArgs
 
@@ -22,6 +23,19 @@ class ParametersTest(unittest.TestCase):
     IG_FNS_FA = ("itmp1.fa", "itmp2.fa", "itmp3.fa")
     OG_FNS_GB = ("otmp1.gb", "otmp2.gb", "otmp3.gb")
     OG_FNS_FA = ("otmp1.fa", "otmp2.fa", "otmp3.fa")
+
+    # a mixture of genbank and fasta files; the format of each is auto-detected
+    IG_FNS_MIX = (IG_FNS_GB[0], IG_FNS_FA[1], IG_FNS_GB[2])
+    OG_FNS_MIX = (OG_FNS_FA[0], OG_FNS_GB[1], OG_FNS_FA[2])
+
+    # genbank files whose sequences differ in length; listed longest first so
+    # that the input order does not match the expected sorted order
+    SIZE_FNS = ("stmp1.gb", "stmp2.gb", "stmp3.gb")
+    SIZE_LENS = (40, 20, 60)
+
+    # a file that is neither genbank nor fasta
+    BAD_FMT_FN = "btmp1.txt"
+
     OUT_FN = "result.testfile"
     BAD_SIZE = "64,160"
     FORMAT_GB = "genbank"
@@ -84,8 +98,6 @@ class ParametersTest(unittest.TestCase):
             *ParametersTest.OG_FNS_GB,
             "-b",
             ParametersTest.BAD_SIZE,
-            "-f",
-            ParametersTest.FORMAT_GB,
             "-p",
             ParametersTest.PRIMER_LEN,
             "-g",
@@ -111,8 +123,6 @@ class ParametersTest(unittest.TestCase):
             *ParametersTest.OG_FNS_FA,
             "-b",
             ParametersTest.BAD_SIZE,
-            "-f",
-            ParametersTest.FORMAT_FA,
             "-p",
             ParametersTest.PRIMER_LEN,
             "-g",
@@ -138,8 +148,6 @@ class ParametersTest(unittest.TestCase):
             *ParametersTest.OG_FNS_GB,
             "--bad_sizes",
             ParametersTest.BAD_SIZE,
-            "--format",
-            ParametersTest.FORMAT_GB,
             "--primer_len",
             ParametersTest.PRIMER_LEN,
             "--gc_range",
@@ -165,8 +173,6 @@ class ParametersTest(unittest.TestCase):
             *ParametersTest.OG_FNS_FA,
             "--bad_sizes",
             ParametersTest.BAD_SIZE,
-            "--format",
-            ParametersTest.FORMAT_FA,
             "--primer_len",
             ParametersTest.PRIMER_LEN,
             "--gc_range",
@@ -179,6 +185,36 @@ class ParametersTest(unittest.TestCase):
             ParametersTest.TM_DIFF,
             "--num_threads",
             ParametersTest.THREADS,
+        ]
+
+        # sys.argv with a mixture of genbank and fasta files
+        self.mixed = [
+            "primerForge.py",
+            "-i",
+            *ParametersTest.IG_FNS_MIX,
+            "-o",
+            ParametersTest.OUT_FN,
+            "-u",
+            *ParametersTest.OG_FNS_MIX,
+        ]
+
+        # sys.argv with ingroup files whose sequences differ in length
+        self.sizes = [
+            "primerForge.py",
+            "-i",
+            *ParametersTest.SIZE_FNS,
+            "-o",
+            ParametersTest.OUT_FN,
+        ]
+
+        # sys.argv with a file that is neither genbank nor fasta
+        self.badFmt = [
+            "primerForge.py",
+            "-i",
+            *ParametersTest.IG_FNS_GB,
+            ParametersTest.BAD_FMT_FN,
+            "-o",
+            ParametersTest.OUT_FN,
         ]
 
         # additional sys.argv to test
@@ -201,6 +237,39 @@ class ParametersTest(unittest.TestCase):
         ParametersTest._removeDummyFiles()
 
     @staticmethod
+    def _makeSeqRecord(length: int) -> SeqRecord:
+        """builds a record whose sequence is the requested length
+
+        Args:
+            length (int): the length of the sequence; must be a multiple of four
+
+        Returns:
+            SeqRecord: a record that can be written as genbank or fasta
+        """
+        return SeqRecord(
+            Seq("atcg" * (length // 4)),
+            id="id",
+            name="name",
+            description="description",
+            annotations={"molecule_type": "DNA"},
+        )
+
+    @staticmethod
+    def _expectedFormat(fn: str) -> str:
+        """determines the format a file should be detected as
+
+        Args:
+            fn (str): the filename
+
+        Returns:
+            str: the expected format
+        """
+        if fn.endswith(".gb"):
+            return ParametersTest.FORMAT_GB
+
+        return ParametersTest.FORMAT_FA
+
+    @staticmethod
     def _makeDummyFiles() -> None:
         """creates the dummy files"""
         for fn in ParametersTest.IG_FNS_GB + ParametersTest.OG_FNS_GB:
@@ -208,6 +277,16 @@ class ParametersTest(unittest.TestCase):
 
         for fn in ParametersTest.IG_FNS_FA + ParametersTest.OG_FNS_FA:
             SeqIO.write(ParametersTest.TEST_SEQ, fn, ParametersTest.FORMAT_FA)
+
+        # make genbank files whose sequences differ in length
+        for fn, length in zip(ParametersTest.SIZE_FNS, ParametersTest.SIZE_LENS):
+            SeqIO.write(
+                ParametersTest._makeSeqRecord(length), fn, ParametersTest.FORMAT_GB
+            )
+
+        # make a file that cannot be detected as genbank or fasta
+        with open(ParametersTest.BAD_FMT_FN, "w") as fh:
+            fh.write("this is not a sequence file\n")
 
     @staticmethod
     def _removeDummyFiles() -> None:
@@ -217,6 +296,8 @@ class ParametersTest(unittest.TestCase):
             + ParametersTest.OG_FNS_GB
             + ParametersTest.IG_FNS_FA
             + ParametersTest.OG_FNS_FA
+            + ParametersTest.SIZE_FNS
+            + (ParametersTest.BAD_FMT_FN,)
         ):
             os.remove(fn)
         if os.path.exists(ParametersTest.DUMP_FN):
@@ -230,7 +311,7 @@ class ParametersTest(unittest.TestCase):
         """
         # make sure the ingroup files were correctly parsed
         for fn in self.IG_FNS_GB:
-            self.assertIn(fn, [x.name for x in params.ingroupFns])
+            self.assertIn(fn, [x.fn.name for x in params.ingroup])
 
         # make sure the outfile is correct
         self.assertEqual(
@@ -238,8 +319,7 @@ class ParametersTest(unittest.TestCase):
         )
 
         # check optional arguments match default values
-        self.assertEqual(params.outgroupFns, ParametersTest.DEFAULT_ARGS.OUTGROUP)
-        self.assertEqual(params.format, ParametersTest.DEFAULT_ARGS.FORMAT)
+        self.assertEqual(params.outgroup, ParametersTest.DEFAULT_ARGS.OUTGROUP)
         self.assertEqual(params.minLen, ParametersTest.DEFAULT_ARGS.MIN_LEN)
         self.assertEqual(params.maxLen, ParametersTest.DEFAULT_ARGS.MAX_LEN)
         self.assertEqual(params.minGc, ParametersTest.DEFAULT_ARGS.MIN_GC)
@@ -270,12 +350,12 @@ class ParametersTest(unittest.TestCase):
             expectedIngroupFns = ParametersTest.IG_FNS_FA
             expectedOutgroupFns = ParametersTest.OG_FNS_FA
 
-        for fn in params.ingroupFns:
-            self.assertIn(fn.name, expectedIngroupFns)
+        for genome in params.ingroup:
+            self.assertIn(genome.fn.name, expectedIngroupFns)
 
         # check for all outgroup files
-        for fn in params.outgroupFns:
-            self.assertIn(fn.name, expectedOutgroupFns)
+        for genome in params.outgroup:
+            self.assertIn(genome.fn.name, expectedOutgroupFns)
 
     def _checkCustomValues(self, params: Parameters, frmt: str) -> None:
         """evaluates that params has the appropriate values when custom values are specified
@@ -302,7 +382,6 @@ class ParametersTest(unittest.TestCase):
         self.assertEqual(
             params.resultsFn.absolute(), self.dir.joinpath(ParametersTest.OUT_FN).absolute()
         )
-        self.assertEqual(params.format, frmt)
         self.assertEqual(params.minLen, minLen)
         self.assertEqual(params.maxLen, maxLen)
         self.assertEqual(params.minGc, minGc)
@@ -420,14 +499,14 @@ class ParametersTest(unittest.TestCase):
         params = _parseArgs()
         self.assertTrue(params.debug)
         params.debug = False
-        self._checkCustomValues(params, ParametersTest.DEFAULT_ARGS.FORMAT)
+        self._checkCustomValues(params, ParametersTest.FORMAT_GB)
 
         # check long flags with custom args
         sys.argv = self.debug4
         params = _parseArgs()
         self.assertTrue(params.debug)
         params.debug = False
-        self._checkCustomValues(params, ParametersTest.DEFAULT_ARGS.FORMAT)
+        self._checkCustomValues(params, ParametersTest.FORMAT_GB)
 
     def testJ_debug2(self) -> None:
         """is the logger working"""
@@ -546,6 +625,97 @@ class ParametersTest(unittest.TestCase):
         self.assertNotEqual(basic2, short1)
         self.assertNotEqual(basic1, long1)
         self.assertNotEqual(basic2, long1)
+
+    def testM_sniffedFormats(self) -> None:
+        """is the format of each genome detected from the file contents"""
+        # constant
+        FAIL_MSG = "wrong detected format for "
+
+        # the format is no longer supplied on the command line, so each genome
+        # must determine it from the contents of its own file
+        for argv, frmt in (
+            (self.short1, ParametersTest.FORMAT_GB),
+            (self.short2, ParametersTest.FORMAT_FA),
+        ):
+            sys.argv = argv
+            params = _parseArgs()
+
+            for genome in params.ingroup + params.outgroup:
+                self.assertEqual(
+                    genome._format, frmt, f"{FAIL_MSG}{genome.fn.name}"
+                )
+
+    def testN_mixedFormats(self) -> None:
+        """can genbank and fasta files be used together as inputs"""
+        # constants
+        FAIL_FMT = "wrong detected format for "
+        FAIL_LEN = "wrong number of genomes parsed"
+
+        # a mixture of formats is allowed because each file is sniffed separately
+        sys.argv = self.mixed
+        params = _parseArgs()
+
+        # every input file must be present
+        self.assertEqual(
+            len(params.ingroup), len(ParametersTest.IG_FNS_MIX), FAIL_LEN
+        )
+        self.assertEqual(
+            len(params.outgroup), len(ParametersTest.OG_FNS_MIX), FAIL_LEN
+        )
+
+        # each genome must be detected as the format matching its extension
+        for genome in params.ingroup + params.outgroup:
+            self.assertEqual(
+                genome._format,
+                ParametersTest._expectedFormat(genome.fn.name),
+                f"{FAIL_FMT}{genome.fn.name}",
+            )
+
+        # the ingroup and outgroup files must be the ones that were requested
+        self.assertEqual(
+            sorted(x.fn.name for x in params.ingroup),
+            sorted(ParametersTest.IG_FNS_MIX),
+        )
+        self.assertEqual(
+            sorted(x.fn.name for x in params.outgroup),
+            sorted(ParametersTest.OG_FNS_MIX),
+        )
+
+    def testO_sortIngroup(self) -> None:
+        """are the ingroup genomes sorted from shortest to longest"""
+        # constant
+        FAIL_MSG = "ingroup genomes are not sorted by length"
+
+        sys.argv = self.sizes
+        params = _parseArgs()
+
+        # the ingroup is sorted so that the smallest genome is processed first
+        observed = [x.length for x in params.ingroup]
+        self.assertEqual(observed, sorted(ParametersTest.SIZE_LENS), FAIL_MSG)
+
+    def testP_preLoad(self) -> None:
+        """are sequences streamed from file unless preloading was requested"""
+        # constants
+        FAIL_FLAG = "wrong pre_load value"
+        FAIL_SEQS = "sequences were loaded into memory instead of streamed"
+
+        # preloading is off by default
+        sys.argv = self.basic1
+        params = _parseArgs()
+        self.assertEqual(
+            params.pre_load, ParametersTest.DEFAULT_ARGS.PRE_LOAD, FAIL_FLAG
+        )
+
+        # without preloading the sequences are always streamed from file
+        for genome in params.ingroup + params.outgroup:
+            self.assertEqual(genome._seqs, [], f"{FAIL_SEQS}: {genome.fn.name}")
+
+    def testQ_invalidFormat(self) -> None:
+        """is an error raised when a file is neither genbank nor fasta"""
+        # a file that cannot be sniffed is rejected after the genomes are built
+        sys.argv = self.badFmt
+        with self.assertRaises(InvalidFileFormat):
+            _parseArgs()
 
 
 if __name__ == "__main__":

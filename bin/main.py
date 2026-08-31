@@ -3,6 +3,7 @@ import shutil
 from typing import Generator
 
 from bin.Clock import Clock
+from bin.Genome import Genome
 from bin.Parameters import Parameters
 from bin.Primer import Primer
 from bin.Product import Product
@@ -59,8 +60,8 @@ def __getCandidates(
     params.log.rename(__getCandidates.__name__)
 
     # print status
-    params.log.info(f"{MSG_1A}{len(params.ingroupFns)}{MSG_1B}")
-    clock.printStart(f"{MSG_1A}{len(params.ingroupFns)}{MSG_1B}", end="\n", spin=False)
+    params.log.info(f"{MSG_1A}{len(params.ingroup)}{MSG_1B}")
+    clock.printStart(f"{MSG_1A}{len(params.ingroup)}{MSG_1B}", end="\n", spin=False)
 
     # get the candidate kmers
     candidateKmers = _getAllCandidateKmers(params, sharedExists)
@@ -132,7 +133,7 @@ def __removeOutgroup(
     params.log.rename(__removeOutgroup.__name__)
 
     # only have work to do if there are outgroup genomes
-    if params.outgroupFns != []:
+    if params.outgroup != []:
         # determine the starting number of pairs
         startingNum = len(pairs)
 
@@ -358,7 +359,7 @@ def __writePrimerPairs(
 
     # write BED file
     __writeBedFile(
-        params.bedFn, pairs, sortedPairs, set(map(os.path.basename, params.ingroupFns))
+        params.bedFn, pairs, sortedPairs, {x.name for x in params.ingroup}
     )
 
     # print status

@@ -2,7 +2,6 @@ import multiprocessing
 import os
 import subprocess
 from typing import Generator
-
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
@@ -26,9 +25,6 @@ def __makeFastaFile(params: Parameters) -> None:
     # constant
     OUT_FORMAT = "fasta"
 
-    # initialize variable
-    contig: SeqRecord
-
     # remove the fasta file if it already exists
     if os.path.exists(params.allContigsFna):
         os.remove(params.allContigsFna)
@@ -36,14 +32,12 @@ def __makeFastaFile(params: Parameters) -> None:
     # open the file in append mode
     with open(params.allContigsFna, "w") as outFh:
         # for each sequence file
-        for fn in params.ingroupFns + params.outgroupFns:
-            # write each contig to file
-            with open(fn, "r") as inFh:
-                for contig in SeqIO.parse(inFh, params.format):
-                    # make sure the sequence name matches what was saved in other data structures
-                    SeqIO.write(
-                        SeqRecord(contig.seq, contig.id, "", ""), outFh, OUT_FORMAT
-                    )
+        for genome in params.ingroup + params.outgroup:
+            for contig in genome:
+                # make sure the sequence name matches what was saved in other data structures
+                SeqIO.write(
+                    SeqRecord(contig.seq, contig.id, "", ""), outFh, OUT_FORMAT
+                )
 
 
 def __makeQueryString(pairs: list[tuple[Primer, Primer]]) -> str:

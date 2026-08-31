@@ -2,6 +2,7 @@ import numpy
 import os
 from typing import Union
 
+from bin.Genome import Genome
 from bin.Parameters import Parameters
 from bin.Primer import Primer
 from bin.Product import Product
@@ -49,13 +50,13 @@ def __minDiffFromRange(intgr: int, rng: range) -> int:
 
 
 def __sortOutgroupProducts(
-    metadata: dict[str, Product], outgroup: list[str], ingroupPcrLens: range
+    metadata: dict[str, Product], outgroup: list[Genome], ingroupPcrLens: range
 ) -> tuple[int, int]:
     """evaluates the outgroup products for a primer pair in order to sort the pair
 
     Args:
         metadata (dict[str,Product]): the metadata for a primer pair
-        outgroup (list[str]): a list of outgroup filenames
+        outgroup (list[Genome]): a list of outgroup filenames
         ingroupPcrLens (range): the range that ingroup PCR products are within
 
     Returns:
@@ -65,7 +66,7 @@ def __sortOutgroupProducts(
     products = list()
 
     # determine the genome names from the ingroup file names
-    outgroup = frozenset(map(os.path.basename, outgroup))
+    outgroup = frozenset(outgroup)
 
     # get the outgroup products that are >0bp
     products = [v.size for k, v in metadata.items() if k in outgroup and v.size != 0]
@@ -163,18 +164,19 @@ def __getTmDiff(pair: tuple[Primer, Primer]) -> float:
 
 
 def __sortIngroupProducts(
-    metadata: dict[str, Product], ingroup: list[str]
+    metadata: dict[str, Product], ingroup: list[Genome]
 ) -> tuple[float, float]:
     """calculates the median product size for the ingroup genomes
 
     Args:
         metadata (dict[str,Product]): the metadata for a primer pair
+        ingroup (list[Genome]): the ingroup genome sequences
 
     Returns:
         tuple[float,float]: variance of product sizes; median product size (negated)
     """
     # determine the genome names from the ingroup file names
-    ingroup = frozenset(map(os.path.basename, ingroup))
+    ingroup = frozenset(ingroup)
 
     # extract the sizes from the metadata for the pair
     products = [prod.size for name, prod in metadata.items() if name in ingroup]
@@ -219,13 +221,13 @@ def _sortPairs(
         pairs.keys(),
         key=lambda p: (
             __sortOutgroupProducts(
-                pairs[p], params.outgroupFns, range(params.minPcr, params.maxPcr + 1)
+                pairs[p], params.outgroup, range(params.minPcr, params.maxPcr + 1)
             ),
             __getGcDiff(p),
             __getTmDiff(p),
             __getHeteroDimerTemp(pairs[p]),
             __getHomopolymerTemps(p),
             __getHairpinTemps(p),
-            __sortIngroupProducts(pairs[p], params.ingroupFns),
+            __sortIngroupProducts(pairs[p], params.ingroup),
         ),
     )

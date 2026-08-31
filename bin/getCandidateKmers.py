@@ -7,6 +7,7 @@ from typing import Iterator, Union
 from Bio import SeqIO
 
 from bin.Clock import Clock
+from bin.Genome import Genome
 from bin.Parameters import Parameters
 from bin.Primer import Primer
 from bin.kmer_counting.kmer_counter import (
@@ -21,12 +22,11 @@ __JUNCTION_CHAR = "~"
 
 
 # functions
-def __getConcatenatedSequence(fn: str, frmt: str, strand: str) -> str:
+def __getConcatenatedSequence(genome: Genome, strand: str) -> str:
     """gets the entire sequence from a file, concatenated with __JUNCTION_CHAR
 
     Args:
-        fn (str): the sequence filename
-        frmt (str): the sequence file format
+        genome (Genome): the genome sequence
         strand (str): the strand to retrieve
 
     Raises:
@@ -35,38 +35,35 @@ def __getConcatenatedSequence(fn: str, frmt: str, strand: str) -> str:
     Returns:
         str: the concatenated sequence
     """
-    # open the file
-    with open(fn, "r") as fh:
-        # import the forward sequences if requested
-        if strand == Primer.PLUS:
-            seqs = [str(r.seq) for r in SeqIO.parse(fh, frmt)]
+    # import the forward sequences if requested
+    if strand == Primer.PLUS:
+        seqs = [str(r.seq) for r in genome]
 
-        # import the reverse sequences if requested
-        elif strand == Primer.MINUS:
-            seqs = [str(r.seq.reverse_complement()) for r in SeqIO.parse(fh, frmt)]
+    # import the reverse sequences if requested
+    elif strand == Primer.MINUS:
+        seqs = [str(r.seq.reverse_complement()) for r in genome]
 
-        # fail on invalid strand
-        else:
-            raise ValueError(f"invalid strand specified: {strand}")
+    # fail on invalid strand
+    else:
+        raise ValueError(f"invalid strand specified: {strand}")
 
     # concatenate sequences
     return __JUNCTION_CHAR.join(seqs)
 
 
 def __updateAllowedKmerEncodings(
-    fn: str, frmt: str, k: int, sharedEncodings: set[int]
+    genome:Genome, k: int, sharedEncodings: set[int]
 ) -> None:
     """updates the shared encodings set with those that are found in the provided sequence
 
     Args:
-        fn (str): the sequence filename
-        frmt (str): the sequence file format
+        genome (Genome): the genome sequence
         k (int): the kmer length
         sharedEncodings (set[int]): a collection of allowed kmer encodings
     """
     # get the forward and reverse sequences
-    fwd = __getConcatenatedSequence(fn, frmt, Primer.PLUS)
-    rev = __getConcatenatedSequence(fn, frmt, Primer.MINUS)
+    fwd = __getConcatenatedSequence(genome, Primer.PLUS)
+    rev = __getConcatenatedSequence(genome, Primer.MINUS)
 
     # combine sequences into a single string
     seq = __JUNCTION_CHAR.join((fwd, rev))
@@ -79,13 +76,12 @@ def __updateAllowedKmerEncodings(
 
 
 def __convertKmerEncodingsToPrimers(
-    files: list[str], frmt: str, encodings: set[int], k: int
+    genomes: list[Genome], encodings: set[int], k: int
 ) -> dict[str, list[Primer]]:
     """converts kmer encodings to a list of Primer objects
 
     Args:
-        files (list[str]): a list of sequence filenames
-        frmt (str): the sequence file format
+        genomes (list[Genome]): a list of genome sequences
         encodings (set[int]): a collection of kmer encodings
         k (int): the kmer length
 
@@ -96,46 +92,41 @@ def __convertKmerEncodingsToPrimers(
     out = defaultdict(list)
 
     # for each file
-    for fn in files:
-        # get the genome name
-        name = os.path.basename(fn)
-
+    for genome in genomes:
         # for each contig
-        with open(fn, "r") as fh:
-            for rec in SeqIO.parse(fh, frmt):
-                # get the start positions and decode the encoding
-                positions = _getFirstStartPositionsAndDecodeAllowedEncodings(
-                    encodings, k, str(rec.seq)
-                )
+        for rec in genome:
+            # get the start positions and decode the encoding
+            positions = _getFirstStartPositionsAndDecodeAllowedEncodings(
+                encodings, k, str(rec.seq)
+            )
 
-                # for each kmer and its start position
-                for kmer, start in positions.items():
-                    # positive coordinate indicates plus strand
-                    if start > 0:
-                        strand = Primer.PLUS
+            # for each kmer and its start position
+            for kmer, start in positions.items():
+                # positive coordinate indicates plus strand
+                if start > 0:
+                    strand = Primer.PLUS
 
-                    # negative coordinate indicates minus strand
-                    elif start < 0:
-                        start = abs(start)
-                        strand = Primer.MINUS
+                # negative coordinate indicates minus strand
+                elif start < 0:
+                    start = abs(start)
+                    strand = Primer.MINUS
 
-                    # if the start is 0, then does it match the beginning of the sequence?
-                    elif kmer == rec.seq[: len(kmer)]:
-                        strand = Primer.PLUS
+                # if the start is 0, then does it match the beginning of the sequence?
+                elif kmer == rec.seq[: len(kmer)]:
+                    strand = Primer.PLUS
 
-                    # if not, then it must be minus strand
-                    else:
-                        strand = Primer.MINUS
+                # if not, then it must be minus strand
+                else:
+                    strand = Primer.MINUS
 
-                    # create a Primer object and save it in the list
-                    out[name].append(Primer(kmer, rec.id, start, k, strand))
+                # create a Primer object and save it in the list
+                out[genome.name].append(Primer(kmer, rec.id, start, k, strand))
 
     return dict(out)
 
 
 def __getSharedPrimersOneK(
-    ingroupFns: list[str],
-    frmt: str,
+    ingroup: list[Genome],
     k: int,
     minGc: float,
     maxGc: float,
@@ -144,8 +135,7 @@ def __getSharedPrimersOneK(
     """gets shared primers for a single kmer length
 
     Args:
-        ingroupFns (list[str]): the sequence filenames
-        frmt (str): the sequence file format
+        ingroup (list[Genome]): the genome sequences
         k (int): the kmer length
         minGc (float): the minimum allowed GC percent
         maxGc (float): the maximum allowed GC percent
@@ -155,8 +145,8 @@ def __getSharedPrimersOneK(
         list[Primer]: a list of shared Primer objects
     """
     # get the first genome's forward and reverse sequences
-    fwd = __getConcatenatedSequence(ingroupFns[0], frmt, Primer.PLUS)
-    rev = __getConcatenatedSequence(ingroupFns[0], frmt, Primer.MINUS)
+    fwd = __getConcatenatedSequence(ingroup[0], Primer.PLUS)
+    rev = __getConcatenatedSequence(ingroup[0], Primer.MINUS)
 
     # get the kmer encodings for the first (smallest) genome's plus strand
     sharedEncodings = _getFilteredKmerEncodings(fwd, k, minGc, maxGc, maxRepeatLen)
@@ -173,11 +163,11 @@ def __getSharedPrimersOneK(
     del rev
 
     # for each remaining genome, update the shared kmer encodings
-    for fn in ingroupFns[1:]:
-        __updateAllowedKmerEncodings(fn, frmt, k, sharedEncodings)
+    for genome in ingroup[1:]:
+        __updateAllowedKmerEncodings(genome, k, sharedEncodings)
 
     # convert the shared kmers to Primer objects
-    return __convertKmerEncodingsToPrimers(ingroupFns, frmt, sharedEncodings, k)
+    return __convertKmerEncodingsToPrimers(ingroup, sharedEncodings, k)
 
 
 def __getSharedPrimers(params: Parameters) -> dict[str, list[Primer]]:
@@ -193,7 +183,7 @@ def __getSharedPrimers(params: Parameters) -> dict[str, list[Primer]]:
     # helper function to generate arguments for __getSharedKmersOneK
     def genArgs() -> Iterator[tuple[list[str], str, int, float, float]]:
         for k in range(params.minLen, params.maxLen + 1):
-            yield params.ingroupFns, params.format, k, params.minGc, params.maxGc, params.maxRepeatLen
+            yield params.ingroup, k, params.minGc, params.maxGc, params.maxRepeatLen
 
     # initialize output
     out = defaultdict(list)

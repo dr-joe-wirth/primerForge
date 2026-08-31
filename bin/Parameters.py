@@ -14,6 +14,7 @@ from primer3.bindings import DEFAULT_P3_ARGS
 
 from bin import __author__, __version__
 from bin.Clock import Clock
+from bin.Genome import Genome, InvalidFileFormat
 from bin.Log import Log
 
 
@@ -46,9 +47,9 @@ class DefaultArgs:
     TEMP_TOLERANCE:float = 5.0
     MAX_REPEATS:int = 3
     BIN_SIZE:int = 64
+    PRE_LOAD:bool = False
     KEEP:bool = False
     DEBUG:bool = False
-    ALLOWED_FORMATS:tuple[str,str] = ('genbank', 'fasta')
 
 
 class Parameters:
@@ -81,11 +82,10 @@ class Parameters:
             parsedArgs: parsed command-line arguments
             initializeLog: if True, initialize the log. Defaults to True.
         """
-        self.ingroupFns:list[pathlib.Path] = parsedArgs.ingroup
-        self.outgroupFns:list[pathlib.Path] = parsedArgs.outgroup
+        self.ingroup:list[Genome] = [Genome(x, parsedArgs.pre_load) for x in parsedArgs.ingroup]
+        self.outgroup:list[Genome] = [Genome(x, parsedArgs.pre_load) for x in parsedArgs.outgroup]
         self.resultsFn:pathlib.Path = parsedArgs.out
         self.bedFn:pathlib.Path = parsedArgs.bed_file
-        self.format:str = parsedArgs.format
         self.minLen:int = parsedArgs.min_len
         self.maxLen:int = parsedArgs.max_len
         self.minGc:float = parsedArgs.min_gc
@@ -96,6 +96,7 @@ class Parameters:
         self.maxPcr:int = parsedArgs.max_pcr
         self.maxTmDiff:float = parsedArgs.tm_diff
         self.disallowedLens:range = range(parsedArgs.min_bad, parsedArgs.max_bad + 1)
+        self.pre_load:bool = parsedArgs.pre_load
         self.numThreads:int = parsedArgs.num_threads
         self.debug:bool = parsedArgs.debug
         self.log:Log = Log(debug=self.debug, initialize=initializeLog)
@@ -124,24 +125,26 @@ class Parameters:
         self.maxBinSize:int = parsedArgs.bin_size
 
         # Sort the ingroup files by size (smallest first)
-        self.ingroupFns.sort(key=lambda x: x.stat().st_size)
+        self.ingroup.sort()
 
         # Now populate working directory + its linked attributes
         self.workdir = self.__getIntermediateDirname()
 
         # Finally, perform sanity checks
         # Check 1 -- all ingroup files must exist
-        nonexistent = [str(x) for x in self.ingroupFns if not x.exists()]
+        nonexistent = [str(x.fn) for x in self.ingroup if not x.fn.exists()]
         if len(nonexistent) > 0:
             raise FileNotFoundError(f"the following ingroup files do not exist: {', '.join(nonexistent)}")
         
         # Check 2 -- all outgroup files must exist
-        nonexistent = [str(x) for x in self.outgroupFns if not x.is_file()]
+        nonexistent = [str(x.fn) for x in self.outgroup if not x.fn.is_file()]
         if len(nonexistent) > 0:
             raise FileNotFoundError(f"the following ingroup files do not exist: {', '.join(nonexistent)}")
         
-        # Check 3 -- all ingroup and outgroup files must be in the specified format
-        self.__checkGenomeFormat()
+        # Check 3 -- all ingroup and outgroup files must be in an allowed format
+        bad_files = [str(x.fn) for x in self.ingroup + self.outgroup if not x._format]
+        if bad_files:
+            raise InvalidFileFormat(f"the following files are invalidly formatted: {', '.join(bad_files)}")
 
         # Check 4 -- the output files must be writable
         for output_file in (self.bedFn, self.resultsFn):
@@ -172,20 +175,10 @@ class Parameters:
             raise TypeError(f"cannot compare Parameters object to type '{type(other)}'")
 
         # determine if ingroup files match
-        if self.ingroupFns is None:
-            sameIngroup = self.ingroupFns == other.ingroupFns
-        else:
-            sameIngroup = set(map(os.path.abspath, self.ingroupFns)) == set(
-                map(os.path.abspath, other.ingroupFns)
-            )
+        sameIngroup = set(self.ingroup) == set(other.ingroup)
 
         # determine if outgroup files match
-        if self.outgroupFns is None:
-            sameOutgroup = self.outgroupFns == other.outgroupFns
-        else:
-            sameOutgroup = set(map(os.path.abspath, self.outgroupFns)) == set(
-                map(os.path.abspath, other.outgroupFns)
-            )
+        sameOutgroup = set(self.outgroup) == set(other.outgroup)
 
         # determine if other important attributes match
         samePrimerLens = self.minLen == other.minLen and self.maxLen == other.maxLen
@@ -288,34 +281,6 @@ class Parameters:
         except:
             raise ValueError(f"{ERR_MSG}{fn}")
 
-    def __checkGenomeFormat(self) -> None:
-        """checks the file format of the input genome files
-
-        Raises:
-            ValueError: empty or improperly formatted file encountered
-        """
-        # error message
-        ERR_MSG = f" is empty or an improperly formatted {self.format} file"
-
-        # initialize boolean to track status
-        fail = False
-
-        # for each genome file
-        for fn in self.ingroupFns + self.outgroupFns:
-            # open the file
-            with open(fn, "r") as fh:
-                # attempt to extract the first record from the generator
-                try:
-                    next(iter(SeqIO.parse(fh, self.format)))
-
-                # failure indicates empty file or improperly formatted
-                except StopIteration:
-                    fail = True
-
-            # raise an error only after the file is closed
-            if fail:
-                raise ValueError(f"{fn}{ERR_MSG}")
-
     def __getIntermediateDirname(self) -> pathlib.Path:
         """determines the intermediate directory name and handles checkpointing
 
@@ -397,8 +362,8 @@ class Parameters:
 
         # write the parameters to the log file
         self.log.info(f'{"version:":<{WIDTH}}{self.__version}')
-        self.log.info(f'{"ingroup:":<{WIDTH}}{",".join([str(x) for x in self.ingroupFns])}')
-        self.log.info(f'{"outgroup:":<{WIDTH}}{",".join([str(x) for x in self.outgroupFns])}')
+        self.log.info(f'{"ingroup:":<{WIDTH}}{",".join([str(x) for x in self.ingroup])}')
+        self.log.info(f'{"outgroup:":<{WIDTH}}{",".join([str(x) for x in self.outgroup])}')
         self.log.info(f'{"results filename:":{WIDTH}}{self.resultsFn}')
         self.log.info(f'{"file format:":{WIDTH}}{self.format}')
         self.log.info(f'{"min kmer len:":{WIDTH}}{self.minLen}')

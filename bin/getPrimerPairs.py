@@ -635,7 +635,7 @@ def _getPrimerPairs(
     ERR_MSG_2 = "could not identify primer pairs present in every ingroup genome"
 
     # only need to get pairs for one genome
-    firstName = os.path.basename(params.ingroupFns[0])
+    firstName = params.ingroup[0].name
 
     # bin kmers to reduce time complexity
     binnedCandidateKmers = __binCandidateKmers(

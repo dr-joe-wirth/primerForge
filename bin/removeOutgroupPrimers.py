@@ -278,20 +278,16 @@ def _removeOutgroupPrimers(
     encodings = __getKmerEncodings(pairs.keys())
 
     # for each outgroup genome
-    for fn in params.outgroupFns:
-        # get the name
-        name = os.path.basename(fn)
-
+    for genome in params.outgroup:
         # initialize a dictionary for the current outgroup genome
-        outgroupKmers[name] = dict()
+        outgroupKmers[genome.name] = dict()
 
-        with open(fn, "r") as fh:
-            # add each contig in the genome to the argument list
-            for contig in SeqIO.parse(fh, params.format):
-                # extract kmer data
-                outgroupKmers[name][contig.id] = __extractKmerPositions(
-                    str(contig.seq), encodings
-                )
+        # add each contig in the genome to the argument list
+        for contig in genome:
+            # extract kmer data
+            outgroupKmers[genome.name][contig.id] = __extractKmerPositions(
+                str(contig.seq), encodings
+            )
 
     # print status and log
     clock.printDone()

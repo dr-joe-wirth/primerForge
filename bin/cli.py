@@ -11,7 +11,7 @@ from bin import __author__, __version__
 from bin.Parameters import Parameters, DefaultArgs
 
 
-__DEFAULT_ARGS = DefaultArgs()
+_DEFAULT_ARGS = DefaultArgs()
 
 
 class UnifiedHelpFormatter(argparse.HelpFormatter):
@@ -56,20 +56,21 @@ class UnifiedHelpFormatter(argparse.HelpFormatter):
         # build and return the advanced help message
         return (
             f"{EOL}primer3 parameters:{EOL}"
-            f"{GAP}{'--primer3_mv_conc':<{WIDTH}}[float] monovalent cation concentration (mM){DEF_OPEN}{__DEFAULT_ARGS.PRIMER3_MV_CONC}{CLOSE}{EOL}"
-            f"{GAP}{'--primer3_dv_conc':<{WIDTH}}[float] divalent cation concentration (mM){DEF_OPEN}{__DEFAULT_ARGS.PRIMER3_DV_CONC}{CLOSE}{EOL}"
-            f"{GAP}{'--primer3_dntp_conc':<{WIDTH}}[float] dNTP concentration (mM){DEF_OPEN}{__DEFAULT_ARGS.PRIMER3_DNTP_CONC}{CLOSE}{EOL}"
-            f"{GAP}{'--primer3_dna_conc':<{WIDTH}}[float] template DNA concentration (nM){DEF_OPEN}{__DEFAULT_ARGS.PRIMER3_DNA_CONC}{CLOSE}{EOL}"
-            f"{GAP}{'--primer3_temp_c':<{WIDTH}}[float] simulation temp (°C) for ΔG calculation{DEF_OPEN}{__DEFAULT_ARGS.PRIMER3_TEMP_C}{CLOSE}{EOL}"
-            f"{GAP}{'--primer3_max_loop':<{WIDTH}}[int] maximum size (bp) of loops in primer secondary structures{DEF_OPEN}{__DEFAULT_ARGS.PRIMER3_MAX_LOOP}{CLOSE}{EOL}"
+            f"{GAP}{'--primer3_mv_conc':<{WIDTH}}[float] monovalent cation concentration (mM){DEF_OPEN}{_DEFAULT_ARGS.PRIMER3_MV_CONC}{CLOSE}{EOL}"
+            f"{GAP}{'--primer3_dv_conc':<{WIDTH}}[float] divalent cation concentration (mM){DEF_OPEN}{_DEFAULT_ARGS.PRIMER3_DV_CONC}{CLOSE}{EOL}"
+            f"{GAP}{'--primer3_dntp_conc':<{WIDTH}}[float] dNTP concentration (mM){DEF_OPEN}{_DEFAULT_ARGS.PRIMER3_DNTP_CONC}{CLOSE}{EOL}"
+            f"{GAP}{'--primer3_dna_conc':<{WIDTH}}[float] template DNA concentration (nM){DEF_OPEN}{_DEFAULT_ARGS.PRIMER3_DNA_CONC}{CLOSE}{EOL}"
+            f"{GAP}{'--primer3_temp_c':<{WIDTH}}[float] simulation temp (°C) for ΔG calculation{DEF_OPEN}{_DEFAULT_ARGS.PRIMER3_TEMP_C}{CLOSE}{EOL}"
+            f"{GAP}{'--primer3_max_loop':<{WIDTH}}[int] maximum size (bp) of loops in primer secondary structures{DEF_OPEN}{_DEFAULT_ARGS.PRIMER3_MAX_LOOP}{CLOSE}{EOL}"
             f"{EOL}isPcr parameters:{EOL}"
-            f"{GAP}{'--isPcr_minGood':<{WIDTH}}[int] minimum size (bp) where there must be 2 matches for each mismatch{DEF_OPEN}{__DEFAULT_ARGS.ISPCR_MIN_GOOD}{CLOSE}{EOL}"
-            f"{GAP}{'--isPcr_minPerfect':<{WIDTH}}[int] minimum size (bp) of perfect match at 3' end of primer{DEF_OPEN}{__DEFAULT_ARGS.ISPCR_MIN_PERFECT}{CLOSE}{EOL}"
-            f"{GAP}{'--isPcr_tileSize':<{WIDTH}}[int] the size of match that triggers an alignment{DEF_OPEN}{__DEFAULT_ARGS.ISPCR_TILE_SIZE}{CLOSE}{EOL}"
+            f"{GAP}{'--isPcr_minGood':<{WIDTH}}[int] minimum size (bp) where there must be 2 matches for each mismatch{DEF_OPEN}{_DEFAULT_ARGS.ISPCR_MIN_GOOD}{CLOSE}{EOL}"
+            f"{GAP}{'--isPcr_minPerfect':<{WIDTH}}[int] minimum size (bp) of perfect match at 3' end of primer{DEF_OPEN}{_DEFAULT_ARGS.ISPCR_MIN_PERFECT}{CLOSE}{EOL}"
+            f"{GAP}{'--isPcr_tileSize':<{WIDTH}}[int] the size of match that triggers an alignment{DEF_OPEN}{_DEFAULT_ARGS.ISPCR_TILE_SIZE}{CLOSE}{EOL}"
             f"{EOL}additional parameters:{EOL}"
-            f"{GAP}{'--temp_tolerance':<{WIDTH}}[float] minimum number of degrees (°C) below primer Tm allowed for secondary structure Tm{DEF_OPEN}{__DEFAULT_ARGS.TEMP_TOLERANCE}{CLOSE}{EOL}"
-            f"{GAP}{'--max_repeats':<{WIDTH}}[int] maximum allowed length (bp) of homopolymers (repeats) in primer sequences{DEF_OPEN}{__DEFAULT_ARGS.MAX_REPEATS}{CLOSE}{EOL}"
-            f"{GAP}{'--bin_size':<{WIDTH}}[int] maximum allowed length (bp) of contiguous regions of overlapping primers (bins){DEF_OPEN}{__DEFAULT_ARGS.BIN_SIZE}{CLOSE}{EOL}"
+            f"{GAP}{'--temp_tolerance':<{WIDTH}}[float] minimum number of degrees (°C) below primer Tm allowed for secondary structure Tm{DEF_OPEN}{_DEFAULT_ARGS.TEMP_TOLERANCE}{CLOSE}{EOL}"
+            f"{GAP}{'--max_repeats':<{WIDTH}}[int] maximum allowed length (bp) of homopolymers (repeats) in primer sequences{DEF_OPEN}{_DEFAULT_ARGS.MAX_REPEATS}{CLOSE}{EOL}"
+            f"{GAP}{'--bin_size':<{WIDTH}}[int] maximum allowed length (bp) of contiguous regions of overlapping primers (bins){DEF_OPEN}{_DEFAULT_ARGS.BIN_SIZE}{CLOSE}{EOL}"
+            f"{GAP}{'--pre_load':<{WIDTH}}pre load genomic sequences into memory {DEF_OPEN}{_DEFAULT_ARGS.PRE_LOAD}{CLOSE}{EOL}"
         )
 
 
@@ -187,7 +188,7 @@ def __createParser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='primerForge',
         description='Finds pairs of primers suitable for a group of input genomes',
-        usage='primerForge -i [-oBubfpgtrdnkvh] [--check_install] [--debug] [--advanced]',
+        usage='primerForge -i [-oBubpgtrdnkvh] [--check_install] [--debug] [--advanced]',
         formatter_class=UnifiedHelpFormatter,
         add_help=False  # We'll handle help manually
     )
@@ -199,21 +200,19 @@ def __createParser() -> argparse.ArgumentParser:
     
     # Optional arguments  
     optional = parser.add_argument_group('optional arguments')
-    optional.add_argument('-o', '--out',  default=__DEFAULT_ARGS.OUT_FN, type=pathlib.Path,
+    optional.add_argument('-o', '--out',  default=_DEFAULT_ARGS.OUT_FN, type=pathlib.Path,
                           help='[file] output filename for primer pair data (default: %(default)s)')
-    optional.add_argument('-B', '--bed_file', default=__DEFAULT_ARGS.BED_FN, type=pathlib.Path,
+    optional.add_argument('-B', '--bed_file', default=_DEFAULT_ARGS.BED_FN, type=pathlib.Path,
                           help='[file] output filename for primer data in BED file format (default: %(default)s)')
     optional.add_argument('-u', '--outgroup', default=list(), nargs="+", type=pathlib.Path,
                           help='[file] outgroup filename or a file pattern (e.g. outgroup/*.gbff)')
     optional.add_argument('-b', '--bad_sizes',
                           help="[int,int] a range of PCR product lengths that the outgroup cannot produce (default: same as '--pcr_prod')")
-    optional.add_argument('-f', '--format', default=__DEFAULT_ARGS.FORMAT, choices=__DEFAULT_ARGS.ALLOWED_FORMATS,
-                          help=f'[str] file format of the ingroup and outgroup [{"|".join(__DEFAULT_ARGS.ALLOWED_FORMATS)}] (default: %(default)s)')
-    optional.add_argument('-p', '--primer_len', default=f"{__DEFAULT_ARGS.MIN_LEN},{__DEFAULT_ARGS.MAX_LEN}",
+    optional.add_argument('-p', '--primer_len', default=f"{_DEFAULT_ARGS.MIN_LEN},{_DEFAULT_ARGS.MAX_LEN}",
                           help='[int(s)] a single primer length or a range specified as \'min,max\'; (minimum 10; maximum 32) (default: %(default)s)')
-    optional.add_argument('-g', '--gc_range', default=f"{__DEFAULT_ARGS.MIN_GC},{__DEFAULT_ARGS.MAX_GC}",
+    optional.add_argument('-g', '--gc_range', default=f"{_DEFAULT_ARGS.MIN_GC},{_DEFAULT_ARGS.MAX_GC}",
                           help='[float,float] a min and max percent GC specified as a comma separated list (default: %(default)s)')
-    optional.add_argument('-t', '--tm_range', default=f"{__DEFAULT_ARGS.MIN_TM},{__DEFAULT_ARGS.MAX_TM}",
+    optional.add_argument('-t', '--tm_range', default=f"{_DEFAULT_ARGS.MIN_TM},{_DEFAULT_ARGS.MAX_TM}",
                           help='[float,float] a min and max melting temp (°C) specified as a comma separated list (default: %(default)s)')
     optional.add_argument('-r', '--pcr_prod', default='120,2400',
                           help='[int(s)] a single PCR product length or a range specified as \'min,max\' (default: 120,2400)')
@@ -240,22 +239,23 @@ def __createParser() -> argparse.ArgumentParser:
     # Advanced arguments (only shown when --advanced is used)
     # help=argparse.SUPPRESS --> argparse will accept and handle these args but never display them (we do that manually)
     # primer3 parameters
-    parser.add_argument('--primer3_mv_conc', type=float, default=__DEFAULT_ARGS.PRIMER3_MV_CONC, help=argparse.SUPPRESS)
-    parser.add_argument('--primer3_dv_conc', type=float, default=__DEFAULT_ARGS.PRIMER3_DV_CONC, help=argparse.SUPPRESS)
-    parser.add_argument('--primer3_dntp_conc', type=float, default=__DEFAULT_ARGS.PRIMER3_DNTP_CONC, help=argparse.SUPPRESS)
-    parser.add_argument('--primer3_dna_conc', type=float, default=__DEFAULT_ARGS.PRIMER3_DNA_CONC, help=argparse.SUPPRESS)
-    parser.add_argument('--primer3_temp_c', type=float, default=__DEFAULT_ARGS.PRIMER3_TEMP_C, help=argparse.SUPPRESS)
-    parser.add_argument('--primer3_max_loop', type=int, default=__DEFAULT_ARGS.PRIMER3_MAX_LOOP, help=argparse.SUPPRESS)
+    parser.add_argument('--primer3_mv_conc', type=float, default=_DEFAULT_ARGS.PRIMER3_MV_CONC, help=argparse.SUPPRESS)
+    parser.add_argument('--primer3_dv_conc', type=float, default=_DEFAULT_ARGS.PRIMER3_DV_CONC, help=argparse.SUPPRESS)
+    parser.add_argument('--primer3_dntp_conc', type=float, default=_DEFAULT_ARGS.PRIMER3_DNTP_CONC, help=argparse.SUPPRESS)
+    parser.add_argument('--primer3_dna_conc', type=float, default=_DEFAULT_ARGS.PRIMER3_DNA_CONC, help=argparse.SUPPRESS)
+    parser.add_argument('--primer3_temp_c', type=float, default=_DEFAULT_ARGS.PRIMER3_TEMP_C, help=argparse.SUPPRESS)
+    parser.add_argument('--primer3_max_loop', type=int, default=_DEFAULT_ARGS.PRIMER3_MAX_LOOP, help=argparse.SUPPRESS)
 
     # isPcr parameters
-    parser.add_argument('--isPcr_minGood', type=int, default=__DEFAULT_ARGS.ISPCR_MIN_GOOD, help=argparse.SUPPRESS)
-    parser.add_argument('--isPcr_minPerfect', type=int, default=__DEFAULT_ARGS.ISPCR_MIN_PERFECT, help=argparse.SUPPRESS)
-    parser.add_argument('--isPcr_tileSize', type=int, default=__DEFAULT_ARGS.ISPCR_TILE_SIZE, help=argparse.SUPPRESS)
+    parser.add_argument('--isPcr_minGood', type=int, default=_DEFAULT_ARGS.ISPCR_MIN_GOOD, help=argparse.SUPPRESS)
+    parser.add_argument('--isPcr_minPerfect', type=int, default=_DEFAULT_ARGS.ISPCR_MIN_PERFECT, help=argparse.SUPPRESS)
+    parser.add_argument('--isPcr_tileSize', type=int, default=_DEFAULT_ARGS.ISPCR_TILE_SIZE, help=argparse.SUPPRESS)
 
     # additional parameters
-    parser.add_argument('--temp_tolerance', type=float, default=__DEFAULT_ARGS.TEMP_TOLERANCE, help=argparse.SUPPRESS)
-    parser.add_argument('--max_repeats', type=int, default=__DEFAULT_ARGS.MAX_REPEATS, help=argparse.SUPPRESS)
-    parser.add_argument('--bin_size', type=int, default=__DEFAULT_ARGS.BIN_SIZE, help=argparse.SUPPRESS)
+    parser.add_argument('--temp_tolerance', type=float, default=_DEFAULT_ARGS.TEMP_TOLERANCE, help=argparse.SUPPRESS)
+    parser.add_argument('--max_repeats', type=int, default=_DEFAULT_ARGS.MAX_REPEATS, help=argparse.SUPPRESS)
+    parser.add_argument('--bin_size', type=int, default=_DEFAULT_ARGS.BIN_SIZE, help=argparse.SUPPRESS)
+    parser.add_argument('--pre_load', action='store_true', help=argparse.SUPPRESS)
     
     return parser
 
