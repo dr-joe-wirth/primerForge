@@ -1,8 +1,8 @@
 import sys
-
 from Cython.Build import cythonize
 from Cython.Compiler import Options
 from setuptools import Extension, find_packages, setup
+from bin import __author__, __version__
 
 # Enable aggressive optimizations
 Options.fast_fail = True
@@ -27,8 +27,8 @@ pythonVersion = (sys.version_info.major, sys.version_info.minor, sys.version_inf
 
 setup(
     name="primerforge",
-    version="2.2.2",
-    author="Joseph S. Wirth",
+    version=__version__,
+    author=", ".join(__author__),
     packages=find_packages(),
     description="software to identify primers that can be used to distinguish genomes",
     long_description=open("README.md").read(),

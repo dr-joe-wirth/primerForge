@@ -1,3 +1,3 @@
 # global constants
-__version__ = "2.2.2"
+__version__ = "2.3.0"
 __author__ = ["Joseph S. Wirth", "Christian Gauthier", "Lee S. Katz", "Jessica C. Chen"]
